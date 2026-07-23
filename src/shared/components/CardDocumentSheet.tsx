@@ -17,7 +17,7 @@ type Props = {
 
 export function CardDocumentSheet({ card, onClose, onChanged, onDelete }: Props) {
   const toast = useAppToast();
-  const [mode, setMode] = useState<'card' | 'document'>('document');
+  const [mode, setMode] = useState<'card' | 'document'>('card');
   const [front, setFront] = useState('');
   const [back, setBack] = useState('');
   const [docJson, setDocJson] = useState('');
@@ -48,7 +48,7 @@ export function CardDocumentSheet({ card, onClose, onChanged, onDelete }: Props)
         }),
       );
     }
-    setMode('document');
+    setMode('card');
   }, [card]);
 
   useEffect(() => {
@@ -112,8 +112,12 @@ export function CardDocumentSheet({ card, onClose, onChanged, onDelete }: Props)
       {mode === 'document' ? (
         <div className="sc-doc-shell">
           <header className="sc-doc-header">
-            <button type="button" className="sc-btn" onClick={onClose}>
-              Fechar
+            <button
+              type="button"
+              className="sc-btn"
+              onClick={() => setMode('card')}
+            >
+              ← Carta
             </button>
             <div className="sc-doc-header-title">
               <input
@@ -128,23 +132,22 @@ export function CardDocumentSheet({ card, onClose, onChanged, onDelete }: Props)
                 style={{ color: suitColor(tag) }}
               />
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                type="button"
-                className="sc-btn"
-                onClick={() => setMode('card')}
-              >
-                Ver carta
-              </button>
-              <button
-                type="button"
-                className="sc-btn primary"
-                disabled={saving || !front.trim()}
-                onClick={() => void save()}
-              >
-                {saving ? <IonSpinner name="crescent" /> : 'Salvar'}
-              </button>
-            </div>
+            <button
+              type="button"
+              className="sc-btn primary"
+              disabled={saving || !front.trim()}
+              onClick={() => void save()}
+            >
+              {saving ? <IonSpinner name="crescent" /> : 'Salvar'}
+            </button>
+            <button
+              type="button"
+              className="sc-doc-close"
+              onClick={onClose}
+              aria-label="Fechar"
+            >
+              ×
+            </button>
           </header>
           <div className="sc-doc-body">
             <div className="sc-doc-meta">
@@ -213,15 +216,13 @@ export function CardDocumentSheet({ card, onClose, onChanged, onDelete }: Props)
           <span className={`card-status ${statusClass(card.status)}`}>
             {statusLabel(card.status)}
           </span>
-          <div className="card-compose-actions">
-            <button
-              type="button"
-              className="sc-btn primary"
-              onClick={() => setMode('document')}
-            >
-              Abrir documento ↗
-            </button>
-          </div>
+          <button
+            type="button"
+            className="card-expand-doc"
+            onClick={() => setMode('document')}
+          >
+            Documento ↗
+          </button>
         </div>
       )}
     </div>,

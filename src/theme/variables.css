@@ -661,9 +661,45 @@ body.sc-card-modal-open {
 }
 
 .card-expand-doc {
-  width: 100%;
-  margin: 8px 0 4px;
-  justify-content: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 6px 0 2px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 450;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.card-expand-doc:hover {
+  opacity: 1;
+  color: var(--text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.sc-doc-close {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.sc-doc-close:hover {
+  color: var(--text-primary);
+  background: var(--surface-2);
 }
 
 .sc-doc-shell {

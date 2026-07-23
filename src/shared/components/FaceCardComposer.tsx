@@ -173,10 +173,10 @@ export function FaceCardComposer({
 
           <button
             type="button"
-            className="sc-btn card-expand-doc"
+            className="card-expand-doc"
             onClick={openDocument}
           >
-            Expandir para documento ↗
+            Documento ↗
           </button>
 
           <span className="card-status s-new">Novo</span>
@@ -234,6 +234,14 @@ export function FaceCardComposer({
               }}
             >
               {saving ? <IonSpinner name="crescent" /> : 'Salvar'}
+            </button>
+            <button
+              type="button"
+              className="sc-doc-close"
+              onClick={onClose}
+              aria-label="Fechar"
+            >
+              ×
             </button>
           </header>
           <div className="sc-doc-body">
