@@ -1,9 +1,12 @@
-import { NavLink, useHistory } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { NavLink, useHistory, useLocation } from 'react-router-dom';
 import { IonIcon } from '@ionic/react';
 import {
   albumsOutline,
+  closeOutline,
   gitNetworkOutline,
   logOutOutline,
+  menuOutline,
 } from 'ionicons/icons';
 import { useAuth } from '../../modules/auth/context/AuthContext';
 import { ThemeToggle } from '../theme/ThemeToggle';
@@ -34,11 +37,74 @@ const NAV = [
 export function AppShell({ children }: Props) {
   const { user, logout } = useAuth();
   const history = useHistory();
+  const location = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [menuOpen]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [menuOpen]);
+
+  const closeMenu = () => setMenuOpen(false);
 
   return (
-    <div className="sc-app-layout">
-      <aside className="sc-sidebar" aria-label="Ambientes">
-        <div className="sc-sidebar-brand">Study Cards</div>
+    <div className={`sc-app-layout${menuOpen ? ' is-menu-open' : ''}`}>
+      <header className="sc-app-mobile-bar">
+        <button
+          type="button"
+          className="sc-app-menu-btn"
+          aria-label={menuOpen ? 'Fechar menu' : 'Abrir menu'}
+          aria-expanded={menuOpen}
+          aria-controls="sc-app-sidebar"
+          onClick={() => setMenuOpen((v) => !v)}
+        >
+          <IonIcon icon={menuOpen ? closeOutline : menuOutline} />
+        </button>
+        <div className="sc-app-mobile-brand">Study Cards</div>
+      </header>
+
+      <button
+        type="button"
+        className="sc-sidebar-backdrop"
+        aria-label="Fechar menu"
+        tabIndex={menuOpen ? 0 : -1}
+        onClick={closeMenu}
+      />
+
+      <aside
+        id="sc-app-sidebar"
+        className="sc-sidebar"
+        aria-label="Ambientes"
+        aria-hidden={false}
+      >
+        <div className="sc-sidebar-head">
+          <div className="sc-sidebar-brand">Study Cards</div>
+          <button
+            type="button"
+            className="sc-sidebar-close"
+            aria-label="Fechar menu"
+            onClick={closeMenu}
+          >
+            <IonIcon icon={closeOutline} />
+          </button>
+        </div>
         <nav className="sc-sidebar-nav">
           {NAV.map((item) => (
             <NavLink
@@ -47,6 +113,7 @@ export function AppShell({ children }: Props) {
               className="sc-sidebar-link"
               isActive={(_, loc) => item.match(loc.pathname)}
               activeClassName="is-active"
+              onClick={closeMenu}
             >
               <IonIcon icon={item.icon} />
               <span>{item.label}</span>
@@ -54,7 +121,7 @@ export function AppShell({ children }: Props) {
           ))}
         </nav>
         <div className="sc-sidebar-foot">
-          <ThemeToggle compact />
+          <ThemeToggle />
           <div className="sc-sidebar-user" title={user?.email}>
             {user?.name || user?.email}
           </div>
@@ -64,6 +131,7 @@ export function AppShell({ children }: Props) {
             aria-label="Sair"
             title="Sair"
             onClick={() => {
+              closeMenu();
               logout();
               history.replace('/login');
             }}
@@ -73,6 +141,7 @@ export function AppShell({ children }: Props) {
           </button>
         </div>
       </aside>
+
       <div className="sc-app-main">{children}</div>
     </div>
   );
