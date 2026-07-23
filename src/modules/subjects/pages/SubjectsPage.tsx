@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  IonButton,
-  IonButtons,
   IonContent,
   IonHeader,
   IonModal,
@@ -9,6 +7,8 @@ import {
   IonSpinner,
   IonTitle,
   IonToolbar,
+  IonButtons,
+  IonButton,
 } from '@ionic/react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useHistory } from 'react-router-dom';
@@ -18,8 +18,6 @@ import { DriveTopBar } from '../../../shared/components/DriveTopBar';
 import { DriveFolderItem } from '../../../shared/components/DriveFolderItem';
 import { Field, TextArea } from '../../../shared/components/Field';
 import { useAppToast } from '../../../shared/hooks/useAppToast';
-import { useAuth } from '../../auth/context/AuthContext';
-import { ThemeToggle } from '../../../shared/theme/ThemeToggle';
 import { MotionShell, MotionStagger, tapScale } from '../../../shared/motion';
 
 const COLORS = ['#BA7517', '#378ADD', '#1D9E75', '#7F77DD', '#D4537E', '#888780'];
@@ -27,7 +25,6 @@ const COLORS = ['#BA7517', '#378ADD', '#1D9E75', '#7F77DD', '#D4537E', '#888780'
 export default function SubjectsPage() {
   const history = useHistory();
   const toast = useAppToast();
-  const { user, logout } = useAuth();
   const reduce = useReducedMotion();
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,18 +84,6 @@ export default function SubjectsPage() {
       <IonHeader>
         <IonToolbar>
           <IonTitle>Study Cards</IonTitle>
-          <IonButtons slot="end">
-            <ThemeToggle compact />
-            <span className="sc-user-chip">{user?.name || user?.email}</span>
-            <IonButton
-              onClick={() => {
-                logout();
-                history.replace('/login');
-              }}
-            >
-              Sair
-            </IonButton>
-          </IonButtons>
         </IonToolbar>
       </IonHeader>
       <IonContent>

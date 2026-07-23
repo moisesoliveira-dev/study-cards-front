@@ -15,6 +15,10 @@ export class CardsFacade {
     return cardsApi.listRootBySubject(subjectId);
   }
 
+  listAllBySubject(subjectId: string) {
+    return cardsApi.listAllBySubject(subjectId);
+  }
+
   studyDeck(topicId: string) {
     return cardsApi.studyDeck(topicId);
   }

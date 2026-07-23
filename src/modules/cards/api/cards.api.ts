@@ -13,6 +13,10 @@ export const cardsApi = {
     httpClient.get<Card[]>(
       `/cards?subjectId=${encodeURIComponent(subjectId)}`,
     ),
+  listAllBySubject: (subjectId: string) =>
+    httpClient.get<Card[]>(
+      `/cards?subjectId=${encodeURIComponent(subjectId)}&all=1`,
+    ),
   studyDeck: (topicId: string) =>
     httpClient.get<Card[]>(
       `/cards/study?topicId=${encodeURIComponent(topicId)}`,

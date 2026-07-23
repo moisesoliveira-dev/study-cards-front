@@ -7,6 +7,8 @@ import TopicCardsPage from './modules/cards/pages/TopicCardsPage';
 import StudyPage from './modules/study/pages/StudyPage';
 import LoginPage from './modules/auth/pages/LoginPage';
 import RegisterPage from './modules/auth/pages/RegisterPage';
+import FlowsListPage from './modules/flows/pages/FlowsListPage';
+import FlowEditorPage from './modules/flows/pages/FlowEditorPage';
 import { AuthProvider } from './modules/auth/context/AuthContext';
 import { PrivateRoute } from './core/auth/PrivateRoute';
 import { ThemeProvider } from './shared/theme/ThemeContext';
@@ -34,18 +36,20 @@ const App: React.FC = () => (
           <IonRouterOutlet>
             <Route exact path="/login" component={LoginPage} />
             <Route exact path="/register" component={RegisterPage} />
-            <PrivateRoute exact path="/home" component={SubjectsPage} />
-            <PrivateRoute
-              exact
-              path="/subjects/:subjectId"
-              component={SubjectDetailPage}
-            />
-            <PrivateRoute
-              exact
-              path="/topics/:topicId"
-              component={TopicCardsPage}
-            />
-            <PrivateRoute exact path="/study/:topicId" component={StudyPage} />
+          <PrivateRoute exact path="/home" component={SubjectsPage} />
+          <PrivateRoute
+            exact
+            path="/subjects/:subjectId"
+            component={SubjectDetailPage}
+          />
+          <PrivateRoute
+            exact
+            path="/topics/:topicId"
+            component={TopicCardsPage}
+          />
+          <PrivateRoute exact path="/flows" component={FlowsListPage} />
+          <PrivateRoute exact path="/flows/:flowId" component={FlowEditorPage} />
+          <PrivateRoute exact path="/study/:topicId" component={StudyPage} />
             <Route exact path="/">
               <Redirect to="/home" />
             </Route>

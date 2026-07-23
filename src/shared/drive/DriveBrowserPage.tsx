@@ -30,7 +30,6 @@ import { DragItem, DropZone, useDriveDrop } from '../dnd/DragDrop';
 import { useAppToast } from '../hooks/useAppToast';
 import { MotionShell, MotionStagger, tapScale } from '../motion';
 import { motion, useReducedMotion } from 'framer-motion';
-import { ThemeToggle } from '../theme/ThemeToggle';
 
 function findNode(
   nodes: TopicTreeNode[],
@@ -355,9 +354,6 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
             <IonBackButton defaultHref={backHref} />
           </IonButtons>
           <IonTitle>{folderName}</IonTitle>
-          <IonButtons slot="end">
-            <ThemeToggle compact />
-          </IonButtons>
         </IonToolbar>
       </IonHeader>
       <IonContent>
