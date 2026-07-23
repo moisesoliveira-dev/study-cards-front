@@ -38,27 +38,28 @@ export default function SubjectDetailPage() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
-  const [open, setOpen] = useState(false);
+  const [folderOpen, setFolderOpen] = useState(false);
+  const [cardOpen, setCardOpen] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [front, setFront] = useState('');
+  const [back, setBack] = useState('');
+  const [hint, setHint] = useState('');
+  const [tag, setTag] = useState('Conceito');
   const [saving, setSaving] = useState(false);
+  const [detail, setDetail] = useState<Card | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [s, t] = await Promise.all([
+      const [s, t, rootCards] = await Promise.all([
         subjectsFacade.get(subjectId),
         topicsFacade.tree(subjectId),
+        cardsFacade.listRootBySubject(subjectId),
       ]);
       setSubject(s);
       setTree(t);
-      const rootIds = t.map((n) => n.id);
-      const cards = rootIds.length
-        ? (
-            await Promise.all(rootIds.map((id) => cardsFacade.listByTopic(id)))
-          ).flat()
-        : [];
-      setLooseCards(cards);
+      setLooseCards(rootCards);
     } catch (error) {
       toast.error(error);
     } finally {
@@ -93,10 +94,35 @@ export default function SubjectDetailPage() {
     setSaving(true);
     try {
       await topicsFacade.create({ subjectId, name, description });
-      setOpen(false);
+      setFolderOpen(false);
       setName('');
       setDescription('');
-      toast.success('Grupo criado');
+      toast.success('Pasta criada');
+      await load();
+    } catch (error) {
+      toast.error(error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const createCard = async () => {
+    if (!front.trim() || !back.trim()) return;
+    setSaving(true);
+    try {
+      await cardsFacade.create({
+        subjectId,
+        front,
+        back,
+        hint,
+        tag,
+      });
+      setCardOpen(false);
+      setFront('');
+      setBack('');
+      setHint('');
+      setTag('Conceito');
+      toast.success('Card criado');
       await load();
     } catch (error) {
       toast.error(error);
@@ -132,11 +158,11 @@ export default function SubjectDetailPage() {
             onQuery={setQuery}
             view={view}
             onView={setView}
-            onNew={() => setOpen(true)}
-            newLabel="Novo grupo"
+            onNewFolder={() => setFolderOpen(true)}
+            onNewCard={() => setCardOpen(true)}
           />
 
-          <div className="sc-section-label">Grupos</div>
+          <div className="sc-section-label">Pastas</div>
           {loading ? (
             <div className="sc-empty">
               <IonSpinner name="crescent" />
@@ -155,54 +181,26 @@ export default function SubjectDetailPage() {
                 />
               ))}
               <DriveFolderItem
-                name="Novo grupo"
+                name="Nova pasta"
                 dashed
-                onClick={() => setOpen(true)}
+                onClick={() => setFolderOpen(true)}
               />
             </div>
           )}
 
-          <div className="sc-section-label">Cards soltos</div>
+          <div className="sc-section-label">Cards</div>
           {view === 'grid' ? (
             <div className="sc-grid">
               {cards.map((card) => (
                 <DriveCardItem
                   key={card.id}
                   card={card}
-                  onClick={() =>
-                    history.push(
-                      `/topics/${card.topicId}?subjectId=${subjectId}&cardId=${card.id}`,
-                    )
-                  }
+                  onClick={() => setDetail(card)}
                 />
               ))}
               {!cards.length && !loading ? (
                 <div className="sc-empty" style={{ gridColumn: '1 / -1' }}>
-                  <p style={{ marginBottom: 12 }}>
-                    Para criar cards: abra uma pasta de <strong>Grupo</strong> acima.
-                    Lá você verá <strong>+ Novo card</strong>.
-                  </p>
-                  {tree[0] ? (
-                    <button
-                      type="button"
-                      className="sc-btn primary"
-                      onClick={() =>
-                        history.push(
-                          `/topics/${tree[0].id}?subjectId=${subjectId}`,
-                        )
-                      }
-                    >
-                      Abrir “{tree[0].name}” e criar card
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="sc-btn primary"
-                      onClick={() => setOpen(true)}
-                    >
-                      Criar primeiro grupo
-                    </button>
-                  )}
+                  Nenhum card na raiz. Use <strong>+ Card</strong> para criar aqui.
                 </div>
               ) : null}
             </div>
@@ -213,30 +211,26 @@ export default function SubjectDetailPage() {
                   key={card.id}
                   card={card}
                   view="list"
-                  onClick={() =>
-                    history.push(
-                      `/topics/${card.topicId}?subjectId=${subjectId}&cardId=${card.id}`,
-                    )
-                  }
+                  onClick={() => setDetail(card)}
                 />
               ))}
+              {!cards.length && !loading ? (
+                <div className="sc-empty">
+                  Nenhum card na raiz. Use <strong>+ Card</strong> para criar aqui.
+                </div>
+              ) : null}
             </div>
           )}
 
           <div className="sc-bottom">
             <span>
-              {looseCards.length} cards · {totalTopics} grupos
+              {looseCards.length} cards · {totalTopics} pastas
             </span>
             <button
               type="button"
               className="sc-btn"
               onClick={() => {
-                const first = tree[0];
-                if (first) {
-                  history.push(
-                    `/study/${first.id}?subjectId=${subjectId}&filter=REVIEW`,
-                  );
-                }
+                history.push(`/study/${subjectId}?subjectId=${subjectId}&scope=subject&filter=REVIEW`);
               }}
             >
               Revisar pendentes ↗
@@ -245,12 +239,12 @@ export default function SubjectDetailPage() {
         </div>
       </IonContent>
 
-      <IonModal isOpen={open} onDidDismiss={() => setOpen(false)}>
+      <IonModal isOpen={folderOpen} onDidDismiss={() => setFolderOpen(false)}>
         <IonHeader>
           <IonToolbar>
-            <IonTitle>Novo grupo</IonTitle>
+            <IonTitle>Nova pasta</IonTitle>
             <IonButtons slot="end">
-              <IonButton onClick={() => setOpen(false)}>Fechar</IonButton>
+              <IonButton onClick={() => setFolderOpen(false)}>Fechar</IonButton>
             </IonButtons>
           </IonToolbar>
         </IonHeader>
@@ -272,6 +266,77 @@ export default function SubjectDetailPage() {
           >
             Criar
           </button>
+        </IonContent>
+      </IonModal>
+
+      <IonModal isOpen={cardOpen} onDidDismiss={() => setCardOpen(false)}>
+        <IonHeader>
+          <IonToolbar>
+            <IonTitle>Novo card</IonTitle>
+            <IonButtons slot="end">
+              <IonButton onClick={() => setCardOpen(false)}>Fechar</IonButton>
+            </IonButtons>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent className="ion-padding sc-form">
+          <div className="sc-auth-fields">
+            <Field
+              label="Conceito (título)"
+              value={front}
+              onChange={setFront}
+              autoFocus
+            />
+            <TextArea label="Explicação" value={back} onChange={setBack} />
+            <Field
+              label="Tag"
+              value={tag}
+              onChange={setTag}
+              placeholder="Conceito, API, Dado..."
+            />
+            <Field label="Dica" value={hint} onChange={setHint} />
+          </div>
+          <button
+            type="button"
+            className="sc-btn primary"
+            style={{ marginTop: 16 }}
+            disabled={saving || !front.trim() || !back.trim()}
+            onClick={() => void createCard()}
+          >
+            Criar
+          </button>
+        </IonContent>
+      </IonModal>
+
+      <IonModal isOpen={Boolean(detail)} onDidDismiss={() => setDetail(null)}>
+        <IonHeader>
+          <IonToolbar>
+            <IonTitle>{detail?.front ?? 'Card'}</IonTitle>
+            <IonButtons slot="end">
+              <IonButton onClick={() => setDetail(null)}>Fechar</IonButton>
+            </IonButtons>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent className="ion-padding">
+          {detail ? (
+            <div className="sc-auth-fields">
+              <div>
+                <div className="sc-field-label">Explicação</div>
+                <p style={{ margin: '6px 0 0', whiteSpace: 'pre-wrap' }}>
+                  {detail.back}
+                </p>
+              </div>
+              {detail.hint ? (
+                <div>
+                  <div className="sc-field-label">Dica</div>
+                  <p style={{ margin: '6px 0 0' }}>{detail.hint}</p>
+                </div>
+              ) : null}
+              <div>
+                <div className="sc-field-label">Tag</div>
+                <p style={{ margin: '6px 0 0' }}>{detail.tag}</p>
+              </div>
+            </div>
+          ) : null}
         </IonContent>
       </IonModal>
     </IonPage>

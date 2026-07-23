@@ -6,6 +6,8 @@ type Props = {
   onQuery: (value: string) => void;
   view: 'grid' | 'list';
   onView: (view: 'grid' | 'list') => void;
+  onNewFolder?: () => void;
+  onNewCard?: () => void;
   onNew?: () => void;
   newLabel?: string;
   extra?: React.ReactNode;
@@ -16,6 +18,8 @@ export function DriveTopBar({
   onQuery,
   view,
   onView,
+  onNewFolder,
+  onNewCard,
   onNew,
   newLabel = 'Novo',
   extra,
@@ -51,7 +55,17 @@ export function DriveTopBar({
         </button>
       </div>
       {extra}
-      {onNew ? (
+      {onNewFolder ? (
+        <button type="button" className="sc-btn" onClick={onNewFolder}>
+          + Pasta
+        </button>
+      ) : null}
+      {onNewCard ? (
+        <button type="button" className="sc-btn primary" onClick={onNewCard}>
+          + Card
+        </button>
+      ) : null}
+      {!onNewFolder && !onNewCard && onNew ? (
         <button type="button" className="sc-btn" onClick={onNew}>
           + {newLabel}
         </button>

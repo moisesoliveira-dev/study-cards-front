@@ -2,7 +2,8 @@ export type CardStatus = 'NEW' | 'REVIEW' | 'KNOWN';
 
 export type Card = {
   id: string;
-  topicId: string;
+  subjectId: string;
+  topicId: string | null;
   front: string;
   back: string;
   hint: string | null;
@@ -16,7 +17,8 @@ export type Card = {
 };
 
 export type CreateCardInput = {
-  topicId: string;
+  subjectId?: string;
+  topicId?: string | null;
   front: string;
   back: string;
   hint?: string;
@@ -33,7 +35,8 @@ export type UpdateCardInput = {
 };
 
 export type MergeCardsInput = {
-  topicId: string;
+  subjectId?: string;
+  topicId?: string | null;
   sourceCardIds: string[];
   front: string;
   back: string;

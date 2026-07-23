@@ -125,7 +125,14 @@ export default function TopicCardsPage() {
     if (!front.trim() || !back.trim()) return;
     setSaving(true);
     try {
-      await cardsFacade.create({ topicId, front, back, hint, tag });
+      await cardsFacade.create({
+        subjectId: subjectId ?? undefined,
+        topicId,
+        front,
+        back,
+        hint,
+        tag,
+      });
       setCreateOpen(false);
       setFront('');
       setBack('');
@@ -165,6 +172,7 @@ export default function TopicCardsPage() {
     setSaving(true);
     try {
       const created = await cardsFacade.merge({
+        subjectId: subjectId ?? undefined,
         topicId,
         sourceCardIds: selected,
         front,

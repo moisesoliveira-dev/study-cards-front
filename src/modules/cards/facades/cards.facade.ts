@@ -11,8 +11,16 @@ export class CardsFacade {
     return cardsApi.listByTopic(topicId);
   }
 
+  listRootBySubject(subjectId: string) {
+    return cardsApi.listRootBySubject(subjectId);
+  }
+
   studyDeck(topicId: string) {
     return cardsApi.studyDeck(topicId);
+  }
+
+  studyBySubject(subjectId: string) {
+    return cardsApi.studyBySubject(subjectId);
   }
 
   create(input: CreateCardInput) {

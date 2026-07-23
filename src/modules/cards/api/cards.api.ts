@@ -9,9 +9,17 @@ import type {
 export const cardsApi = {
   listByTopic: (topicId: string) =>
     httpClient.get<Card[]>(`/cards?topicId=${encodeURIComponent(topicId)}`),
+  listRootBySubject: (subjectId: string) =>
+    httpClient.get<Card[]>(
+      `/cards?subjectId=${encodeURIComponent(subjectId)}`,
+    ),
   studyDeck: (topicId: string) =>
     httpClient.get<Card[]>(
       `/cards/study?topicId=${encodeURIComponent(topicId)}`,
+    ),
+  studyBySubject: (subjectId: string) =>
+    httpClient.get<Card[]>(
+      `/cards/study?subjectId=${encodeURIComponent(subjectId)}`,
     ),
   create: (input: CreateCardInput) => httpClient.post<Card>('/cards', input),
   merge: (input: MergeCardsInput) =>

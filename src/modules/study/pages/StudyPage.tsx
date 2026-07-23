@@ -25,6 +25,7 @@ export default function StudyPage() {
   const query = useQuery();
   const subjectId = query.get('subjectId');
   const filter = query.get('filter');
+  const scope = query.get('scope');
   const toast = useAppToast();
   const [cards, setCards] = useState<Card[]>([]);
   const [index, setIndex] = useState(0);
@@ -33,7 +34,10 @@ export default function StudyPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      let deck = await cardsFacade.studyDeck(topicId);
+      let deck =
+        scope === 'subject' && subjectId
+          ? await cardsFacade.studyBySubject(subjectId)
+          : await cardsFacade.studyDeck(topicId);
       if (filter === 'REVIEW') {
         deck = deck.filter((c) => c.status === 'REVIEW');
       }
@@ -45,7 +49,7 @@ export default function StudyPage() {
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [topicId, filter]);
+  }, [topicId, subjectId, filter, scope]);
 
   useEffect(() => {
     void load();
