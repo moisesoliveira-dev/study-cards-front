@@ -1,0 +1,7 @@
+{
+  "name": "study-cards-front",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "react-vite"
+}
