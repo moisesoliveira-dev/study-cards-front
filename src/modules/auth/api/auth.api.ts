@@ -13,4 +13,12 @@ export const authApi = {
   me() {
     return httpClient.get<AuthUser>('/auth/me');
   },
+
+  updateProfile(input: { name?: string; email?: string }) {
+    return httpClient.patch<AuthUser>('/auth/me', input);
+  },
+
+  changePassword(input: { currentPassword: string; newPassword: string }) {
+    return httpClient.post<{ ok: boolean }>('/auth/change-password', input);
+  },
 };

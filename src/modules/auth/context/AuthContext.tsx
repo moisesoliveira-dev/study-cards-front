@@ -20,6 +20,14 @@ type AuthContextValue = {
     password: string;
     name?: string;
   }) => Promise<void>;
+  updateProfile: (input: {
+    name?: string;
+    email?: string;
+  }) => Promise<AuthUser>;
+  changePassword: (input: {
+    currentPassword: string;
+    newPassword: string;
+  }) => Promise<void>;
   logout: () => void;
 };
 
@@ -62,6 +70,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const updateProfile = useCallback(
+    async (input: { name?: string; email?: string }) => {
+      const next = await authFacade.updateProfile(input);
+      setUser(next);
+      return next;
+    },
+    [],
+  );
+
+  const changePassword = useCallback(
+    async (input: { currentPassword: string; newPassword: string }) => {
+      await authFacade.changePassword(input);
+    },
+    [],
+  );
+
   const logout = useCallback(() => {
     authFacade.logout();
     setUser(null);
@@ -74,9 +98,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: Boolean(user),
       login,
       register,
+      updateProfile,
+      changePassword,
       logout,
     }),
-    [user, loading, login, register, logout],
+    [user, loading, login, register, updateProfile, changePassword, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

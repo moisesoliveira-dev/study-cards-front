@@ -7,6 +7,7 @@ import {
   gitNetworkOutline,
   logOutOutline,
   menuOutline,
+  personOutline,
 } from 'ionicons/icons';
 import { useAuth } from '../../modules/auth/context/AuthContext';
 import { ThemeToggle } from '../theme/ThemeToggle';
@@ -31,6 +32,12 @@ const NAV = [
     label: 'Fluxogramas',
     icon: gitNetworkOutline,
     match: (path: string) => path.startsWith('/flows'),
+  },
+  {
+    to: '/profile',
+    label: 'Perfil',
+    icon: personOutline,
+    match: (path: string) => path.startsWith('/profile'),
   },
 ];
 
@@ -122,9 +129,18 @@ export function AppShell({ children }: Props) {
         </nav>
         <div className="sc-sidebar-foot">
           <ThemeToggle />
-          <div className="sc-sidebar-user" title={user?.email}>
-            {user?.name || user?.email}
-          </div>
+          <NavLink
+            to="/profile"
+            className="sc-sidebar-user-link"
+            isActive={(_, loc) => loc.pathname.startsWith('/profile')}
+            activeClassName="is-active"
+            onClick={closeMenu}
+            title={user?.email}
+          >
+            <span className="sc-sidebar-user">
+              {user?.name || user?.email}
+            </span>
+          </NavLink>
           <button
             type="button"
             className="sc-sidebar-logout"

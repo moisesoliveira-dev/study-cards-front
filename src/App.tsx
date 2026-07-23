@@ -7,6 +7,7 @@ import TopicCardsPage from './modules/cards/pages/TopicCardsPage';
 import StudyPage from './modules/study/pages/StudyPage';
 import LoginPage from './modules/auth/pages/LoginPage';
 import RegisterPage from './modules/auth/pages/RegisterPage';
+import ProfilePage from './modules/auth/pages/ProfilePage';
 import FlowsListPage from './modules/flows/pages/FlowsListPage';
 import FlowEditorPage from './modules/flows/pages/FlowEditorPage';
 import { AuthProvider, useAuth } from './modules/auth/context/AuthContext';
@@ -52,6 +53,7 @@ function AuthenticatedShell() {
         <Route exact path="/flows" component={FlowsListPage} />
         <Route path="/flows/:flowId" component={FlowEditorPage} />
         <Route exact path="/study/:topicId" component={StudyPage} />
+        <Route exact path="/profile" component={ProfilePage} />
         <Route exact path="/">
           <Redirect to="/home" />
         </Route>

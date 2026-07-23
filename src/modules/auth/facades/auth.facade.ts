@@ -32,6 +32,20 @@ export const authFacade = {
     }
   },
 
+  async updateProfile(input: {
+    name?: string;
+    email?: string;
+  }): Promise<AuthUser> {
+    const user = await authApi.updateProfile(input);
+    const token = authStorage.getToken();
+    if (token) authStorage.setSession(token, user);
+    return user;
+  },
+
+  changePassword(input: { currentPassword: string; newPassword: string }) {
+    return authApi.changePassword(input);
+  },
+
   logout(): void {
     authStorage.clear();
   },

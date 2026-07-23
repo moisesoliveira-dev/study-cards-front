@@ -2093,6 +2093,22 @@ body.sc-dragging .sc-hand > .sc-drop-zone.sc-hand-slot:hover {
   white-space: nowrap;
 }
 
+.sc-sidebar-user-link {
+  display: block;
+  text-decoration: none;
+  border-radius: 8px;
+  padding: 6px 6px;
+}
+
+.sc-sidebar-user-link:hover,
+.sc-sidebar-user-link.is-active {
+  background: var(--surface-2);
+}
+
+.sc-sidebar-user-link.is-active .sc-sidebar-user {
+  color: var(--text-accent);
+}
+
 .sc-sidebar-logout {
   display: inline-flex;
   align-items: center;
@@ -3364,5 +3380,107 @@ ion-toast.sc-toast--info::part(container) {
 
   .sc-flow-editor-sub {
     display: none;
+  }
+}
+
+/* —— Profile —— */
+.sc-profile {
+  max-width: 640px;
+}
+
+.sc-profile-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 22px;
+  padding: 20px 18px;
+  border-radius: 16px;
+  border: 0.5px solid var(--border);
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--ok-bg) 45%, var(--surface-1)),
+      var(--surface-1) 55%,
+      color-mix(in srgb, var(--rev-bg) 40%, var(--surface-1))
+    );
+}
+
+.sc-profile-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--rev-fg);
+  background: var(--rev-bg);
+  border: 0.5px solid color-mix(in srgb, var(--rev) 30%, var(--border));
+}
+
+.sc-profile-kicker {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.sc-profile-title {
+  margin: 0 0 4px;
+  font-size: 1.35rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.sc-profile-email {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  word-break: break-all;
+}
+
+.sc-profile-card {
+  margin-bottom: 16px;
+  padding: 18px;
+  border-radius: 14px;
+  border: 0.5px solid var(--border);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-soft);
+}
+
+.sc-profile-section-title {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.sc-profile-section-lead {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.sc-profile-submit {
+  margin-top: 14px;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 640px) {
+  .sc-profile-hero {
+    align-items: flex-start;
+  }
+
+  .sc-profile-submit {
+    width: 100%;
   }
 }
