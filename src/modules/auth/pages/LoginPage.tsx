@@ -1,14 +1,22 @@
-import { useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { IonContent, IonPage, IonSpinner } from '@ionic/react';
 import { Link, Redirect, useHistory } from 'react-router-dom';
+import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useAppToast } from '../../../shared/hooks/useAppToast';
 import { Field } from '../../../shared/components/Field';
+import {
+  fadeUp,
+  staggerContainer,
+  staggerItem,
+  tapScale,
+} from '../../../shared/motion';
 
 export default function LoginPage() {
   const { login, isAuthenticated, loading } = useAuth();
   const history = useHistory();
   const toast = useAppToast();
+  const reduce = useReducedMotion();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [saving, setSaving] = useState(false);
@@ -34,14 +42,23 @@ export default function LoginPage() {
     <IonPage>
       <IonContent fullscreen>
         <div className="sc-auth-shell">
-          <div className="sc-auth-card">
-            <div className="sc-auth-brand">Study Cards</div>
-            <h1 className="sc-auth-title">Entrar</h1>
-            <p className="sc-auth-subtitle">
+          <motion.div
+            className="sc-auth-card"
+            variants={reduce ? undefined : staggerContainer}
+            initial={reduce ? false : 'hidden'}
+            animate="show"
+          >
+            <motion.div className="sc-auth-brand" variants={staggerItem}>
+              Study Cards
+            </motion.div>
+            <motion.h1 className="sc-auth-title" variants={staggerItem}>
+              Entrar
+            </motion.h1>
+            <motion.p className="sc-auth-subtitle" variants={staggerItem}>
               Acesse seu ambiente de estudo pessoal.
-            </p>
+            </motion.p>
 
-            <div className="sc-auth-fields">
+            <motion.div className="sc-auth-fields" variants={staggerItem}>
               <Field
                 label="E-mail"
                 type="email"
@@ -60,21 +77,23 @@ export default function LoginPage() {
                 autoComplete="current-password"
                 onEnter={() => void submit()}
               />
-            </div>
+            </motion.div>
 
-            <button
+            <motion.button
               type="button"
               className="sc-btn primary sc-auth-submit"
               disabled={saving || !email.trim() || !password}
               onClick={() => void submit()}
+              variants={staggerItem}
+              whileTap={reduce ? undefined : tapScale}
             >
               {saving ? <IonSpinner name="crescent" /> : 'Entrar'}
-            </button>
+            </motion.button>
 
-            <p className="sc-auth-switch">
+            <motion.p className="sc-auth-switch" variants={fadeUp}>
               Não tem conta? <Link to="/register">Criar conta</Link>
-            </p>
-          </div>
+            </motion.p>
+          </motion.div>
         </div>
       </IonContent>
     </IonPage>

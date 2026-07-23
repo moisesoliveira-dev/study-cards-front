@@ -10,6 +10,7 @@ import {
   IonTitle,
   IonToolbar,
 } from '@ionic/react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { useHistory } from 'react-router-dom';
 import { subjectsFacade } from '../facades/subjects.facade';
 import type { Subject } from '../types/subject.types';
@@ -18,6 +19,7 @@ import { DriveFolderItem } from '../../../shared/components/DriveFolderItem';
 import { Field, TextArea } from '../../../shared/components/Field';
 import { useAppToast } from '../../../shared/hooks/useAppToast';
 import { useAuth } from '../../auth/context/AuthContext';
+import { MotionShell, MotionStagger, tapScale } from '../../../shared/motion';
 
 const COLORS = ['#BA7517', '#378ADD', '#1D9E75', '#7F77DD', '#D4537E', '#888780'];
 
@@ -25,6 +27,7 @@ export default function SubjectsPage() {
   const history = useHistory();
   const toast = useAppToast();
   const { user, logout } = useAuth();
+  const reduce = useReducedMotion();
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -97,7 +100,7 @@ export default function SubjectsPage() {
         </IonToolbar>
       </IonHeader>
       <IonContent>
-        <div className="sc-shell">
+        <MotionShell className="sc-shell">
           <DriveTopBar
             query={query}
             onQuery={setQuery}
@@ -114,7 +117,7 @@ export default function SubjectsPage() {
               <IonSpinner name="crescent" />
             </div>
           ) : view === 'grid' ? (
-            <div className="sc-grid">
+            <MotionStagger className="sc-grid" key={`grid-${filtered.length}`}>
               {filtered.map((s) => (
                 <DriveFolderItem
                   key={s.id}
@@ -129,29 +132,33 @@ export default function SubjectsPage() {
                 dashed
                 onClick={() => setOpen(true)}
               />
-            </div>
+            </MotionStagger>
           ) : (
-            <div className="sc-list-view">
-              {filtered.map((s) => (
-                <button
+            <MotionStagger className="sc-list-view" key={`list-${filtered.length}`}>
+              {filtered.map((s, i) => (
+                <motion.button
                   key={s.id}
                   type="button"
                   className="sc-list-row"
                   onClick={() => history.push(`/subjects/${s.id}`)}
+                  initial={reduce ? false : { opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.03 }}
+                  whileTap={reduce ? undefined : tapScale}
                 >
                   <span className="list-icon">📁</span>
                   <span className="list-name">{s.name}</span>
                   <span className="list-tag">Grupo</span>
                   <span className="list-links">{s.description || '—'}</span>
-                </button>
+                </motion.button>
               ))}
-            </div>
+            </MotionStagger>
           )}
 
           <div className="sc-bottom">
             <span>{subjects.length} grupos</span>
           </div>
-        </div>
+        </MotionShell>
       </IonContent>
 
       <IonModal isOpen={open} onDidDismiss={() => setOpen(false)}>

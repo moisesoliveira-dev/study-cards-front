@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { IonIcon, IonSpinner } from '@ionic/react';
 import { createOutline, saveOutline, trashOutline } from 'ionicons/icons';
 import type { Card } from '../../modules/cards/types/card.types';
@@ -8,6 +9,7 @@ import { cardsFacade } from '../../modules/cards/facades/cards.facade';
 import { DocumentEditor, documentToPlainText } from './DocumentEditor';
 import { suitColor } from './FaceCardComposer';
 import { useAppToast } from '../hooks/useAppToast';
+import { docExpand, fadeIn, scaleIn } from '../motion';
 
 type Props = {
   card: Card | null;
@@ -31,6 +33,7 @@ function seedDocument(card: Card) {
 
 export function CardDocumentSheet({ card, onClose, onChanged, onDelete }: Props) {
   const toast = useAppToast();
+  const reduce = useReducedMotion();
   const [mode, setMode] = useState<'card' | 'document'>('card');
   const [editing, setEditing] = useState(false);
   const [front, setFront] = useState('');
@@ -166,7 +169,7 @@ export function CardDocumentSheet({ card, onClose, onChanged, onDelete }: Props)
     ) : null;
 
   return createPortal(
-    <div
+    <motion.div
       className={`sc-card-as-modal${mode === 'document' ? ' is-document' : ''}`}
       role="dialog"
       aria-modal="true"
@@ -176,9 +179,21 @@ export function CardDocumentSheet({ card, onClose, onChanged, onDelete }: Props)
           onClose();
         }
       }}
+      variants={reduce ? undefined : fadeIn}
+      initial={reduce ? false : 'hidden'}
+      animate="show"
+      exit="exit"
     >
+      <AnimatePresence mode="wait">
       {mode === 'document' ? (
-        <div className="sc-doc-shell">
+        <motion.div
+          key="doc"
+          className="sc-doc-shell"
+          variants={reduce ? undefined : docExpand}
+          initial={reduce ? false : 'hidden'}
+          animate="show"
+          exit="exit"
+        >
           <header className="sc-doc-header">
             <button
               type="button"
@@ -303,10 +318,15 @@ export function CardDocumentSheet({ card, onClose, onChanged, onDelete }: Props)
               </p>
             ) : null}
           </div>
-        </div>
+        </motion.div>
       ) : (
-        <div
+        <motion.div
+          key="card"
           className={`sc-face-card sc-face-compose is-preview${editing ? ' is-editing' : ''}`}
+          variants={reduce ? undefined : scaleIn}
+          initial={reduce ? false : 'hidden'}
+          animate="show"
+          exit="exit"
         >
           <button
             type="button"
@@ -402,9 +422,10 @@ export function CardDocumentSheet({ card, onClose, onChanged, onDelete }: Props)
               </button>
             </>
           )}
-        </div>
+        </motion.div>
       )}
-    </div>,
+      </AnimatePresence>
+    </motion.div>,
     globalThis.document.body,
   );
 }

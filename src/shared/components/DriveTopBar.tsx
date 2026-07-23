@@ -1,5 +1,7 @@
 import { IonIcon } from '@ionic/react';
 import { gridOutline, listOutline, searchOutline } from 'ionicons/icons';
+import { motion, useReducedMotion } from 'framer-motion';
+import { tapScale } from '../motion';
 
 type Props = {
   query: string;
@@ -24,8 +26,15 @@ export function DriveTopBar({
   newLabel = 'Novo',
   extra,
 }: Props) {
+  const reduce = useReducedMotion();
+
   return (
-    <div className="sc-topbar">
+    <motion.div
+      className="sc-topbar"
+      initial={reduce ? false : { opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+    >
       <div className="sc-search-wrap">
         <IonIcon icon={searchOutline} />
         <input
@@ -37,39 +46,56 @@ export function DriveTopBar({
         />
       </div>
       <div className="sc-view-btns" role="group" aria-label="Visualização">
-        <button
+        <motion.button
           type="button"
           className={view === 'grid' ? 'active' : ''}
           onClick={() => onView('grid')}
           aria-label="Grade"
+          whileTap={reduce ? undefined : tapScale}
         >
           <IonIcon icon={gridOutline} />
-        </button>
-        <button
+        </motion.button>
+        <motion.button
           type="button"
           className={view === 'list' ? 'active' : ''}
           onClick={() => onView('list')}
           aria-label="Lista"
+          whileTap={reduce ? undefined : tapScale}
         >
           <IonIcon icon={listOutline} />
-        </button>
+        </motion.button>
       </div>
       {extra}
       {onNewFolder ? (
-        <button type="button" className="sc-btn" onClick={onNewFolder}>
+        <motion.button
+          type="button"
+          className="sc-btn"
+          onClick={onNewFolder}
+          whileTap={reduce ? undefined : tapScale}
+        >
           + Pasta
-        </button>
+        </motion.button>
       ) : null}
       {onNewCard ? (
-        <button type="button" className="sc-btn primary" onClick={onNewCard}>
+        <motion.button
+          type="button"
+          className="sc-btn primary"
+          onClick={onNewCard}
+          whileTap={reduce ? undefined : tapScale}
+        >
           + Card
-        </button>
+        </motion.button>
       ) : null}
       {!onNewFolder && !onNewCard && onNew ? (
-        <button type="button" className="sc-btn" onClick={onNew}>
+        <motion.button
+          type="button"
+          className="sc-btn"
+          onClick={onNew}
+          whileTap={reduce ? undefined : tapScale}
+        >
           + {newLabel}
-        </button>
+        </motion.button>
       ) : null}
-    </div>
+    </motion.div>
   );
 }

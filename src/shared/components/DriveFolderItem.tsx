@@ -1,5 +1,7 @@
 import { IonIcon } from '@ionic/react';
 import { folderOutline, folderOpenOutline } from 'ionicons/icons';
+import { motion, useReducedMotion } from 'framer-motion';
+import { hoverLift, staggerItem, tapScale } from '../motion';
 
 type Props = {
   name: string;
@@ -16,8 +18,10 @@ export function DriveFolderItem({
   dashed,
   onClick,
 }: Props) {
+  const reduce = useReducedMotion();
+
   return (
-    <div
+    <motion.div
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
       className={`sc-item folder${dashed ? ' dashed' : ''}`}
@@ -32,6 +36,11 @@ export function DriveFolderItem({
             }
           : undefined
       }
+      variants={reduce ? undefined : staggerItem}
+      initial={reduce ? false : 'hidden'}
+      animate="show"
+      whileHover={reduce || !onClick ? undefined : hoverLift}
+      whileTap={reduce || !onClick ? undefined : tapScale}
     >
       <div className="thumb">
         <IonIcon
@@ -48,6 +57,6 @@ export function DriveFolderItem({
         </div>
         {subtitle ? <div className="item-sub">{subtitle}</div> : null}
       </div>
-    </div>
+    </motion.div>
   );
 }

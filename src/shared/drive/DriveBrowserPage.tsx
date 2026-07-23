@@ -28,6 +28,8 @@ import { CardDocumentSheet } from '../components/CardDocumentSheet';
 import { documentToPlainText } from '../components/DocumentEditor';
 import { DragItem, DropZone, useDriveDrop } from '../dnd/DragDrop';
 import { useAppToast } from '../hooks/useAppToast';
+import { MotionShell, MotionStagger, tapScale } from '../motion';
+import { motion, useReducedMotion } from 'framer-motion';
 
 function findNode(
   nodes: TopicTreeNode[],
@@ -336,6 +338,8 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     ? `/study/${subjectId}?subjectId=${subjectId}&scope=subject&filter=REVIEW`
     : `/study/${topicId}?subjectId=${subjectId}&filter=REVIEW`;
 
+  const reduce = useReducedMotion();
+
   return (
     <IonPage>
       <IonHeader>
@@ -347,7 +351,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         </IonToolbar>
       </IonHeader>
       <IonContent>
-        <div className="sc-shell">
+        <MotionShell className="sc-shell">
           <div className="sc-crumb">
             <button type="button" onClick={() => history.push('/home')}>
               Study Cards
@@ -420,16 +424,21 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                   >
                     <FaceCard
                       card={card}
+                      index={index}
                       style={{ ['--card-i' as string]: index } as CSSProperties}
                     />
                   </DragItem>
                 </DropZone>
               ))}
-              <button
+              <motion.button
                 type="button"
                 className="sc-face-card sc-face-add"
                 onClick={() => setCardOpen(true)}
                 aria-label="Criar card"
+                initial={reduce ? false : { opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: filteredCards.length * 0.04 }}
+                whileTap={reduce ? undefined : tapScale}
               >
                 <div className="card-suit" style={{ color: 'var(--text-muted)' }}>
                   Novo
@@ -440,7 +449,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                 <div className="card-body">
                   Conceito na frente, explicação no verso.
                 </div>
-              </button>
+              </motion.button>
               {!filteredCards.length ? (
                 <div className="sc-empty" style={{ width: '100%', flexBasis: '100%' }}>
                   Nenhum card aqui. Use <strong>+ Card</strong> ou o slot pontilhado.
@@ -474,7 +483,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
           )}
 
           <div className="sc-section-label">Pastas</div>
-          <div className="sc-grid">
+          <MotionStagger className="sc-grid" key={`folders-${filteredFolders.length}`}>
             {filteredFolders.map((node) => (
               <DropZone key={node.id} target={{ kind: 'folder', id: node.id }}>
                 <DragItem
@@ -500,21 +509,22 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
               dashed
               onClick={() => setFolderOpen(true)}
             />
-          </div>
+          </MotionStagger>
 
           <div className="sc-bottom">
             <span>
               {cards.length} cards · {folders.length} pastas
             </span>
-            <button
+            <motion.button
               type="button"
               className="sc-btn"
               onClick={() => history.push(studyHref)}
+              whileTap={reduce ? undefined : tapScale}
             >
               Revisar pendentes ↗
-            </button>
+            </motion.button>
           </div>
-        </div>
+        </MotionShell>
       </IonContent>
 
       <IonModal isOpen={folderOpen} onDidDismiss={() => setFolderOpen(false)}>

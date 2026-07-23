@@ -9,11 +9,17 @@ import {
   IonTitle,
   IonToolbar,
 } from '@ionic/react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useLocation, useParams } from 'react-router-dom';
 import { cardsFacade } from '../../cards/facades/cards.facade';
 import type { Card } from '../../cards/types/card.types';
 import { statusClass, statusLabel } from '../../cards/types/card.types';
 import { useAppToast } from '../../../shared/hooks/useAppToast';
+import {
+  MotionShell,
+  studySlide,
+  tapScale,
+} from '../../../shared/motion';
 
 function useQuery() {
   return new URLSearchParams(useLocation().search);
@@ -27,8 +33,10 @@ export default function StudyPage() {
   const filter = query.get('filter');
   const scope = query.get('scope');
   const toast = useAppToast();
+  const reduce = useReducedMotion();
   const [cards, setCards] = useState<Card[]>([]);
   const [index, setIndex] = useState(0);
+  const [dir, setDir] = useState(1);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -66,6 +74,7 @@ export default function StudyPage() {
     if (!current) return;
     try {
       await cardsFacade.update(current.id, { status });
+      setDir(1);
       setIndex((i) => i + 1);
     } catch (error) {
       toast.error(error);
@@ -87,22 +96,31 @@ export default function StudyPage() {
         </IonToolbar>
       </IonHeader>
       <IonContent>
-        <div className="sc-shell">
+        <MotionShell className="sc-shell">
           {loading ? (
             <div className="sc-empty">
               <IonSpinner name="crescent" />
             </div>
           ) : done ? (
-            <div className="sc-empty">
+            <motion.div
+              className="sc-empty"
+              initial={reduce ? false : { opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+            >
               <p style={{ fontSize: 15, color: 'var(--text-primary)' }}>
                 {cards.length
                   ? 'Revisão concluída.'
                   : 'Nenhum card para revisar neste filtro.'}
               </p>
-              <button type="button" className="sc-btn primary" onClick={() => void load()}>
+              <motion.button
+                type="button"
+                className="sc-btn primary"
+                onClick={() => void load()}
+                whileTap={reduce ? undefined : tapScale}
+              >
                 Recarregar
-              </button>
-            </div>
+              </motion.button>
+            </motion.div>
           ) : current ? (
             <>
               <div className="sc-table-top">
@@ -125,41 +143,77 @@ export default function StudyPage() {
                   marginBottom: 16,
                 }}
               >
-                <div
+                <motion.div
                   style={{
-                    width: `${progress}%`,
                     height: '100%',
                     background: 'var(--ok)',
+                    borderRadius: 99,
                   }}
+                  initial={false}
+                  animate={{ width: `${progress}%` }}
+                  transition={{ type: 'spring', stiffness: 200, damping: 28 }}
                 />
               </div>
-              <div className="sc-detail">
-                <div className="sc-detail-block">
-                  <h4>{current.tag}</h4>
-                  <p style={{ fontSize: 18, fontWeight: 500 }}>{current.front}</p>
-                </div>
-                <div className="sc-detail-block">
-                  <h4>Explicação</h4>
-                  <p>{current.back}</p>
-                </div>
-                {current.hint ? (
-                  <div className="sc-detail-block">
-                    <h4>Dica</h4>
-                    <p>{current.hint}</p>
-                  </div>
-                ) : null}
+              <div style={{ position: 'relative', minHeight: 220 }}>
+                <AnimatePresence mode="wait" custom={dir}>
+                  <motion.div
+                    key={current.id}
+                    className="sc-detail"
+                    custom={dir}
+                    variants={reduce ? undefined : studySlide}
+                    initial={reduce ? false : 'enter'}
+                    animate="center"
+                    exit="exit"
+                  >
+                    <div className="sc-detail-block">
+                      <h4>{current.tag}</h4>
+                      <p style={{ fontSize: 18, fontWeight: 500 }}>
+                        {current.front}
+                      </p>
+                    </div>
+                    <div className="sc-detail-block">
+                      <h4>Explicação</h4>
+                      <p>{current.back}</p>
+                    </div>
+                    {current.hint ? (
+                      <div className="sc-detail-block">
+                        <h4>Dica</h4>
+                        <p>{current.hint}</p>
+                      </div>
+                    ) : null}
+                  </motion.div>
+                </AnimatePresence>
               </div>
-              <div className="sc-study-actions" style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 20, flexWrap: 'wrap' }}>
-                <button type="button" className="sc-btn" onClick={() => void mark('REVIEW')}>
+              <div
+                className="sc-study-actions"
+                style={{
+                  display: 'flex',
+                  gap: 8,
+                  justifyContent: 'center',
+                  marginTop: 20,
+                  flexWrap: 'wrap',
+                }}
+              >
+                <motion.button
+                  type="button"
+                  className="sc-btn"
+                  onClick={() => void mark('REVIEW')}
+                  whileTap={reduce ? undefined : tapScale}
+                >
                   Ainda revisar
-                </button>
-                <button type="button" className="sc-btn primary" onClick={() => void mark('KNOWN')}>
+                </motion.button>
+                <motion.button
+                  type="button"
+                  className="sc-btn primary"
+                  onClick={() => void mark('KNOWN')}
+                  whileTap={reduce ? undefined : tapScale}
+                >
                   Sabia
-                </button>
+                </motion.button>
               </div>
             </>
           ) : null}
-        </div>
+        </MotionShell>
       </IonContent>
     </IonPage>
   );
