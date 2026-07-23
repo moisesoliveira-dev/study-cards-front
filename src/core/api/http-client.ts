@@ -1,4 +1,5 @@
 import { env } from '../config/env';
+import { authStorage } from '../auth/auth-storage';
 
 export class ApiError extends Error {
   constructor(
@@ -15,20 +16,31 @@ async function request<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
+  const token = authStorage.getToken();
   const response = await fetch(`${env.apiUrl}${path}`, {
+    ...options,
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers ?? {}),
     },
-    ...options,
   });
+
+  if (response.status === 401 && !path.startsWith('/auth/')) {
+    authStorage.clear();
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+      window.location.assign('/login');
+    }
+  }
 
   if (!response.ok) {
     let message = response.statusText;
     let code: string | undefined;
     try {
       const body = await response.json();
-      message = body.message ?? message;
+      message = Array.isArray(body.message)
+        ? body.message.join(', ')
+        : (body.message ?? message);
       code = body.code;
     } catch {
       /* ignore */

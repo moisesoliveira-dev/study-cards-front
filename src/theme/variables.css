@@ -633,3 +633,89 @@ body {
   backdrop-filter: blur(8px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
 }
+
+.sc-user-chip {
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 0 8px;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  align-self: center;
+}
+
+.sc-auth-shell {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 0%, #e8f0e9 0%, transparent 55%),
+    radial-gradient(ellipse 70% 45% at 90% 100%, #f0ebe3 0%, transparent 50%),
+    var(--bg);
+}
+
+.sc-auth-card {
+  width: 100%;
+  max-width: 400px;
+  padding: 28px 24px 20px;
+  border: 0.5px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-1);
+  box-shadow: 0 12px 40px rgba(26, 25, 23, 0.06);
+}
+
+.sc-auth-brand {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  margin-bottom: 18px;
+}
+
+.sc-auth-title {
+  margin: 0 0 6px;
+  font-size: 1.55rem;
+  font-weight: 650;
+  color: var(--text-primary);
+}
+
+.sc-auth-subtitle {
+  margin: 0 0 20px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.sc-auth-item {
+  --background: var(--surface-2);
+  margin-bottom: 10px;
+  border-radius: 8px;
+}
+
+.sc-auth-submit {
+  width: 100%;
+  margin-top: 8px;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sc-auth-switch {
+  margin: 16px 0 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.sc-auth-switch ion-button {
+  --padding-start: 4px;
+  --padding-end: 4px;
+  text-transform: none;
+  font-size: 13px;
+  vertical-align: baseline;
+}

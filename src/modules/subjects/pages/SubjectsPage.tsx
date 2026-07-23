@@ -19,12 +19,14 @@ import type { Subject } from '../types/subject.types';
 import { DriveTopBar } from '../../../shared/components/DriveTopBar';
 import { DriveFolderItem } from '../../../shared/components/DriveFolderItem';
 import { useAppToast } from '../../../shared/hooks/useAppToast';
+import { useAuth } from '../../auth/context/AuthContext';
 
 const COLORS = ['#BA7517', '#378ADD', '#1D9E75', '#7F77DD', '#D4537E', '#888780'];
 
 export default function SubjectsPage() {
   const history = useHistory();
   const toast = useAppToast();
+  const { user, logout } = useAuth();
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -83,6 +85,17 @@ export default function SubjectsPage() {
       <IonHeader>
         <IonToolbar>
           <IonTitle>Study Cards</IonTitle>
+          <IonButtons slot="end">
+            <span className="sc-user-chip">{user?.name || user?.email}</span>
+            <IonButton
+              onClick={() => {
+                logout();
+                history.replace('/login');
+              }}
+            >
+              Sair
+            </IonButton>
+          </IonButtons>
         </IonToolbar>
       </IonHeader>
       <IonContent>
