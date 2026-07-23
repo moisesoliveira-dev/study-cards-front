@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import {
   IonBackButton,
   IonButton,
@@ -30,6 +30,26 @@ import { DragItem, DropZone, useDriveDrop } from '../dnd/DragDrop';
 import { useAppToast } from '../hooks/useAppToast';
 import { MotionShell, MotionStagger, tapScale } from '../motion';
 import { motion, useReducedMotion } from 'framer-motion';
+
+const DOUBLE_TAP_MS = 340;
+
+function useTouchUi() {
+  const [touchUi, setTouchUi] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia('(hover: none), (max-width: 820px)').matches,
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia('(hover: none), (max-width: 820px)');
+    const sync = () => setTouchUi(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+
+  return touchUi;
+}
 
 function findNode(
   nodes: TopicTreeNode[],
@@ -67,6 +87,8 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   const history = useHistory();
   const toast = useAppToast();
   const [presentAlert] = useIonAlert();
+  const touchUi = useTouchUi();
+  const lastTapRef = useRef<{ id: string; at: number } | null>(null);
 
   const [subject, setSubject] = useState<Subject | null>(null);
   const [folders, setFolders] = useState<TopicTreeNode[]>([]);
@@ -81,6 +103,8 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   const [cardOpen, setCardOpen] = useState(false);
   const [mergeOpen, setMergeOpen] = useState(false);
   const [mergeSources, setMergeSources] = useState<Card[]>([]);
+  const [raisedId, setRaisedId] = useState<string | null>(null);
+  const [mergePickIds, setMergePickIds] = useState<string[]>([]);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [front, setFront] = useState('');
@@ -156,6 +180,17 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     history.push(`/topics/${id}?subjectId=${subjectId}`);
   };
 
+  const openMergeComposer = useCallback((sources: Card[]) => {
+    if (sources.length < 2) return;
+    setMergeSources(sources);
+    setFront(sources.map((c) => c.front).join(' + '));
+    setBack(sources.map((c) => `• ${c.front}: ${c.back}`).join('\n'));
+    setDocJson('');
+    setHint('');
+    setTag('Síntese');
+    setMergeOpen(true);
+  }, []);
+
   const handleDrop = useCallback(
     async (event: {
       payload: {
@@ -181,13 +216,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
           const a = cards.find((c) => c.id === payload.id);
           const b = cards.find((c) => c.id === over.id);
           if (!a || !b) return;
-          setMergeSources([a, b]);
-          setFront(`${a.front} + ${b.front}`);
-          setBack(`• ${a.front}: ${a.back}\n• ${b.front}: ${b.back}`);
-          setDocJson('');
-          setHint('');
-          setTag('Síntese');
-          setMergeOpen(true);
+          openMergeComposer([a, b]);
           return;
         }
 
@@ -222,10 +251,52 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         toast.error(error);
       }
     },
-    [cards, isRoot, load, parentId, toast],
+    [cards, isRoot, load, openMergeComposer, parentId, toast],
   );
 
   useDriveDrop(handleDrop);
+
+  const toggleMergePick = useCallback((card: Card) => {
+    setMergePickIds((prev) => {
+      if (prev.includes(card.id)) {
+        return prev.filter((id) => id !== card.id);
+      }
+      return [...prev, card.id];
+    });
+    setRaisedId(card.id);
+  }, []);
+
+  const handleCardTap = useCallback(
+    (card: Card) => {
+      if (!touchUi) {
+        setDetail(card);
+        return;
+      }
+
+      const now = Date.now();
+      const last = lastTapRef.current;
+      if (last && last.id === card.id && now - last.at <= DOUBLE_TAP_MS) {
+        lastTapRef.current = null;
+        toggleMergePick(card);
+        return;
+      }
+
+      lastTapRef.current = { id: card.id, at: now };
+      setRaisedId(card.id);
+    },
+    [toggleMergePick, touchUi],
+  );
+
+  const openMergeFromPicks = () => {
+    const sources = mergePickIds
+      .map((id) => cards.find((c) => c.id === id))
+      .filter((c): c is Card => Boolean(c));
+    if (sources.length < 2) {
+      toast.error(new Error('Toque duas vezes em pelo menos 2 cards.'));
+      return;
+    }
+    openMergeComposer(sources);
+  };
 
   const createFolder = async () => {
     if (!name.trim()) return;
@@ -299,6 +370,8 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
       });
       setMergeOpen(false);
       setMergeSources([]);
+      setMergePickIds([]);
+      setRaisedId(null);
       setFront('');
       setBack('');
       setDocJson('');
@@ -392,8 +465,9 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
           />
 
           <p className="sc-dnd-hint">
-            Arraste card sobre card para unir · card sobre pasta para mover ·
-            pasta sobre pasta para aninhar
+            {touchUi
+              ? 'Toque para destacar · toque duplo para selecionar síntese · segure para abrir · arraste para mover'
+              : 'Arraste card sobre card para unir · card sobre pasta para mover · pasta sobre pasta para aninhar'}
           </p>
 
           {!isRoot ? (
@@ -412,30 +486,38 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
             </div>
           ) : view === 'grid' ? (
             <div className="sc-hand" role="list" aria-label="Cards">
-              {filteredCards.map((card, index) => (
-                <DropZone
-                  key={card.id}
-                  target={{ kind: 'card', id: card.id }}
-                  className="sc-hand-slot"
-                >
-                  <DragItem
-                    payload={{
-                      kind: 'card',
-                      id: card.id,
-                      subjectId: card.subjectId,
-                      topicId: card.topicId,
-                      label: card.front,
-                    }}
-                    onClick={() => setDetail(card)}
+              {filteredCards.map((card, index) => {
+                const raised = raisedId === card.id;
+                const picked = mergePickIds.includes(card.id);
+                return (
+                  <DropZone
+                    key={card.id}
+                    target={{ kind: 'card', id: card.id }}
+                    className={`sc-hand-slot${raised ? ' is-raised' : ''}${picked ? ' is-picked' : ''}`}
                   >
-                    <FaceCard
-                      card={card}
-                      index={index}
-                      style={{ ['--card-i' as string]: index } as CSSProperties}
-                    />
-                  </DragItem>
-                </DropZone>
-              ))}
+                    <DragItem
+                      payload={{
+                        kind: 'card',
+                        id: card.id,
+                        subjectId: card.subjectId,
+                        topicId: card.topicId,
+                        label: card.front,
+                      }}
+                      onClick={() => handleCardTap(card)}
+                      onLongPress={
+                        touchUi ? () => setDetail(card) : undefined
+                      }
+                    >
+                      <FaceCard
+                        card={card}
+                        selected={picked}
+                        index={index}
+                        style={{ ['--card-i' as string]: index } as CSSProperties}
+                      />
+                    </DragItem>
+                  </DropZone>
+                );
+              })}
               <motion.button
                 type="button"
                 className="sc-face-card sc-face-add"
@@ -464,22 +546,32 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
             </div>
           ) : (
             <div className="sc-list-view">
-              {filteredCards.map((card) => (
-                <DropZone key={card.id} target={{ kind: 'card', id: card.id }}>
-                  <DragItem
-                    payload={{
-                      kind: 'card',
-                      id: card.id,
-                      subjectId: card.subjectId,
-                      topicId: card.topicId,
-                      label: card.front,
-                    }}
-                    onClick={() => setDetail(card)}
-                  >
-                    <DriveCardItem card={card} view="list" />
-                  </DragItem>
-                </DropZone>
-              ))}
+              {filteredCards.map((card) => {
+                const picked = mergePickIds.includes(card.id);
+                return (
+                  <DropZone key={card.id} target={{ kind: 'card', id: card.id }}>
+                    <DragItem
+                      payload={{
+                        kind: 'card',
+                        id: card.id,
+                        subjectId: card.subjectId,
+                        topicId: card.topicId,
+                        label: card.front,
+                      }}
+                      onClick={() => handleCardTap(card)}
+                      onLongPress={
+                        touchUi ? () => setDetail(card) : undefined
+                      }
+                    >
+                      <DriveCardItem
+                        card={card}
+                        view="list"
+                        selected={picked}
+                      />
+                    </DragItem>
+                  </DropZone>
+                );
+              })}
               {!filteredCards.length ? (
                 <div className="sc-empty">
                   Nenhum card aqui. Use <strong>+ Card</strong>.
@@ -487,6 +579,42 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
               ) : null}
             </div>
           )}
+
+          {touchUi && mergePickIds.length > 0 ? (
+            <div className="sc-merge-bar">
+              <div className="sc-merge-bar-copy">
+                <strong>
+                  {mergePickIds.length} selecionado
+                  {mergePickIds.length === 1 ? '' : 's'}
+                </strong>
+                <span>
+                  {mergePickIds.length < 2
+                    ? 'Toque duplo em outro card para unir'
+                    : 'Pronto para criar a síntese'}
+                </span>
+              </div>
+              <div className="sc-merge-bar-actions">
+                <button
+                  type="button"
+                  className="sc-btn"
+                  onClick={() => {
+                    setMergePickIds([]);
+                    setRaisedId(null);
+                  }}
+                >
+                  Limpar
+                </button>
+                <button
+                  type="button"
+                  className="sc-btn primary"
+                  disabled={mergePickIds.length < 2}
+                  onClick={openMergeFromPicks}
+                >
+                  Criar síntese
+                </button>
+              </div>
+            </div>
+          ) : null}
 
           <div className="sc-section-label">Pastas</div>
           <MotionStagger className="sc-grid" key={`folders-${filteredFolders.length}`}>

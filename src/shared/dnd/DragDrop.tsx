@@ -9,12 +9,16 @@ import {
   type DropTarget,
 } from './drive-dnd';
 
+const MOVE_THRESHOLD = 10;
+const LONG_PRESS_MS = 480;
+
 type DragItemProps = {
   payload: DragPayload;
   disabled?: boolean;
   className?: string;
   children: ReactNode;
   onClick?: () => void;
+  onLongPress?: () => void;
 };
 
 export function DragItem({
@@ -23,14 +27,37 @@ export function DragItem({
   className,
   children,
   onClick,
+  onLongPress,
 }: DragItemProps) {
   const [dragging, setDragging] = useState(false);
   const pointerId = useRef<number | null>(null);
-  const started = useRef(false);
+  const tracking = useRef(false);
+  const dragArmed = useRef(false);
+  const longPressFired = useRef(false);
+  const origin = useRef({ x: 0, y: 0 });
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => subscribeDrag((s) => {
-    setDragging(Boolean(s && s.payload.id === payload.id && s.payload.kind === payload.kind));
-  }), [payload.id, payload.kind]);
+  useEffect(
+    () =>
+      subscribeDrag((s) => {
+        setDragging(
+          Boolean(
+            s &&
+              s.payload.id === payload.id &&
+              s.payload.kind === payload.kind &&
+              s.moved,
+          ),
+        );
+      }),
+    [payload.id, payload.kind],
+  );
+
+  const clearLongPress = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
 
   return (
     <div
@@ -40,36 +67,82 @@ export function DragItem({
       onPointerDown={(e) => {
         if (disabled || e.button !== 0) return;
         pointerId.current = e.pointerId;
-        started.current = true;
+        tracking.current = true;
+        dragArmed.current = false;
+        longPressFired.current = false;
+        origin.current = { x: e.clientX, y: e.clientY };
         (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-        startDriveDrag(payload, { x: e.clientX, y: e.clientY });
+
+        clearLongPress();
+        if (onLongPress) {
+          longPressTimer.current = setTimeout(() => {
+            if (!tracking.current || dragArmed.current) return;
+            longPressFired.current = true;
+            onLongPress();
+            try {
+              navigator.vibrate?.(12);
+            } catch {
+              /* ignore */
+            }
+          }, LONG_PRESS_MS);
+        }
       }}
       onPointerMove={(e) => {
-        if (!started.current || pointerId.current !== e.pointerId) return;
-        const over = readDropTarget(document.elementFromPoint(e.clientX, e.clientY));
+        if (!tracking.current || pointerId.current !== e.pointerId) return;
+        const dx = Math.abs(e.clientX - origin.current.x);
+        const dy = Math.abs(e.clientY - origin.current.y);
+
+        if (!dragArmed.current) {
+          if (dx <= MOVE_THRESHOLD && dy <= MOVE_THRESHOLD) return;
+          clearLongPress();
+          if (longPressFired.current) return;
+          dragArmed.current = true;
+          startDriveDrag(payload, { x: e.clientX, y: e.clientY });
+        }
+
+        const over = readDropTarget(
+          document.elementFromPoint(e.clientX, e.clientY),
+        );
         moveDriveDrag({ x: e.clientX, y: e.clientY }, over);
       }}
       onPointerUp={(e) => {
-        if (!started.current || pointerId.current !== e.pointerId) return;
-        started.current = false;
+        if (!tracking.current || pointerId.current !== e.pointerId) return;
+        clearLongPress();
+        tracking.current = false;
         pointerId.current = null;
         try {
           (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
         } catch {
           /* ignore */
         }
-        const result = endDriveDrag();
-        if (!result?.moved) {
+
+        if (longPressFired.current) {
+          endDriveDrag();
+          dragArmed.current = false;
+          return;
+        }
+
+        if (!dragArmed.current) {
           onClick?.();
-        } else {
+          return;
+        }
+
+        const result = endDriveDrag();
+        dragArmed.current = false;
+        if (result?.moved) {
           window.dispatchEvent(
             new CustomEvent('sc-drive-drop', { detail: result }),
           );
+        } else {
+          onClick?.();
         }
       }}
       onPointerCancel={() => {
-        started.current = false;
+        clearLongPress();
+        tracking.current = false;
         pointerId.current = null;
+        dragArmed.current = false;
+        longPressFired.current = false;
         endDriveDrag();
       }}
     >
@@ -90,7 +163,7 @@ export function DropZone({ target, className, children }: DropZoneProps) {
   useEffect(
     () =>
       subscribeDrag((s) => {
-        if (!s?.over) {
+        if (!s?.over || !s.moved) {
           setActive(false);
           return;
         }

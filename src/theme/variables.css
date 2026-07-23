@@ -466,14 +466,18 @@ body {
 .sc-hand-slot:hover,
 .sc-hand > .sc-drop-zone.sc-hand-slot:hover,
 .sc-hand-slot:focus-within,
-.sc-hand > .sc-drop-zone.sc-hand-slot:focus-within {
+.sc-hand > .sc-drop-zone.sc-hand-slot:focus-within,
+.sc-hand-slot.is-raised,
+.sc-hand > .sc-drop-zone.sc-hand-slot.is-raised {
   z-index: 40;
   transform: translateY(-28px) scale(1.08);
   margin-right: 10px;
 }
 
 .sc-hand-slot:hover + .sc-hand-slot,
-.sc-hand > .sc-drop-zone.sc-hand-slot:hover + .sc-drop-zone.sc-hand-slot {
+.sc-hand > .sc-drop-zone.sc-hand-slot:hover + .sc-drop-zone.sc-hand-slot,
+.sc-hand-slot.is-raised + .sc-hand-slot,
+.sc-hand > .sc-drop-zone.sc-hand-slot.is-raised + .sc-drop-zone.sc-hand-slot {
   margin-left: -18px;
 }
 
@@ -503,7 +507,9 @@ body {
 }
 
 .sc-hand-slot:hover .sc-face-card,
-.sc-hand > .sc-drop-zone.sc-hand-slot:hover .sc-face-card {
+.sc-hand > .sc-drop-zone.sc-hand-slot:hover .sc-face-card,
+.sc-hand-slot.is-raised .sc-face-card,
+.sc-hand > .sc-drop-zone.sc-hand-slot.is-raised .sc-face-card {
   border-color: var(--border-accent);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.85) inset,
@@ -514,9 +520,110 @@ body {
   border-color: var(--border-accent);
 }
 
-.sc-face-card.selected {
-  border-color: var(--text-accent);
-  box-shadow: 0 0 0 1px var(--text-accent), 0 10px 24px rgba(24, 95, 165, 0.18);
+.sc-face-card.selected,
+.sc-hand-slot.is-picked .sc-face-card,
+.sc-hand > .sc-drop-zone.sc-hand-slot.is-picked .sc-face-card {
+  border-color: #7F77DD;
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, #7F77DD 55%, transparent),
+    0 14px 32px color-mix(in srgb, #7F77DD 22%, transparent);
+}
+
+.sc-hand-slot.is-picked,
+.sc-hand > .sc-drop-zone.sc-hand-slot.is-picked {
+  z-index: 35;
+}
+
+@media (hover: none) {
+  .sc-hand-slot:hover,
+  .sc-hand > .sc-drop-zone.sc-hand-slot:hover,
+  .sc-hand-slot:focus-within,
+  .sc-hand > .sc-drop-zone.sc-hand-slot:focus-within {
+    z-index: 1;
+    transform: none;
+    margin-right: 0;
+  }
+
+  .sc-hand-slot:hover + .sc-hand-slot,
+  .sc-hand > .sc-drop-zone.sc-hand-slot:hover + .sc-drop-zone.sc-hand-slot {
+    margin-left: -36px;
+  }
+
+  .sc-hand-slot:hover .sc-face-card,
+  .sc-hand > .sc-drop-zone.sc-hand-slot:hover .sc-face-card {
+    border-color: var(--border-strong);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.7) inset,
+      0 6px 16px rgba(26, 25, 23, 0.1);
+  }
+
+  .sc-hand-slot.is-raised,
+  .sc-hand > .sc-drop-zone.sc-hand-slot.is-raised {
+    z-index: 40;
+    transform: translateY(-28px) scale(1.08);
+    margin-right: 10px;
+  }
+
+  .sc-hand-slot.is-raised + .sc-hand-slot,
+  .sc-hand > .sc-drop-zone.sc-hand-slot.is-raised + .sc-drop-zone.sc-hand-slot {
+    margin-left: -18px;
+  }
+
+  .sc-hand-slot.is-raised .sc-face-card,
+  .sc-hand > .sc-drop-zone.sc-hand-slot.is-raised .sc-face-card {
+    border-color: var(--border-accent);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.85) inset,
+      0 18px 40px rgba(26, 25, 23, 0.22);
+  }
+
+  .sc-hand-slot.is-picked .sc-face-card,
+  .sc-hand > .sc-drop-zone.sc-hand-slot.is-picked .sc-face-card {
+    border-color: #7F77DD;
+    box-shadow:
+      0 0 0 2px color-mix(in srgb, #7F77DD 55%, transparent),
+      0 14px 32px color-mix(in srgb, #7F77DD 22%, transparent);
+  }
+}
+
+.sc-merge-bar {
+  position: sticky;
+  bottom: 8px;
+  z-index: 30;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 0.5px solid color-mix(in srgb, #7F77DD 35%, var(--border));
+  background: color-mix(in srgb, var(--surface-1) 92%, #7F77DD);
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--text-primary) 12%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.sc-merge-bar-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sc-merge-bar-copy strong {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.sc-merge-bar-copy span {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.sc-merge-bar-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .sc-face-add {
