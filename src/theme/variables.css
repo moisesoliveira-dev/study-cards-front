@@ -233,6 +233,44 @@ body {
   width: 100%;
   font: inherit;
   color: inherit;
+  position: relative;
+}
+
+.sc-item-delete {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 3;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface-1) 88%, transparent);
+  color: var(--text-muted);
+  font-size: 20px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.sc-item.has-delete:hover .sc-item-delete,
+.sc-item-delete:focus-visible {
+  opacity: 1;
+}
+
+.sc-item-delete:hover {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface-1));
+}
+
+@media (hover: none) {
+  .sc-item-delete {
+    opacity: 1;
+  }
 }
 
 .sc-item:hover {
@@ -348,6 +386,36 @@ body {
 .sc-list-row:last-child { border-bottom: none; }
 .sc-list-row:hover { background: var(--surface-1); }
 .sc-list-row.selected { background: var(--bg-accent); }
+
+.sc-list-row-wrap {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.sc-list-row-wrap .sc-list-row {
+  flex: 1;
+  min-width: 0;
+}
+
+.sc-list-delete {
+  flex-shrink: 0;
+  width: 36px;
+  border: 0.5px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.sc-list-delete:hover {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface-1));
+  border-color: color-mix(in srgb, var(--danger) 35%, var(--border));
+}
 
 .list-icon { font-size: 18px; color: var(--text-muted); width: 20px; flex-shrink: 0; }
 .list-name { flex: 1; font-size: 13px; color: var(--text-primary); }
@@ -839,8 +907,13 @@ ion-popover {
   backdrop-filter: blur(4px);
 }
 
+.sc-confirm-overlay.is-portal {
+  position: fixed;
+  z-index: 50000;
+}
+
 .sc-confirm-dialog {
-  width: min(100%, 340px);
+  width: min(100%, 360px);
   padding: 20px 18px 16px;
   border-radius: 14px;
   border: 0.5px solid var(--border);
@@ -862,6 +935,24 @@ ion-popover {
   color: var(--text-secondary);
 }
 
+.sc-confirm-type {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: -6px 0 16px;
+}
+
+.sc-confirm-type-hint {
+  margin: 0 !important;
+  font-size: 13px !important;
+  color: var(--text-muted) !important;
+}
+
+.sc-confirm-type-hint strong {
+  color: var(--text-primary);
+  font-weight: 650;
+}
+
 .sc-confirm-actions {
   display: flex;
   justify-content: flex-end;
@@ -874,8 +965,13 @@ ion-popover {
   color: var(--danger);
 }
 
-.sc-confirm-danger:hover {
+.sc-confirm-danger:hover:not(:disabled) {
   background: color-mix(in srgb, var(--danger) 18%, var(--surface-1));
+}
+
+.sc-confirm-danger:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 @keyframes sc-card-backdrop {

@@ -8,7 +8,6 @@ import {
   IonTitle,
   IonToolbar,
   IonButtons,
-  IonButton,
 } from '@ionic/react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useHistory } from 'react-router-dom';
@@ -17,6 +16,7 @@ import type { Subject } from '../types/subject.types';
 import { DriveTopBar } from '../../../shared/components/DriveTopBar';
 import { DriveFolderItem } from '../../../shared/components/DriveFolderItem';
 import { Field, TextArea } from '../../../shared/components/Field';
+import { ConfirmDialog } from '../../../shared/components/ConfirmDialog';
 import { useAppToast } from '../../../shared/hooks/useAppToast';
 import { MotionShell, MotionStagger, tapScale } from '../../../shared/motion';
 
@@ -35,6 +35,8 @@ export default function SubjectsPage() {
   const [description, setDescription] = useState('');
   const [color, setColor] = useState(COLORS[0]);
   const [saving, setSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Subject | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -79,6 +81,21 @@ export default function SubjectsPage() {
     }
   };
 
+  const confirmDeleteSubject = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await subjectsFacade.remove(deleteTarget.id);
+      setDeleteTarget(null);
+      toast.success('Grupo excluído');
+      await load();
+    } catch (error) {
+      toast.error(error);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <IonPage>
       <IonHeader>
@@ -112,6 +129,7 @@ export default function SubjectsPage() {
                   subtitle={s.description || 'Abrir grupo'}
                   color={s.color}
                   onClick={() => history.push(`/subjects/${s.id}`)}
+                  onDelete={() => setDeleteTarget(s)}
                 />
               ))}
               <DriveFolderItem
@@ -123,21 +141,31 @@ export default function SubjectsPage() {
           ) : (
             <MotionStagger className="sc-list-view" key={`list-${filtered.length}`}>
               {filtered.map((s, i) => (
-                <motion.button
-                  key={s.id}
-                  type="button"
-                  className="sc-list-row"
-                  onClick={() => history.push(`/subjects/${s.id}`)}
-                  initial={reduce ? false : { opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.03 }}
-                  whileTap={reduce ? undefined : tapScale}
-                >
-                  <span className="list-icon">📁</span>
-                  <span className="list-name">{s.name}</span>
-                  <span className="list-tag">Grupo</span>
-                  <span className="list-links">{s.description || '—'}</span>
-                </motion.button>
+                <div key={s.id} className="sc-list-row-wrap">
+                  <motion.button
+                    type="button"
+                    className="sc-list-row"
+                    onClick={() => history.push(`/subjects/${s.id}`)}
+                    initial={reduce ? false : { opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.03 }}
+                    whileTap={reduce ? undefined : tapScale}
+                  >
+                    <span className="list-icon">📁</span>
+                    <span className="list-name">{s.name}</span>
+                    <span className="list-tag">Grupo</span>
+                    <span className="list-links">{s.description || '—'}</span>
+                  </motion.button>
+                  <button
+                    type="button"
+                    className="sc-list-delete"
+                    aria-label={`Excluir ${s.name}`}
+                    title="Excluir"
+                    onClick={() => setDeleteTarget(s)}
+                  >
+                    ×
+                  </button>
+                </div>
               ))}
             </MotionStagger>
           )}
@@ -196,6 +224,18 @@ export default function SubjectsPage() {
           </button>
         </IonContent>
       </IonModal>
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        mode="type"
+        title="Excluir grupo?"
+        message="Isso apaga o grupo, pastas, cards e fluxogramas ligados. Não dá para desfazer."
+        confirmText={deleteTarget?.name ?? ''}
+        confirmLabel="Excluir grupo"
+        confirming={deleting}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => void confirmDeleteSubject()}
+      />
     </IonPage>
   );
 }

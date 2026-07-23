@@ -9,6 +9,7 @@ type Props = {
   color?: string;
   dashed?: boolean;
   onClick?: () => void;
+  onDelete?: () => void;
 };
 
 export function DriveFolderItem({
@@ -17,6 +18,7 @@ export function DriveFolderItem({
   color = '#BA7517',
   dashed,
   onClick,
+  onDelete,
 }: Props) {
   const reduce = useReducedMotion();
 
@@ -24,7 +26,7 @@ export function DriveFolderItem({
     <motion.div
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
-      className={`sc-item folder${dashed ? ' dashed' : ''}`}
+      className={`sc-item folder${dashed ? ' dashed' : ''}${onDelete ? ' has-delete' : ''}`}
       onClick={onClick}
       onKeyDown={
         onClick
@@ -42,6 +44,24 @@ export function DriveFolderItem({
       whileHover={reduce || !onClick ? undefined : hoverLift}
       whileTap={reduce || !onClick ? undefined : tapScale}
     >
+      {onDelete ? (
+        <button
+          type="button"
+          className="sc-item-delete"
+          aria-label={`Excluir ${name}`}
+          title="Excluir"
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            onDelete();
+          }}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+          }}
+        >
+          ×
+        </button>
+      ) : null}
       <div className="thumb">
         <IonIcon
           icon={dashed ? folderOpenOutline : folderOutline}

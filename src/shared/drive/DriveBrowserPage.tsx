@@ -26,6 +26,7 @@ import { FaceCardComposer } from '../components/FaceCardComposer';
 import { CardDocumentSheet } from '../components/CardDocumentSheet';
 import { documentToPlainText } from '../components/DocumentEditor';
 import { DragItem, DropZone, useDriveDrop } from '../dnd/DragDrop';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useAppToast } from '../hooks/useAppToast';
 import { MotionShell, MotionStagger, tapScale } from '../motion';
 import { motion, useReducedMotion } from 'framer-motion';
@@ -112,6 +113,8 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   const [tag, setTag] = useState('Conceito');
   const [saving, setSaving] = useState(false);
   const [detail, setDetail] = useState<Card | null>(null);
+  const [deleteFolder, setDeleteFolder] = useState<TopicTreeNode | null>(null);
+  const [deletingFolder, setDeletingFolder] = useState(false);
 
   const isRoot = !topicId;
 
@@ -400,6 +403,29 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     })();
   };
 
+  const confirmDeleteFolder = async () => {
+    if (!deleteFolder) return;
+    setDeletingFolder(true);
+    try {
+      await topicsFacade.remove(deleteFolder.id);
+      setDeleteFolder(null);
+      toast.success('Pasta excluída');
+      if (topicId === deleteFolder.id) {
+        history.replace(
+          deleteFolder.parentId
+            ? `/topics/${deleteFolder.parentId}?subjectId=${subjectId}`
+            : `/subjects/${subjectId}`,
+        );
+        return;
+      }
+      await load();
+    } catch (error) {
+      toast.error(error);
+    } finally {
+      setDeletingFolder(false);
+    }
+  };
+
   const studyHref = isRoot
     ? `/study/${subjectId}?subjectId=${subjectId}&scope=subject&filter=REVIEW`
     : `/study/${topicId}?subjectId=${subjectId}&filter=REVIEW`;
@@ -621,6 +647,8 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                     name={node.name}
                     subtitle={`${node.children.length} sub · abrir`}
                     color={subject?.color}
+                    onClick={() => openFolder(node.id)}
+                    onDelete={() => setDeleteFolder(node)}
                   />
                 </DragItem>
               </DropZone>
@@ -735,6 +763,16 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         }}
         onDelete={removeCard}
         onOpenLinked={(linkedCard) => setDetail(linkedCard)}
+      />
+
+      <ConfirmDialog
+        open={Boolean(deleteFolder)}
+        title="Excluir pasta?"
+        message={`A pasta “${deleteFolder?.name ?? ''}” e o conteúdo interno serão removidos. Essa ação não pode ser desfeita.`}
+        confirmLabel="Excluir pasta"
+        confirming={deletingFolder}
+        onCancel={() => setDeleteFolder(null)}
+        onConfirm={() => void confirmDeleteFolder()}
       />
     </IonPage>
   );
