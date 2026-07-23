@@ -1,7 +1,11 @@
-import { useEffect, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { IonSpinner } from '@ionic/react';
 import { cardInitials } from '../../modules/cards/types/card.types';
+import {
+  DocumentEditor,
+  documentToPlainText,
+} from './DocumentEditor';
 
 export function suitColor(tag: string) {
   const t = tag.toLowerCase();
@@ -16,11 +20,13 @@ type Props = {
   open: boolean;
   front: string;
   back: string;
+  docJson: string;
   tag: string;
   hint: string;
   saving?: boolean;
   onFront: (value: string) => void;
   onBack: (value: string) => void;
+  onDocJson: (value: string) => void;
   onTag: (value: string) => void;
   onHint: (value: string) => void;
   onClose: () => void;
@@ -32,123 +38,231 @@ export function FaceCardComposer({
   open,
   front,
   back,
+  docJson,
   tag,
   hint,
   saving = false,
   onFront,
   onBack,
+  onDocJson,
   onTag,
   onHint,
   onClose,
   onSubmit,
   style,
 }: Props) {
+  const [mode, setMode] = useState<'card' | 'document'>('card');
   const initials = cardInitials(front.trim() || 'Novo');
   const suit = tag.trim() || 'Conceito';
-  const canSubmit = Boolean(front.trim() && back.trim()) && !saving;
+  const canSubmit =
+    Boolean(front.trim() && (back.trim() || documentToPlainText(docJson))) &&
+    !saving;
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setMode('card');
+      return;
+    }
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') {
+        if (mode === 'document') setMode('card');
+        else onClose();
+      }
     };
-    document.body.classList.add('sc-card-modal-open');
+    globalThis.document.body.classList.add('sc-card-modal-open');
     window.addEventListener('keydown', onKey);
     return () => {
-      document.body.classList.remove('sc-card-modal-open');
+      globalThis.document.body.classList.remove('sc-card-modal-open');
       window.removeEventListener('keydown', onKey);
     };
-  }, [open, onClose]);
+  }, [open, onClose, mode]);
+
+  const openDocument = () => {
+    if (!docJson.trim() && back.trim()) {
+      onDocJson(
+        JSON.stringify({
+          type: 'doc',
+          content: [
+            {
+              type: 'paragraph',
+              content: [{ type: 'text', text: back }],
+            },
+          ],
+        }),
+      );
+    }
+    setMode('document');
+  };
+
+  const syncBackFromDocument = () => {
+    const plain = documentToPlainText(docJson);
+    if (plain && !back.trim()) onBack(plain.slice(0, 280));
+  };
 
   if (!open) return null;
 
   return createPortal(
     <div
-      className="sc-card-as-modal"
+      className={`sc-card-as-modal${mode === 'document' ? ' is-document' : ''}`}
       role="dialog"
       aria-modal="true"
-      aria-label="Nova carta"
+      aria-label={mode === 'document' ? 'Documento do card' : 'Nova carta'}
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget && mode === 'card') onClose();
       }}
     >
-      <div className="sc-face-card sc-face-compose" style={style}>
-        <button
-          type="button"
-          className="card-compose-close"
-          aria-label="Fechar"
-          onClick={onClose}
-        >
-          ×
-        </button>
-
-        <span className="card-corner tl">{initials}</span>
-        <span className="card-corner br">{initials}</span>
-
-        <label className="card-compose-field suit">
-          <span className="sr-only">Tag</span>
-          <input
-            className="card-suit-input"
-            value={tag}
-            onChange={(e) => onTag(e.target.value)}
-            placeholder="Tag"
-            style={{ color: suitColor(suit) }}
-            autoComplete="off"
-          />
-        </label>
-
-        <label className="card-compose-field title">
-          <span className="sr-only">Conceito</span>
-          <textarea
-            className="card-title-input"
-            value={front}
-            onChange={(e) => onFront(e.target.value)}
-            placeholder="Conceito (título)"
-            rows={2}
-            autoFocus
-          />
-        </label>
-
-        <label className="card-compose-field body">
-          <span className="sr-only">Explicação</span>
-          <textarea
-            className="card-body-input"
-            value={back}
-            onChange={(e) => onBack(e.target.value)}
-            placeholder="Explicação no verso…"
-            rows={5}
-          />
-        </label>
-
-        <label className="card-compose-field hint">
-          <span className="sr-only">Dica</span>
-          <input
-            className="card-hint-input"
-            value={hint}
-            onChange={(e) => onHint(e.target.value)}
-            placeholder="Dica (opcional)"
-            autoComplete="off"
-          />
-        </label>
-
-        <span className="card-status s-new">Novo</span>
-        <div className="card-links">→ 0 links</div>
-
-        <div className="card-compose-actions">
-          <button type="button" className="sc-btn" onClick={onClose}>
-            Cancelar
-          </button>
+      {mode === 'card' ? (
+        <div className="sc-face-card sc-face-compose" style={style}>
           <button
             type="button"
-            className="sc-btn primary"
-            disabled={!canSubmit}
-            onClick={onSubmit}
+            className="card-compose-close"
+            aria-label="Fechar"
+            onClick={onClose}
           >
-            {saving ? <IonSpinner name="crescent" /> : 'Colocar na mesa'}
+            ×
           </button>
+
+          <span className="card-corner tl">{initials}</span>
+          <span className="card-corner br">{initials}</span>
+
+          <label className="card-compose-field suit">
+            <span className="sr-only">Tag</span>
+            <input
+              className="card-suit-input"
+              value={tag}
+              onChange={(e) => onTag(e.target.value)}
+              placeholder="Tag"
+              style={{ color: suitColor(suit) }}
+              autoComplete="off"
+            />
+          </label>
+
+          <label className="card-compose-field title">
+            <span className="sr-only">Conceito</span>
+            <textarea
+              className="card-title-input"
+              value={front}
+              onChange={(e) => onFront(e.target.value)}
+              placeholder="Conceito (título)"
+              rows={2}
+              autoFocus
+            />
+          </label>
+
+          <label className="card-compose-field body">
+            <span className="sr-only">Explicação</span>
+            <textarea
+              className="card-body-input"
+              value={back}
+              onChange={(e) => onBack(e.target.value)}
+              placeholder="Explicação curta no verso…"
+              rows={4}
+            />
+          </label>
+
+          <label className="card-compose-field hint">
+            <span className="sr-only">Dica</span>
+            <input
+              className="card-hint-input"
+              value={hint}
+              onChange={(e) => onHint(e.target.value)}
+              placeholder="Dica (opcional)"
+              autoComplete="off"
+            />
+          </label>
+
+          <button
+            type="button"
+            className="sc-btn card-expand-doc"
+            onClick={openDocument}
+          >
+            Expandir para documento ↗
+          </button>
+
+          <span className="card-status s-new">Novo</span>
+          <div className="card-links">→ 0 links</div>
+
+          <div className="card-compose-actions">
+            <button type="button" className="sc-btn" onClick={onClose}>
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="sc-btn primary"
+              disabled={!canSubmit}
+              onClick={onSubmit}
+            >
+              {saving ? <IonSpinner name="crescent" /> : 'Colocar na mesa'}
+            </button>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="sc-doc-shell">
+          <header className="sc-doc-header">
+            <button
+              type="button"
+              className="sc-btn"
+              onClick={() => {
+                syncBackFromDocument();
+                setMode('card');
+              }}
+            >
+              ← Voltar à carta
+            </button>
+            <div className="sc-doc-header-title">
+              <input
+                className="sc-doc-title-input"
+                value={front}
+                onChange={(e) => onFront(e.target.value)}
+                placeholder="Título do conceito"
+              />
+              <input
+                className="sc-doc-tag-input"
+                value={tag}
+                onChange={(e) => onTag(e.target.value)}
+                placeholder="Tag"
+                style={{ color: suitColor(suit) }}
+              />
+            </div>
+            <button
+              type="button"
+              className="sc-btn primary"
+              disabled={!canSubmit}
+              onClick={() => {
+                syncBackFromDocument();
+                onSubmit();
+              }}
+            >
+              {saving ? <IonSpinner name="crescent" /> : 'Salvar'}
+            </button>
+          </header>
+          <div className="sc-doc-body">
+            <p className="sc-doc-lead">
+              Documento detalhado — use títulos, listas e blocos de código com a
+              linguagem escolhida.
+            </p>
+            <DocumentEditor value={docJson} onChange={onDocJson} />
+            <label className="sc-doc-hint-row">
+              <span>Dica rápida (aparece na carta)</span>
+              <input
+                value={hint}
+                onChange={(e) => onHint(e.target.value)}
+                placeholder="Opcional"
+              />
+            </label>
+            <label className="sc-doc-hint-row">
+              <span>Verso curto (estudo / face da carta)</span>
+              <textarea
+                value={back}
+                onChange={(e) => onBack(e.target.value)}
+                placeholder="Resumo curto usado na revisão"
+                rows={2}
+              />
+            </label>
+          </div>
+        </div>
+      )}
     </div>,
-    document.body,
+    globalThis.document.body,
   );
 }

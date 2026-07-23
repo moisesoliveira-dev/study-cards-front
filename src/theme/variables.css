@@ -652,6 +652,277 @@ body.sc-card-modal-open {
   to { opacity: 1; }
 }
 
+.sc-card-as-modal.is-document {
+  align-items: stretch;
+  justify-content: stretch;
+  padding: 0;
+  background: rgba(26, 25, 23, 0.35);
+  backdrop-filter: blur(8px);
+}
+
+.card-expand-doc {
+  width: 100%;
+  margin: 8px 0 4px;
+  justify-content: center;
+}
+
+.sc-doc-shell {
+  width: min(920px, 100%);
+  max-height: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-1);
+  box-shadow: 0 24px 80px rgba(26, 25, 23, 0.28);
+  animation: sc-doc-expand 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  overflow: hidden;
+}
+
+@keyframes sc-doc-expand {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@media (min-width: 720px) {
+  .sc-doc-shell {
+    margin: 24px auto;
+    max-height: calc(100% - 48px);
+    border-radius: 14px;
+    border: 0.5px solid var(--border);
+  }
+}
+
+.sc-doc-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 0.5px solid var(--border);
+  background: var(--surface-1);
+  flex-shrink: 0;
+}
+
+.sc-doc-header-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sc-doc-title-input {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  font-size: 1.15rem;
+  font-weight: 650;
+  color: var(--text-primary);
+}
+
+.sc-doc-tag-input {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.sc-doc-body {
+  flex: 1;
+  overflow: auto;
+  padding: 16px 20px 28px;
+}
+
+.sc-doc-lead {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.sc-doc-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.sc-doc-hint-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 16px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.sc-doc-hint-row input,
+.sc-doc-hint-row textarea {
+  width: 100%;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text-primary);
+  border: 0.5px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  padding: 10px 12px;
+  outline: none;
+  resize: vertical;
+}
+
+.sc-doc-editor {
+  border: 0.5px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-1);
+  overflow: hidden;
+}
+
+.sc-doc-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px;
+  border-bottom: 0.5px solid var(--border);
+  background: var(--surface-2);
+}
+
+.sc-doc-toolbar button {
+  border: 0.5px solid var(--border);
+  background: var(--surface-1);
+  color: var(--text-secondary);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.sc-doc-toolbar button.active {
+  background: var(--bg-accent);
+  color: var(--text-accent);
+  border-color: var(--border-accent);
+}
+
+.sc-doc-lang {
+  font: inherit;
+  font-size: 12px;
+  border: 0.5px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-1);
+  color: var(--text-secondary);
+  padding: 4px 6px;
+}
+
+.sc-doc-surface {
+  min-height: 280px;
+  padding: 16px 18px 24px;
+}
+
+.sc-doc-surface .tiptap {
+  outline: none;
+  min-height: 240px;
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--text-primary);
+}
+
+.sc-doc-surface .tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--text-muted);
+  pointer-events: none;
+  height: 0;
+}
+
+.sc-doc-surface .tiptap h1 {
+  font-size: 1.6rem;
+  margin: 0.6em 0 0.35em;
+}
+
+.sc-doc-surface .tiptap h2 {
+  font-size: 1.25rem;
+  margin: 0.7em 0 0.3em;
+}
+
+.sc-doc-surface .tiptap pre {
+  background: #1a1917;
+  color: #f4f1ea;
+  border-radius: 10px;
+  padding: 12px 14px;
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.sc-doc-surface .tiptap pre .hljs-comment,
+.sc-doc-surface .tiptap pre .hljs-quote {
+  color: #8a857c;
+  font-style: italic;
+}
+
+.sc-doc-surface .tiptap pre .hljs-keyword,
+.sc-doc-surface .tiptap pre .hljs-selector-tag,
+.sc-doc-surface .tiptap pre .hljs-literal {
+  color: #e3b341;
+}
+
+.sc-doc-surface .tiptap pre .hljs-string,
+.sc-doc-surface .tiptap pre .hljs-attr,
+.sc-doc-surface .tiptap pre .hljs-template-variable {
+  color: #7ee787;
+}
+
+.sc-doc-surface .tiptap pre .hljs-number,
+.sc-doc-surface .tiptap pre .hljs-built_in,
+.sc-doc-surface .tiptap pre .hljs-type {
+  color: #79c0ff;
+}
+
+.sc-doc-surface .tiptap pre .hljs-title,
+.sc-doc-surface .tiptap pre .hljs-function,
+.sc-doc-surface .tiptap pre .hljs-params {
+  color: #d2a8ff;
+}
+
+.sc-doc-surface .tiptap code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.92em;
+}
+
+.sc-doc-surface .tiptap :not(pre) > code {
+  background: var(--surface-2);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.sc-doc-surface .tiptap blockquote {
+  border-left: 3px solid var(--border-strong);
+  margin: 0.8em 0;
+  padding-left: 12px;
+  color: var(--text-secondary);
+}
+
+.sc-doc-surface .tiptap ul,
+.sc-doc-surface .tiptap ol {
+  padding-left: 1.3em;
+}
+
+.sc-face-compose.is-preview {
+  pointer-events: auto;
+}
+
 .card-corner {
   position: absolute;
   font-size: 10px;

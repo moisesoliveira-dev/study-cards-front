@@ -6,6 +6,7 @@ export type Card = {
   topicId: string | null;
   front: string;
   back: string;
+  document: string | null;
   hint: string | null;
   tag: string;
   status: CardStatus;
@@ -21,6 +22,7 @@ export type CreateCardInput = {
   topicId?: string | null;
   front: string;
   back: string;
+  document?: string | null;
   hint?: string;
   tag?: string;
 };
@@ -28,6 +30,7 @@ export type CreateCardInput = {
 export type UpdateCardInput = {
   front?: string;
   back?: string;
+  document?: string | null;
   hint?: string | null;
   tag?: string;
   status?: CardStatus;

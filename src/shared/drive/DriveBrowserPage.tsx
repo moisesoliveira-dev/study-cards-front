@@ -19,12 +19,13 @@ import { cardsFacade } from '../../modules/cards/facades/cards.facade';
 import type { Subject } from '../../modules/subjects/types/subject.types';
 import type { TopicTreeNode } from '../../modules/topics/types/topic.types';
 import type { Card } from '../../modules/cards/types/card.types';
-import { statusClass, statusLabel } from '../../modules/cards/types/card.types';
 import { DriveTopBar } from '../components/DriveTopBar';
 import { DriveFolderItem } from '../components/DriveFolderItem';
 import { Field, TextArea } from '../components/Field';
 import { DriveCardItem, FaceCard } from '../components/DriveCardItem';
 import { FaceCardComposer } from '../components/FaceCardComposer';
+import { CardDocumentSheet } from '../components/CardDocumentSheet';
+import { documentToPlainText } from '../components/DocumentEditor';
 import { DragItem, DropZone, useDriveDrop } from '../dnd/DragDrop';
 import { useAppToast } from '../hooks/useAppToast';
 
@@ -82,6 +83,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   const [description, setDescription] = useState('');
   const [front, setFront] = useState('');
   const [back, setBack] = useState('');
+  const [docJson, setDocJson] = useState('');
   const [hint, setHint] = useState('');
   const [tag, setTag] = useState('Conceito');
   const [saving, setSaving] = useState(false);
@@ -245,20 +247,25 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   };
 
   const createCard = async () => {
-    if (!front.trim() || !back.trim()) return;
+    if (!front.trim()) return;
+    const plain = documentToPlainText(docJson);
+    const nextBack = back.trim() || plain.slice(0, 280);
+    if (!nextBack) return;
     setSaving(true);
     try {
       await cardsFacade.create({
         subjectId,
         topicId: topicId ?? null,
         front,
-        back,
+        back: nextBack,
+        document: docJson || null,
         hint,
         tag,
       });
       setCardOpen(false);
       setFront('');
       setBack('');
+      setDocJson('');
       setHint('');
       setTag('Conceito');
       toast.success('Card criado');
@@ -323,18 +330,6 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         },
       ],
     });
-  };
-
-  const updateStatus = async (status: Card['status']) => {
-    if (!detail) return;
-    try {
-      const updated = await cardsFacade.update(detail.id, { status });
-      setDetail(updated);
-      toast.success('Status atualizado');
-      await load();
-    } catch (error) {
-      toast.error(error);
-    }
   };
 
   const studyHref = isRoot
@@ -556,11 +551,13 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         open={cardOpen}
         front={front}
         back={back}
+        docJson={docJson}
         tag={tag}
         hint={hint}
         saving={saving}
         onFront={setFront}
         onBack={setBack}
+        onDocJson={setDocJson}
         onTag={setTag}
         onHint={setHint}
         onClose={() => setCardOpen(false)}
@@ -620,61 +617,15 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         </IonContent>
       </IonModal>
 
-      <IonModal isOpen={Boolean(detail)} onDidDismiss={() => setDetail(null)}>
-        <IonHeader>
-          <IonToolbar>
-            <IonTitle>{detail?.front ?? 'Card'}</IonTitle>
-            <IonButtons slot="end">
-              <IonButton onClick={() => setDetail(null)}>Fechar</IonButton>
-            </IonButtons>
-          </IonToolbar>
-        </IonHeader>
-        <IonContent className="ion-padding">
-          {detail ? (
-            <div className="sc-detail">
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <span className={`card-status ${statusClass(detail.status)}`}>
-                  {statusLabel(detail.status)}
-                </span>
-                <span className="thumb-tag">{detail.tag}</span>
-              </div>
-              <div className="sc-detail-block">
-                <h4>Explicação</h4>
-                <p style={{ whiteSpace: 'pre-wrap' }}>{detail.back}</p>
-              </div>
-              {detail.hint ? (
-                <div className="sc-detail-block">
-                  <h4>Dica</h4>
-                  <p>{detail.hint}</p>
-                </div>
-              ) : null}
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  className="sc-btn"
-                  onClick={() => void updateStatus('KNOWN')}
-                >
-                  Marcar sabido
-                </button>
-                <button
-                  type="button"
-                  className="sc-btn"
-                  onClick={() => void updateStatus('REVIEW')}
-                >
-                  Marcar revisar
-                </button>
-                <button
-                  type="button"
-                  className="sc-btn"
-                  onClick={() => removeCard(detail.id)}
-                >
-                  Excluir
-                </button>
-              </div>
-            </div>
-          ) : null}
-        </IonContent>
-      </IonModal>
+      <CardDocumentSheet
+        card={detail}
+        onClose={() => setDetail(null)}
+        onChanged={(updated) => {
+          setDetail(updated);
+          void load();
+        }}
+        onDelete={removeCard}
+      />
     </IonPage>
   );
 }
