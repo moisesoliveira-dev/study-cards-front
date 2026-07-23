@@ -43,6 +43,7 @@ export type MergeCardsInput = {
   sourceCardIds: string[];
   front: string;
   back: string;
+  document?: string | null;
   hint?: string;
   tag?: string;
 };

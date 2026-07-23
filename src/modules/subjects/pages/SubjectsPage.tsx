@@ -19,6 +19,7 @@ import { DriveFolderItem } from '../../../shared/components/DriveFolderItem';
 import { Field, TextArea } from '../../../shared/components/Field';
 import { useAppToast } from '../../../shared/hooks/useAppToast';
 import { useAuth } from '../../auth/context/AuthContext';
+import { ThemeToggle } from '../../../shared/theme/ThemeToggle';
 import { MotionShell, MotionStagger, tapScale } from '../../../shared/motion';
 
 const COLORS = ['#BA7517', '#378ADD', '#1D9E75', '#7F77DD', '#D4537E', '#888780'];
@@ -87,6 +88,7 @@ export default function SubjectsPage() {
         <IonToolbar>
           <IonTitle>Study Cards</IonTitle>
           <IonButtons slot="end">
+            <ThemeToggle compact />
             <span className="sc-user-chip">{user?.name || user?.email}</span>
             <IonButton
               onClick={() => {
@@ -166,7 +168,14 @@ export default function SubjectsPage() {
           <IonToolbar>
             <IonTitle>Novo grupo</IonTitle>
             <IonButtons slot="end">
-              <IonButton onClick={() => setOpen(false)}>Fechar</IonButton>
+              <button
+                type="button"
+                className="sc-modal-x"
+                aria-label="Fechar"
+                onClick={() => setOpen(false)}
+              >
+                ×
+              </button>
             </IonButtons>
           </IonToolbar>
         </IonHeader>

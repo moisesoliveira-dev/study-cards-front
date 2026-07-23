@@ -39,9 +39,20 @@ export class CardsFacade {
       ...input,
       front: input.front.trim(),
       back: input.back.trim(),
+      document: input.document?.trim() || undefined,
       hint: input.hint?.trim() || undefined,
       tag: input.tag?.trim() || 'Síntese',
     });
+  }
+
+  get(id: string) {
+    return cardsApi.get(id);
+  }
+
+  getByIds(ids: string[]) {
+    const unique = [...new Set(ids.filter(Boolean))];
+    if (!unique.length) return Promise.resolve([] as Card[]);
+    return cardsApi.getByIds(unique);
   }
 
   move(id: string, topicId: string | null) {

@@ -16,6 +16,7 @@ type Props = {
   onClose: () => void;
   onChanged: (card: Card) => void;
   onDelete?: (id: string) => void;
+  onOpenLinked?: (card: Card) => void;
 };
 
 function seedDocument(card: Card) {
@@ -31,7 +32,13 @@ function seedDocument(card: Card) {
   });
 }
 
-export function CardDocumentSheet({ card, onClose, onChanged, onDelete }: Props) {
+export function CardDocumentSheet({
+  card,
+  onClose,
+  onChanged,
+  onDelete,
+  onOpenLinked,
+}: Props) {
   const toast = useAppToast();
   const reduce = useReducedMotion();
   const [mode, setMode] = useState<'card' | 'document'>('card');
@@ -42,6 +49,8 @@ export function CardDocumentSheet({ card, onClose, onChanged, onDelete }: Props)
   const [tag, setTag] = useState('Conceito');
   const [hint, setHint] = useState('');
   const [saving, setSaving] = useState(false);
+  const [linked, setLinked] = useState<Card[]>([]);
+  const [loadingLinks, setLoadingLinks] = useState(false);
 
   const hydrate = (next: Card) => {
     setFront(next.front);
@@ -56,6 +65,29 @@ export function CardDocumentSheet({ card, onClose, onChanged, onDelete }: Props)
     hydrate(card);
     setMode('card');
     setEditing(false);
+  }, [card]);
+
+  useEffect(() => {
+    if (!card?.sourceIds?.length) {
+      setLinked([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingLinks(true);
+    void cardsFacade
+      .getByIds(card.sourceIds)
+      .then((list) => {
+        if (!cancelled) setLinked(list);
+      })
+      .catch(() => {
+        if (!cancelled) setLinked([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingLinks(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [card]);
 
   useEffect(() => {
@@ -166,6 +198,38 @@ export function CardDocumentSheet({ card, onClose, onChanged, onDelete }: Props)
       >
         <IonIcon icon={trashOutline} />
       </button>
+    ) : null;
+
+  const linkedSection =
+    card.sourceIds.length > 0 ? (
+      <div className="sc-linked-cards">
+        <div className="sc-linked-cards-label">
+          Cards ligados ({card.linkCount || card.sourceIds.length})
+        </div>
+        {loadingLinks ? (
+          <IonSpinner name="crescent" />
+        ) : (
+          <div className="sc-linked-list">
+            {linked.map((src) => (
+              <button
+                key={src.id}
+                type="button"
+                className="sc-linked-chip"
+                onClick={() => onOpenLinked?.(src)}
+                title={src.front}
+              >
+                <span className="sc-linked-chip-title">{src.front}</span>
+                <span aria-hidden>↗</span>
+              </button>
+            ))}
+            {!linked.length ? (
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                Não foi possível carregar os links
+              </span>
+            ) : null}
+          </div>
+        )}
+      </div>
     ) : null;
 
   return createPortal(
@@ -280,6 +344,7 @@ export function CardDocumentSheet({ card, onClose, onChanged, onDelete }: Props)
                 Revisar
               </button>
             </div>
+            {linkedSection}
             {!editing && !hasDocument && !documentToPlainText(docJson) ? (
               <p className="sc-doc-empty">
                 Ainda sem documento detalhado. Toque no lápis para escrever.
@@ -413,6 +478,18 @@ export function CardDocumentSheet({ card, onClose, onChanged, onDelete }: Props)
               <span className={`card-status ${statusClass(card.status)}`}>
                 {statusLabel(card.status)}
               </span>
+              {card.linkCount > 0 ? (
+                <button
+                  type="button"
+                  className="sc-card-links-btn"
+                  onClick={() => setMode('document')}
+                >
+                  → {card.linkCount} links · ver síntese ↗
+                </button>
+              ) : (
+                <div className="card-links">→ 0 links</div>
+              )}
+              {linkedSection}
               <button
                 type="button"
                 className="card-expand-doc"

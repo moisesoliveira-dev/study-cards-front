@@ -9,6 +9,7 @@ import LoginPage from './modules/auth/pages/LoginPage';
 import RegisterPage from './modules/auth/pages/RegisterPage';
 import { AuthProvider } from './modules/auth/context/AuthContext';
 import { PrivateRoute } from './core/auth/PrivateRoute';
+import { ThemeProvider } from './shared/theme/ThemeContext';
 
 import '@ionic/react/css/core.css';
 import '@ionic/react/css/normalize.css';
@@ -27,29 +28,31 @@ setupIonicReact({ mode: 'md' });
 
 const App: React.FC = () => (
   <IonApp>
-    <AuthProvider>
-      <IonReactRouter>
-        <IonRouterOutlet>
-          <Route exact path="/login" component={LoginPage} />
-          <Route exact path="/register" component={RegisterPage} />
-          <PrivateRoute exact path="/home" component={SubjectsPage} />
-          <PrivateRoute
-            exact
-            path="/subjects/:subjectId"
-            component={SubjectDetailPage}
-          />
-          <PrivateRoute
-            exact
-            path="/topics/:topicId"
-            component={TopicCardsPage}
-          />
-          <PrivateRoute exact path="/study/:topicId" component={StudyPage} />
-          <Route exact path="/">
-            <Redirect to="/home" />
-          </Route>
-        </IonRouterOutlet>
-      </IonReactRouter>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <IonReactRouter>
+          <IonRouterOutlet>
+            <Route exact path="/login" component={LoginPage} />
+            <Route exact path="/register" component={RegisterPage} />
+            <PrivateRoute exact path="/home" component={SubjectsPage} />
+            <PrivateRoute
+              exact
+              path="/subjects/:subjectId"
+              component={SubjectDetailPage}
+            />
+            <PrivateRoute
+              exact
+              path="/topics/:topicId"
+              component={TopicCardsPage}
+            />
+            <PrivateRoute exact path="/study/:topicId" component={StudyPage} />
+            <Route exact path="/">
+              <Redirect to="/home" />
+            </Route>
+          </IonRouterOutlet>
+        </IonReactRouter>
+      </AuthProvider>
+    </ThemeProvider>
   </IonApp>
 );
 

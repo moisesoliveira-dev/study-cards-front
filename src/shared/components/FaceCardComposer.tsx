@@ -26,6 +26,9 @@ type Props = {
   tag: string;
   hint: string;
   saving?: boolean;
+  title?: string;
+  submitLabel?: string;
+  sourceCards?: { id: string; front: string }[];
   onFront: (value: string) => void;
   onBack: (value: string) => void;
   onDocJson: (value: string) => void;
@@ -44,6 +47,9 @@ export function FaceCardComposer({
   tag,
   hint,
   saving = false,
+  title = 'Nova carta',
+  submitLabel = 'Colocar na mesa',
+  sourceCards,
   onFront,
   onBack,
   onDocJson,
@@ -109,7 +115,7 @@ export function FaceCardComposer({
           className={`sc-card-as-modal${mode === 'document' ? ' is-document' : ''}`}
           role="dialog"
           aria-modal="true"
-          aria-label={mode === 'document' ? 'Documento do card' : 'Nova carta'}
+          aria-label={mode === 'document' ? 'Documento do card' : title}
           onMouseDown={(e) => {
             if (e.target === e.currentTarget && mode === 'card') onClose();
           }}
@@ -195,8 +201,25 @@ export function FaceCardComposer({
                   Documento ↗
                 </button>
 
+                {sourceCards?.length ? (
+                  <div className="sc-linked-cards" style={{ marginTop: 4 }}>
+                    <div className="sc-linked-cards-label">
+                      Ligando {sourceCards.length} cards
+                    </div>
+                    <div className="sc-linked-list">
+                      {sourceCards.map((src) => (
+                        <span key={src.id} className="sc-linked-chip" style={{ cursor: 'default' }}>
+                          <span className="sc-linked-chip-title">{src.front}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
                 <span className="card-status s-new">Novo</span>
-                <div className="card-links">→ 0 links</div>
+                <div className="card-links">
+                  → {sourceCards?.length ?? 0} links
+                </div>
 
                 <div className="card-compose-actions">
                   <button type="button" className="sc-btn" onClick={onClose}>
@@ -209,7 +232,7 @@ export function FaceCardComposer({
                     onClick={onSubmit}
                     whileTap={reduce ? undefined : tapScale}
                   >
-                    {saving ? <IonSpinner name="crescent" /> : 'Colocar na mesa'}
+                    {saving ? <IonSpinner name="crescent" /> : submitLabel}
                   </motion.button>
                 </div>
               </motion.div>

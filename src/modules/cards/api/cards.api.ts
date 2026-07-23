@@ -24,6 +24,11 @@ export const cardsApi = {
   create: (input: CreateCardInput) => httpClient.post<Card>('/cards', input),
   merge: (input: MergeCardsInput) =>
     httpClient.post<Card>('/cards/merge', input),
+  get: (id: string) => httpClient.get<Card>(`/cards/${encodeURIComponent(id)}`),
+  getByIds: (ids: string[]) =>
+    httpClient.get<Card[]>(
+      `/cards?ids=${ids.map(encodeURIComponent).join(',')}`,
+    ),
   move: (id: string, topicId: string | null) =>
     httpClient.post<Card>(`/cards/${id}/move`, { topicId }),
   update: (id: string, input: UpdateCardInput) =>

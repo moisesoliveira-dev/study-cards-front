@@ -11,6 +11,7 @@ import {
   staggerItem,
   tapScale,
 } from '../../../shared/motion';
+import { ThemeToggle } from '../../../shared/theme/ThemeToggle';
 
 export default function RegisterPage() {
   const { register, isAuthenticated, loading } = useAuth();
@@ -47,6 +48,9 @@ export default function RegisterPage() {
     <IonPage>
       <IonContent fullscreen>
         <div className="sc-auth-shell">
+          <div className="sc-auth-theme">
+            <ThemeToggle />
+          </div>
           <motion.div
             className="sc-auth-card"
             variants={reduce ? undefined : staggerContainer}

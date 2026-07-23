@@ -30,6 +30,7 @@ import { DragItem, DropZone, useDriveDrop } from '../dnd/DragDrop';
 import { useAppToast } from '../hooks/useAppToast';
 import { MotionShell, MotionStagger, tapScale } from '../motion';
 import { motion, useReducedMotion } from 'framer-motion';
+import { ThemeToggle } from '../theme/ThemeToggle';
 
 function findNode(
   nodes: TopicTreeNode[],
@@ -184,6 +185,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
           setMergeSources([a, b]);
           setFront(`${a.front} + ${b.front}`);
           setBack(`• ${a.front}: ${a.back}\n• ${b.front}: ${b.back}`);
+          setDocJson('');
           setHint('');
           setTag('Síntese');
           setMergeOpen(true);
@@ -280,7 +282,10 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   };
 
   const mergeCards = async () => {
-    if (mergeSources.length < 2 || !front.trim() || !back.trim()) return;
+    if (mergeSources.length < 2 || !front.trim()) return;
+    const plain = documentToPlainText(docJson);
+    const nextBack = back.trim() || plain.slice(0, 280);
+    if (!nextBack) return;
     setSaving(true);
     try {
       const created = await cardsFacade.merge({
@@ -288,7 +293,8 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         topicId: topicId ?? null,
         sourceCardIds: mergeSources.map((c) => c.id),
         front,
-        back,
+        back: nextBack,
+        document: docJson || null,
         hint,
         tag: tag || 'Síntese',
       });
@@ -296,6 +302,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
       setMergeSources([]);
       setFront('');
       setBack('');
+      setDocJson('');
       setHint('');
       setTag('Conceito');
       toast.success('Cards unidos');
@@ -348,6 +355,9 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
             <IonBackButton defaultHref={backHref} />
           </IonButtons>
           <IonTitle>{folderName}</IonTitle>
+          <IonButtons slot="end">
+            <ThemeToggle compact />
+          </IonButtons>
         </IonToolbar>
       </IonHeader>
       <IonContent>
@@ -532,7 +542,14 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
           <IonToolbar>
             <IonTitle>Nova pasta</IonTitle>
             <IonButtons slot="end">
-              <IonButton onClick={() => setFolderOpen(false)}>Fechar</IonButton>
+              <button
+                type="button"
+                className="sc-modal-x"
+                aria-label="Fechar"
+                onClick={() => setFolderOpen(false)}
+              >
+                ×
+              </button>
             </IonButtons>
           </IonToolbar>
         </IonHeader>
@@ -574,58 +591,29 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         onSubmit={() => void createCard()}
       />
 
-      <IonModal
-        isOpen={mergeOpen}
-        onDidDismiss={() => {
+      <FaceCardComposer
+        open={mergeOpen}
+        title="Síntese"
+        submitLabel="Criar síntese"
+        sourceCards={mergeSources.map((c) => ({ id: c.id, front: c.front }))}
+        front={front}
+        back={back}
+        docJson={docJson}
+        tag={tag || 'Síntese'}
+        hint={hint}
+        saving={saving}
+        onFront={setFront}
+        onBack={setBack}
+        onDocJson={setDocJson}
+        onTag={setTag}
+        onHint={setHint}
+        onClose={() => {
           setMergeOpen(false);
           setMergeSources([]);
+          setDocJson('');
         }}
-      >
-        <IonHeader>
-          <IonToolbar>
-            <IonTitle>Unir cards</IonTitle>
-            <IonButtons slot="end">
-              <IonButton
-                onClick={() => {
-                  setMergeOpen(false);
-                  setMergeSources([]);
-                }}
-              >
-                Fechar
-              </IonButton>
-            </IonButtons>
-          </IonToolbar>
-        </IonHeader>
-        <IonContent className="ion-padding sc-form">
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 0 }}>
-            {mergeSources.length} cards serão ligados a este novo conceito.
-          </p>
-          <div className="sc-auth-fields">
-            <Field
-              label="Novo conceito"
-              value={front}
-              onChange={setFront}
-              autoFocus
-            />
-            <TextArea
-              label="Síntese / explicação"
-              value={back}
-              onChange={setBack}
-            />
-            <Field label="Tag" value={tag} onChange={setTag} />
-            <Field label="Dica" value={hint} onChange={setHint} />
-          </div>
-          <button
-            type="button"
-            className="sc-btn primary"
-            style={{ marginTop: 16 }}
-            disabled={saving || !front.trim() || !back.trim()}
-            onClick={() => void mergeCards()}
-          >
-            Criar conceito unido
-          </button>
-        </IonContent>
-      </IonModal>
+        onSubmit={() => void mergeCards()}
+      />
 
       <CardDocumentSheet
         card={detail}
@@ -635,6 +623,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
           void load();
         }}
         onDelete={removeCard}
+        onOpenLinked={(linkedCard) => setDetail(linkedCard)}
       />
     </IonPage>
   );
