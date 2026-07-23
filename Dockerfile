@@ -22,7 +22,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ENV NODE_ENV=development
-ENV VITE_API_URL=http://localhost:3000
+ENV VITE_API_URL=http://localhost:3000/api
 
 EXPOSE 5173
 
@@ -32,7 +32,7 @@ CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
 FROM node:${NODE_VERSION}-alpine AS build
 WORKDIR /app
 
-ARG VITE_API_URL=http://localhost:3000
+ARG VITE_API_URL=/api
 ENV VITE_API_URL=${VITE_API_URL}
 
 COPY --from=deps /app/node_modules ./node_modules
@@ -42,13 +42,18 @@ RUN npm run build
 
 # --- Production ---
 FROM nginx:1.27-alpine AS production
-WORKDIR /usr/share/nginx/html
 
-RUN rm -rf ./*
+RUN apk add --no-cache gettext \
+  && rm -rf /usr/share/nginx/html/*
 
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /app/dist ./
+COPY nginx.conf.template /etc/nginx/templates/default.conf.template
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY docker-entrypoint.sh /docker-entrypoint-custom.sh
+RUN chmod +x /docker-entrypoint-custom.sh
+
+ENV PORT=80
+ENV API_URL=/api
 
 EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["/docker-entrypoint-custom.sh"]
