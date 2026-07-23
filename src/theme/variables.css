@@ -489,22 +489,22 @@ body {
 }
 
 .sc-face-card.sc-face-compose {
-  width: min(100%, 280px);
+  width: min(92vw, 300px);
   height: auto;
-  min-height: 380px;
+  min-height: 420px;
   padding: 22px 18px 16px;
   cursor: default;
   overflow: visible;
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.85) inset,
-    0 22px 48px rgba(26, 25, 23, 0.18);
+    0 28px 64px rgba(26, 25, 23, 0.28);
   animation: sc-card-deal 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @keyframes sc-card-deal {
   from {
     opacity: 0;
-    transform: translateY(24px) rotate(-4deg) scale(0.92);
+    transform: translateY(28px) rotate(-5deg) scale(0.9);
   }
   to {
     opacity: 1;
@@ -516,7 +516,28 @@ body {
   font-size: 12px;
 }
 .sc-face-compose .card-corner.tl { top: 12px; left: 14px; }
-.sc-face-compose .card-corner.br { bottom: 12px; right: 14px; }
+.sc-face-compose .card-corner.br { bottom: 56px; right: 14px; }
+
+.card-compose-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.card-compose-close:hover {
+  color: var(--text-primary);
+  background: var(--surface-2);
+}
 
 .card-compose-field {
   display: block;
@@ -579,6 +600,22 @@ body {
   opacity: 0.75;
 }
 
+.card-compose-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 0.5px solid var(--border);
+}
+
+.card-compose-actions .sc-btn {
+  flex: 1;
+  min-height: 36px;
+  justify-content: center;
+  display: inline-flex;
+  align-items: center;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;
@@ -591,34 +628,28 @@ body {
   border: 0;
 }
 
-.sc-card-modal-content {
-  --background: transparent;
+body.sc-card-modal-open {
+  overflow: hidden;
 }
 
-.sc-card-modal-stage {
-  min-height: 100%;
+.sc-card-as-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 20000;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  padding: 20px 16px 28px;
+  padding: 20px 16px;
   background:
-    radial-gradient(ellipse 70% 50% at 50% 20%, #e7efe8 0%, transparent 55%),
-    radial-gradient(ellipse 60% 40% at 80% 90%, #f2ebe3 0%, transparent 50%),
-    var(--bg);
+    radial-gradient(ellipse 70% 45% at 50% 35%, rgba(231, 239, 232, 0.55) 0%, transparent 60%),
+    rgba(26, 25, 23, 0.42);
+  backdrop-filter: blur(6px);
+  animation: sc-card-backdrop 0.25s ease-out;
 }
 
-.sc-card-modal-hint {
-  margin: 0;
-  font-size: 13px;
-  color: var(--text-secondary);
-  text-align: center;
-}
-
-.sc-card-modal-submit {
-  min-width: 200px;
-  min-height: 42px;
+@keyframes sc-card-backdrop {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .card-corner {

@@ -552,45 +552,20 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         </IonContent>
       </IonModal>
 
-      <IonModal
-        isOpen={cardOpen}
-        onDidDismiss={() => setCardOpen(false)}
-        className="sc-card-modal"
-      >
-        <IonHeader>
-          <IonToolbar>
-            <IonTitle>Nova carta</IonTitle>
-            <IonButtons slot="end">
-              <IonButton onClick={() => setCardOpen(false)}>Fechar</IonButton>
-            </IonButtons>
-          </IonToolbar>
-        </IonHeader>
-        <IonContent className="sc-card-modal-content">
-          <div className="sc-card-modal-stage">
-            <p className="sc-card-modal-hint">
-              Preencha como se estivesse virando a carta na mesa.
-            </p>
-            <FaceCardComposer
-              front={front}
-              back={back}
-              tag={tag}
-              hint={hint}
-              onFront={setFront}
-              onBack={setBack}
-              onTag={setTag}
-              onHint={setHint}
-            />
-            <button
-              type="button"
-              className="sc-btn primary sc-card-modal-submit"
-              disabled={saving || !front.trim() || !back.trim()}
-              onClick={() => void createCard()}
-            >
-              {saving ? 'Criando…' : 'Colocar na mesa'}
-            </button>
-          </div>
-        </IonContent>
-      </IonModal>
+      <FaceCardComposer
+        open={cardOpen}
+        front={front}
+        back={back}
+        tag={tag}
+        hint={hint}
+        saving={saving}
+        onFront={setFront}
+        onBack={setBack}
+        onTag={setTag}
+        onHint={setHint}
+        onClose={() => setCardOpen(false)}
+        onSubmit={() => void createCard()}
+      />
 
       <IonModal
         isOpen={mergeOpen}
