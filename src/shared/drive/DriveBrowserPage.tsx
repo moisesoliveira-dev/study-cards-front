@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import {
   IonBackButton,
   IonButton,
@@ -23,7 +23,7 @@ import { statusClass, statusLabel } from '../../modules/cards/types/card.types';
 import { DriveTopBar } from '../components/DriveTopBar';
 import { DriveFolderItem } from '../components/DriveFolderItem';
 import { Field, TextArea } from '../components/Field';
-import { DriveCardItem } from '../components/DriveCardItem';
+import { DriveCardItem, FaceCard } from '../components/DriveCardItem';
 import { DragItem, DropZone, useDriveDrop } from '../dnd/DragDrop';
 import { useAppToast } from '../hooks/useAppToast';
 
@@ -405,9 +405,13 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
               <IonSpinner name="crescent" />
             </div>
           ) : view === 'grid' ? (
-            <div className="sc-grid">
-              {filteredCards.map((card) => (
-                <DropZone key={card.id} target={{ kind: 'card', id: card.id }}>
+            <div className="sc-hand" role="list" aria-label="Cards">
+              {filteredCards.map((card, index) => (
+                <DropZone
+                  key={card.id}
+                  target={{ kind: 'card', id: card.id }}
+                  className="sc-hand-slot"
+                >
                   <DragItem
                     payload={{
                       kind: 'card',
@@ -418,13 +422,32 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                     }}
                     onClick={() => setDetail(card)}
                   >
-                    <DriveCardItem card={card} />
+                    <FaceCard
+                      card={card}
+                      style={{ ['--card-i' as string]: index } as CSSProperties}
+                    />
                   </DragItem>
                 </DropZone>
               ))}
-              {!filteredCards.length && !loading ? (
-                <div className="sc-empty" style={{ gridColumn: '1 / -1' }}>
-                  Nenhum card aqui. Use <strong>+ Card</strong> para criar.
+              <button
+                type="button"
+                className="sc-face-card sc-face-add"
+                onClick={() => setCardOpen(true)}
+                aria-label="Criar card"
+              >
+                <div className="card-suit" style={{ color: 'var(--text-muted)' }}>
+                  Novo
+                </div>
+                <div className="card-title" style={{ color: 'var(--text-muted)' }}>
+                  + Criar card
+                </div>
+                <div className="card-body">
+                  Conceito na frente, explicação no verso.
+                </div>
+              </button>
+              {!filteredCards.length ? (
+                <div className="sc-empty" style={{ width: '100%', flexBasis: '100%' }}>
+                  Nenhum card aqui. Use <strong>+ Card</strong> ou o slot pontilhado.
                 </div>
               ) : null}
             </div>

@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import {
   cardInitials,
   statusClass,
@@ -59,9 +60,10 @@ type FaceProps = {
   card: Card;
   selected?: boolean;
   onClick?: () => void;
+  style?: CSSProperties;
 };
 
-export function FaceCard({ card, selected, onClick }: FaceProps) {
+export function FaceCard({ card, selected, onClick, style }: FaceProps) {
   const initials = cardInitials(card.front);
   return (
     <div
@@ -69,6 +71,7 @@ export function FaceCard({ card, selected, onClick }: FaceProps) {
       tabIndex={onClick ? 0 : undefined}
       className={`sc-face-card${selected ? ' selected' : ''}`}
       onClick={onClick}
+      style={style}
     >
       <span className="card-corner tl">{initials}</span>
       <span className="card-corner br">{initials}</span>
