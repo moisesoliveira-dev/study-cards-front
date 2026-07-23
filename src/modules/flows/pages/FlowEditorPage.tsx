@@ -402,14 +402,25 @@ export default function FlowEditorPage() {
       setLoading(true);
       try {
         const b = await flowsFacade.get(flowId);
-        const [cardList, subject] = await Promise.all([
+        if (cancelled) return;
+        setBoard(b);
+
+        const [cardResult, subjectResult] = await Promise.allSettled([
           cardsFacade.listAllBySubject(b.subjectId),
           subjectsFacade.get(b.subjectId),
         ]);
         if (cancelled) return;
-        setBoard(b);
-        setCards(cardList);
-        setSubjectName(subject.name);
+
+        if (cardResult.status === 'fulfilled') {
+          setCards(cardResult.value);
+        } else {
+          setCards([]);
+          toast.error(cardResult.reason);
+        }
+
+        if (subjectResult.status === 'fulfilled') {
+          setSubjectName(subjectResult.value.name);
+        }
       } catch (error) {
         toast.error(error);
         history.replace('/flows');

@@ -50,7 +50,7 @@ function AuthenticatedShell() {
         <Route exact path="/subjects/:subjectId" component={SubjectDetailPage} />
         <Route exact path="/topics/:topicId" component={TopicCardsPage} />
         <Route exact path="/flows" component={FlowsListPage} />
-        <Route exact path="/flows/:flowId" component={FlowEditorPage} />
+        <Route path="/flows/:flowId" component={FlowEditorPage} />
         <Route exact path="/study/:topicId" component={StudyPage} />
         <Route exact path="/">
           <Redirect to="/home" />

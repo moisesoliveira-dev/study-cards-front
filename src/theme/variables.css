@@ -1838,6 +1838,83 @@ body.sc-dragging .sc-hand > .sc-drop-zone.sc-hand-slot:hover {
   flex-direction: column;
 }
 
+/* —— Toasts —— */
+ion-toast.sc-toast {
+  --width: min(400px, calc(100vw - 24px));
+  --max-width: min(400px, calc(100vw - 24px));
+  --border-radius: 14px;
+  --box-shadow: 0 14px 40px color-mix(in srgb, var(--text-primary) 16%, transparent);
+  --button-color: var(--text-muted);
+  margin-top: max(10px, env(safe-area-inset-top, 0px));
+}
+
+ion-toast.sc-toast::part(container) {
+  padding: 11px 8px 11px 14px;
+  border: 0.5px solid var(--border);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  font-size: 13.5px;
+  font-weight: 550;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+  align-items: center;
+  gap: 8px;
+}
+
+ion-toast.sc-toast::part(icon) {
+  font-size: 20px;
+  margin: 0;
+}
+
+ion-toast.sc-toast::part(message) {
+  padding: 0 4px 0 2px;
+}
+
+ion-toast.sc-toast::part(button) {
+  margin: 0;
+  padding: 6px;
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: 8px;
+}
+
+ion-toast.sc-toast--ok {
+  --background: color-mix(in srgb, var(--ok-bg) 82%, var(--surface-1));
+  --color: var(--ok-fg);
+  --button-color: color-mix(in srgb, var(--ok-fg) 70%, var(--text-muted));
+}
+
+ion-toast.sc-toast--ok::part(container) {
+  border-color: color-mix(in srgb, var(--ok-fg) 22%, var(--border));
+}
+
+ion-toast.sc-toast--err {
+  --background: color-mix(in srgb, var(--danger) 10%, var(--surface-1));
+  --color: var(--danger);
+  --button-color: color-mix(in srgb, var(--danger) 65%, var(--text-muted));
+}
+
+ion-toast.sc-toast--err::part(container) {
+  border-color: color-mix(in srgb, var(--danger) 28%, var(--border));
+}
+
+ion-toast.sc-toast--info {
+  --background: color-mix(in srgb, var(--bg-accent) 70%, var(--surface-1));
+  --color: var(--text-accent);
+  --button-color: var(--text-muted);
+}
+
+ion-toast.sc-toast--info::part(container) {
+  border-color: color-mix(in srgb, var(--text-accent) 22%, var(--border));
+}
+
+@media (max-width: 720px) {
+  ion-toast.sc-toast {
+    --max-width: calc(100vw - 20px);
+    margin-top: max(8px, env(safe-area-inset-top, 0px));
+  }
+}
+
 @media (max-width: 820px) {
   .sc-sidebar {
     width: 64px;
@@ -1847,17 +1924,110 @@ body.sc-dragging .sc-hand > .sc-drop-zone.sc-hand-slot:hover {
   .sc-sidebar-link span,
   .sc-sidebar-user,
   .sc-theme-toggle span,
-  .sc-sidebar-logout {
+  .sc-sidebar-logout span {
     display: none;
   }
   .sc-sidebar-link {
     justify-content: center;
     padding: 12px;
   }
-  .sc-theme-toggle {
+  .sc-theme-toggle,
+  .sc-theme-toggle.is-compact {
     width: 40px;
     justify-content: center;
     padding: 0;
+  }
+  .sc-sidebar-logout {
+    justify-content: center;
+    padding: 10px;
+  }
+}
+
+/* Phone: bottom tab bar */
+@media (max-width: 640px) {
+  .sc-app-layout {
+    flex-direction: column;
+  }
+
+  .sc-sidebar {
+    order: 2;
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px calc(6px + env(safe-area-inset-bottom, 0px));
+    border-right: none;
+    border-top: 0.5px solid var(--border);
+    overflow: visible;
+    z-index: 40;
+  }
+
+  .sc-sidebar-brand {
+    display: none;
+  }
+
+  .sc-sidebar-nav {
+    flex-direction: row;
+    flex: 1;
+    justify-content: space-around;
+    gap: 4px;
+  }
+
+  .sc-sidebar-link {
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    justify-content: center;
+    padding: 8px 6px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 600;
+    min-height: 48px;
+  }
+
+  .sc-sidebar-link span {
+    display: block;
+    line-height: 1.1;
+  }
+
+  .sc-sidebar-link ion-icon {
+    font-size: 20px;
+  }
+
+  .sc-sidebar-foot {
+    flex-direction: row;
+    align-items: center;
+    gap: 2px;
+    padding: 0 0 0 6px;
+    border-top: none;
+    border-left: 0.5px solid var(--border);
+  }
+
+  .sc-sidebar-user {
+    display: none;
+  }
+
+  .sc-theme-toggle,
+  .sc-theme-toggle.is-compact,
+  .sc-sidebar-logout {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 10px;
+  }
+
+  .sc-sidebar-logout span,
+  .sc-theme-toggle span {
+    display: none;
+  }
+
+  .sc-app-main {
+    order: 1;
+    flex: 1;
+    min-height: 0;
   }
 }
 
@@ -1870,11 +2040,592 @@ body.sc-dragging .sc-hand > .sc-drop-zone.sc-hand-slot:hover {
   overflow: hidden;
 }
 
+/* —— Flow hub —— */
+.sc-flow-hub {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 20px 20px 56px;
+}
+
+.sc-flow-stage {
+  position: relative;
+  margin-bottom: 22px;
+  padding: 28px 24px 24px;
+  border-radius: 20px;
+  border: 0.5px solid var(--border);
+  overflow: hidden;
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--rev-bg) 55%, var(--surface-1)) 0%,
+      var(--surface-1) 42%,
+      color-mix(in srgb, var(--ok-bg) 35%, var(--surface-1)) 100%
+    );
+}
+
+.sc-flow-stage-glow {
+  position: absolute;
+  inset: -40% auto auto -20%;
+  width: 70%;
+  height: 90%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--rev) 18%, transparent),
+    transparent 68%
+  );
+  pointer-events: none;
+}
+
+.sc-flow-stage-graph {
+  position: absolute;
+  right: -24px;
+  top: 8px;
+  width: min(52%, 420px);
+  height: auto;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.sc-flow-stage-edge {
+  stroke: color-mix(in srgb, var(--rev) 55%, var(--border-accent));
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 6 8;
+  animation: sc-flow-dash 18s linear infinite;
+}
+
+.sc-flow-stage-node {
+  fill: var(--surface-1);
+  stroke: color-mix(in srgb, var(--rev) 65%, var(--border-strong));
+  stroke-width: 2;
+}
+
+@keyframes sc-flow-dash {
+  to {
+    stroke-dashoffset: -140;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sc-flow-stage-edge {
+    animation: none;
+  }
+}
+
+.sc-flow-hero {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.sc-flow-kicker {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--rev-fg);
+}
+
+.sc-flow-title {
+  margin: 0 0 10px;
+  font-size: clamp(2rem, 4vw, 2.7rem);
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  color: var(--text-primary);
+  line-height: 1.05;
+}
+
 .sc-flow-lead {
-  margin: 0 0 16px;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 15px;
+  line-height: 1.5;
+  max-width: 40ch;
+}
+
+.sc-flow-stats {
+  margin: 14px 0 0;
+  font-size: 12px;
+  font-weight: 550;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+}
+
+.sc-flow-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 18px;
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--rev) 22%, transparent);
+}
+
+.sc-flow-cta ion-icon {
+  font-size: 18px;
+}
+
+.sc-flow-composer {
+  margin-bottom: 22px;
+  padding: 20px;
+  border: 0.5px solid var(--border);
+  border-radius: 16px;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--surface-1) 92%, var(--rev-bg)),
+      var(--surface-1)
+    );
+  box-shadow: var(--shadow-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sc-flow-composer-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sc-flow-composer-eyebrow {
+  margin: 0 0 2px;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.sc-flow-composer-top h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.sc-flow-subject-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sc-flow-subject-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sc-flow-subject-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 0.5px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.sc-flow-subject-chip.is-active {
+  border-color: color-mix(in srgb, var(--rev) 45%, var(--border-strong));
+  background: var(--rev-bg);
+  color: var(--rev-fg);
+  font-weight: 550;
+}
+
+.sc-flow-subject-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sc-flow-composer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.sc-flow-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.sc-flow-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 0.5px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 550;
+  cursor: pointer;
+}
+
+.sc-flow-filter.is-active {
+  background: var(--surface-1);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-soft);
+}
+
+.sc-flow-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+.sc-flow-tile {
+  position: relative;
+  border-radius: 18px;
+  border: 0.5px solid var(--border);
+  background: var(--surface-1);
+  overflow: hidden;
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--text-primary) 4%, transparent);
+}
+
+.sc-flow-tile::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--flow-accent);
+  z-index: 2;
+}
+
+.sc-flow-tile-open {
+  display: block;
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+  color: inherit;
+}
+
+.sc-flow-tile-preview {
+  position: relative;
+  height: 132px;
+  background:
+    radial-gradient(
+      circle at 18% 28%,
+      color-mix(in srgb, var(--flow-accent) 32%, transparent),
+      transparent 52%
+    ),
+    radial-gradient(
+      circle at 88% 70%,
+      color-mix(in srgb, var(--ok-bg) 50%, transparent),
+      transparent 45%
+    ),
+    linear-gradient(165deg, var(--surface-2), var(--bg));
+  border-bottom: 0.5px solid var(--border);
+}
+
+.sc-flow-preview-orbit {
+  position: absolute;
+  inset: 18px 22px;
+  border: 0.5px dashed color-mix(in srgb, var(--flow-accent) 35%, var(--border));
+  border-radius: 40% 60% 55% 45% / 45% 40% 60% 55%;
+  opacity: 0.7;
+}
+
+.sc-flow-preview-node {
+  position: absolute;
+  width: 36px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--surface-1);
+  border: 0.5px solid var(--border-strong);
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--text-primary) 12%, transparent);
+}
+
+.sc-flow-preview-node.n1 { top: 34px; left: 34px; }
+.sc-flow-preview-node.n2 { top: 64px; left: 118px; }
+.sc-flow-preview-node.n3 { top: 30px; right: 40px; }
+
+.sc-flow-preview-line {
+  position: absolute;
+  height: 1.5px;
+  background: color-mix(in srgb, var(--flow-accent) 75%, var(--border-accent));
+  transform-origin: left center;
+  opacity: 0.9;
+}
+
+.sc-flow-preview-line.l1 {
+  width: 82px;
+  top: 46px;
+  left: 70px;
+  transform: rotate(18deg);
+}
+
+.sc-flow-preview-line.l2 {
+  width: 76px;
+  top: 52px;
+  right: 74px;
+  transform: rotate(-22deg);
+}
+
+.sc-flow-preview-badge {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  min-width: 28px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--rev-fg);
+  background: color-mix(in srgb, var(--surface-1) 82%, var(--rev-bg));
+  border: 0.5px solid color-mix(in srgb, var(--rev) 25%, var(--border));
+}
+
+.sc-flow-tile-body {
+  padding: 14px 16px 16px;
+}
+
+.sc-flow-tile-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 550;
+  color: var(--text-muted);
+}
+
+.sc-flow-tile-body h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.sc-flow-tile-body p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.sc-flow-tile-delete {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--surface-1) 88%, transparent);
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  z-index: 3;
+  transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.sc-flow-tile:hover .sc-flow-tile-delete,
+.sc-flow-tile-delete:focus-visible {
+  opacity: 1;
+}
+
+.sc-flow-tile-delete:hover {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface-1));
+}
+
+.sc-flow-empty {
+  margin-top: 8px;
+  padding: 48px 24px;
+  border-radius: 18px;
+  border: 0.5px dashed var(--border-strong);
+  background:
+    radial-gradient(
+      ellipse 70% 55% at 50% 0%,
+      color-mix(in srgb, var(--rev-bg) 55%, transparent),
+      transparent 70%
+    ),
+    var(--surface-1);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.sc-flow-empty-error {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--danger) 35%, var(--border));
+}
+
+.sc-flow-empty-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--rev-bg) 70%, var(--surface-2));
+  color: var(--rev-fg);
+  font-size: 28px;
+  margin-bottom: 4px;
+}
+
+.sc-flow-empty h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.sc-flow-empty p {
+  margin: 0 0 8px;
+  max-width: 38ch;
   color: var(--text-secondary);
   font-size: 14px;
-  max-width: 52ch;
+  line-height: 1.45;
+}
+
+@media (max-width: 720px) {
+  .sc-flow-hub {
+    padding: 14px 14px calc(28px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .sc-flow-stage {
+    padding: 20px 14px 16px;
+    border-radius: 16px;
+  }
+
+  .sc-flow-stage-graph {
+    opacity: 0.22;
+    width: 78%;
+    right: -40px;
+  }
+
+  .sc-flow-title {
+    font-size: clamp(1.7rem, 8vw, 2.1rem);
+  }
+
+  .sc-flow-cta {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .sc-flow-composer-actions {
+    flex-direction: column-reverse;
+  }
+
+  .sc-flow-composer-actions .sc-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .sc-flow-gallery {
+    grid-template-columns: 1fr;
+  }
+
+  .sc-flow-tile-delete {
+    opacity: 1;
+  }
+
+  .sc-flow-workspace {
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+  }
+
+  .sc-flow-palette {
+    width: 100%;
+    max-height: 38%;
+    border-right: none;
+    border-bottom: 0.5px solid var(--border);
+    padding-bottom: 8px;
+  }
+
+  .sc-flow-palette-list {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 8px;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sc-flow-palette-item {
+    min-width: 148px;
+    max-width: 180px;
+    flex-shrink: 0;
+  }
+
+  .sc-flow-canvas {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .sc-flow-toolbar {
+    top: auto;
+    bottom: 12px;
+    right: 10px;
+    left: 10px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .sc-flow-card-node {
+    width: 156px;
+    min-height: 96px;
+  }
+}
+
+@media (max-width: 640px) {
+  .sc-shell {
+    padding: 12px 12px calc(20px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .sc-topbar {
+    gap: 8px;
+  }
+
+  .sc-search-wrap {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+
+  .items-grid,
+  .sc-grid {
+    grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+    gap: 10px;
+  }
+
+  .sc-auth-shell {
+    padding: 16px 12px calc(24px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .sc-auth-card {
+    padding: 22px 16px 18px;
+  }
 }
 
 .sc-flow-list {

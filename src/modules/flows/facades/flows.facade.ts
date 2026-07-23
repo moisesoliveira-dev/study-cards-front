@@ -1,27 +1,44 @@
 import { flowsApi } from '../api/flows.api';
-import type { CreateFlowInput, UpdateFlowInput } from '../types/flow.types';
+import type {
+  CreateFlowInput,
+  FlowBoard,
+  FlowEdgeDto,
+  FlowNodeDto,
+  UpdateFlowInput,
+} from '../types/flow.types';
+
+function normalizeBoard(board: FlowBoard): FlowBoard {
+  return {
+    ...board,
+    nodes: Array.isArray(board.nodes) ? (board.nodes as FlowNodeDto[]) : [],
+    edges: Array.isArray(board.edges) ? (board.edges as FlowEdgeDto[]) : [],
+  };
+}
 
 export class FlowsFacade {
-  list(subjectId?: string) {
-    return flowsApi.list(subjectId);
+  async list(subjectId?: string) {
+    const boards = await flowsApi.list(subjectId);
+    return (boards ?? []).map(normalizeBoard);
   }
 
-  get(id: string) {
-    return flowsApi.get(id);
+  async get(id: string) {
+    return normalizeBoard(await flowsApi.get(id));
   }
 
-  create(input: CreateFlowInput) {
-    return flowsApi.create({
+  async create(input: CreateFlowInput) {
+    const board = await flowsApi.create({
       subjectId: input.subjectId,
       name: input.name.trim() || 'Fluxograma',
     });
+    return normalizeBoard(board);
   }
 
-  update(id: string, input: UpdateFlowInput) {
-    return flowsApi.update(id, {
+  async update(id: string, input: UpdateFlowInput) {
+    const board = await flowsApi.update(id, {
       ...input,
       name: input.name?.trim(),
     });
+    return normalizeBoard(board);
   }
 
   remove(id: string) {

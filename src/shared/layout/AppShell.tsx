@@ -54,20 +54,22 @@ export function AppShell({ children }: Props) {
           ))}
         </nav>
         <div className="sc-sidebar-foot">
-          <ThemeToggle />
+          <ThemeToggle compact />
           <div className="sc-sidebar-user" title={user?.email}>
             {user?.name || user?.email}
           </div>
           <button
             type="button"
             className="sc-sidebar-logout"
+            aria-label="Sair"
+            title="Sair"
             onClick={() => {
               logout();
               history.replace('/login');
             }}
           >
             <IonIcon icon={logOutOutline} />
-            Sair
+            <span>Sair</span>
           </button>
         </div>
       </aside>
