@@ -24,6 +24,7 @@ import { DriveTopBar } from '../components/DriveTopBar';
 import { DriveFolderItem } from '../components/DriveFolderItem';
 import { Field, TextArea } from '../components/Field';
 import { DriveCardItem, FaceCard } from '../components/DriveCardItem';
+import { FaceCardComposer } from '../components/FaceCardComposer';
 import { DragItem, DropZone, useDriveDrop } from '../dnd/DragDrop';
 import { useAppToast } from '../hooks/useAppToast';
 
@@ -551,41 +552,43 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         </IonContent>
       </IonModal>
 
-      <IonModal isOpen={cardOpen} onDidDismiss={() => setCardOpen(false)}>
+      <IonModal
+        isOpen={cardOpen}
+        onDidDismiss={() => setCardOpen(false)}
+        className="sc-card-modal"
+      >
         <IonHeader>
           <IonToolbar>
-            <IonTitle>Novo card</IonTitle>
+            <IonTitle>Nova carta</IonTitle>
             <IonButtons slot="end">
               <IonButton onClick={() => setCardOpen(false)}>Fechar</IonButton>
             </IonButtons>
           </IonToolbar>
         </IonHeader>
-        <IonContent className="ion-padding sc-form">
-          <div className="sc-auth-fields">
-            <Field
-              label="Conceito (título)"
-              value={front}
-              onChange={setFront}
-              autoFocus
+        <IonContent className="sc-card-modal-content">
+          <div className="sc-card-modal-stage">
+            <p className="sc-card-modal-hint">
+              Preencha como se estivesse virando a carta na mesa.
+            </p>
+            <FaceCardComposer
+              front={front}
+              back={back}
+              tag={tag}
+              hint={hint}
+              onFront={setFront}
+              onBack={setBack}
+              onTag={setTag}
+              onHint={setHint}
             />
-            <TextArea label="Explicação" value={back} onChange={setBack} />
-            <Field
-              label="Tag"
-              value={tag}
-              onChange={setTag}
-              placeholder="Conceito, API, Dado..."
-            />
-            <Field label="Dica" value={hint} onChange={setHint} />
+            <button
+              type="button"
+              className="sc-btn primary sc-card-modal-submit"
+              disabled={saving || !front.trim() || !back.trim()}
+              onClick={() => void createCard()}
+            >
+              {saving ? 'Criando…' : 'Colocar na mesa'}
+            </button>
           </div>
-          <button
-            type="button"
-            className="sc-btn primary"
-            style={{ marginTop: 16 }}
-            disabled={saving || !front.trim() || !back.trim()}
-            onClick={() => void createCard()}
-          >
-            Criar
-          </button>
         </IonContent>
       </IonModal>
 

@@ -6,6 +6,7 @@ import {
   statusLabel,
   type Card,
 } from '../../modules/cards/types/card.types';
+import { suitColor } from './FaceCardComposer';
 
 type Props = {
   card: Card;
@@ -88,11 +89,3 @@ export function FaceCard({ card, selected, onClick, style }: FaceProps) {
   );
 }
 
-function suitColor(tag: string) {
-  const t = tag.toLowerCase();
-  if (t.includes('api')) return '#378ADD';
-  if (t.includes('dado') || t.includes('infra')) return '#1D9E75';
-  if (t.includes('padrão') || t.includes('padrao')) return '#BA7517';
-  if (t.includes('síntese') || t.includes('sintese')) return '#7F77DD';
-  return '#1D9E75';
-}
