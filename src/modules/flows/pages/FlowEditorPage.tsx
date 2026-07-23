@@ -9,6 +9,13 @@ import {
   IonTitle,
   IonToolbar,
 } from '@ionic/react';
+import { IonIcon } from '@ionic/react';
+import {
+  addOutline,
+  closeOutline,
+  expandOutline,
+  trashOutline,
+} from 'ionicons/icons';
 import { useHistory, useParams } from 'react-router-dom';
 import {
   ReactFlow,
@@ -41,6 +48,24 @@ import { useTheme } from '../../../shared/theme/ThemeContext';
 
 const nodeTypes = { cardNode: CardFlowNode };
 
+function useIsCompactFlow() {
+  const [compact, setCompact] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia('(max-width: 820px)').matches,
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 820px)');
+    const onChange = () => setCompact(mq.matches);
+    onChange();
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
+  return compact;
+}
+
 function cardToNodeData(card: Card): CardFlowNodeData {
   return {
     cardId: card.id,
@@ -63,6 +88,7 @@ function FlowCanvas({
 }) {
   const toast = useAppToast();
   const { resolved } = useTheme();
+  const compact = useIsCompactFlow();
   const { screenToFlowPosition, fitView } = useReactFlow();
   const cardMap = useMemo(
     () => new Map(cards.map((c) => [c.id, c])),
@@ -112,6 +138,7 @@ function FlowCanvas({
   const [query, setQuery] = useState('');
   const [saving, setSaving] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const usedIds = useMemo(() => {
@@ -126,9 +153,22 @@ function FlowCanvas({
   useEffect(() => {
     setNodes(initialNodes);
     setEdges(initialEdges);
-    requestAnimationFrame(() => fitView({ padding: 0.2 }));
+    requestAnimationFrame(() => fitView({ padding: compact ? 0.15 : 0.2 }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [board.id]);
+
+  useEffect(() => {
+    if (!compact) setPaletteOpen(false);
+  }, [compact]);
+
+  useEffect(() => {
+    if (!paletteOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPaletteOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [paletteOpen]);
 
   const persist = useCallback(
     async (nextNodes: Node[], nextEdges: Edge[]) => {
@@ -209,8 +249,8 @@ function FlowCanvas({
       const pos =
         position ??
         screenToFlowPosition({
-          x: window.innerWidth * 0.45,
-          y: window.innerHeight * 0.35,
+          x: window.innerWidth * 0.5,
+          y: window.innerHeight * (compact ? 0.42 : 0.35),
         });
       const node: Node = {
         id,
@@ -239,8 +279,10 @@ function FlowCanvas({
       setNodes(nextNodes);
       setEdges(nextEdges);
       scheduleSave(nextNodes, nextEdges);
+      if (compact) setPaletteOpen(false);
     },
     [
+      compact,
       edges,
       nodes,
       scheduleSave,
@@ -295,41 +337,83 @@ function FlowCanvas({
     );
   };
 
-  return (
-    <div className="sc-flow-workspace">
-      <aside className="sc-flow-palette">
-        <div className="sc-flow-palette-head">
+  const palette = (
+    <>
+      <div className="sc-flow-palette-head">
+        <div>
           <strong>Cards do grupo</strong>
           <span>{available.length} disponíveis</span>
         </div>
-        <input
-          className="sc-search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar card…"
-          aria-label="Buscar card"
-        />
-        <div className="sc-flow-palette-list">
-          {available.map((card) => (
-            <button
-              key={card.id}
-              type="button"
-              className="sc-flow-palette-item"
-              draggable
-              onDragStart={(e) => onDragStart(e, card)}
-              onClick={() => addCard(card)}
-            >
-              <span className="sc-flow-palette-tag">{card.tag}</span>
-              <span className="sc-flow-palette-title">{card.front}</span>
-            </button>
-          ))}
-          {!available.length ? (
-            <p className="sc-flow-palette-empty">
-              Todos os cards já estão no canvas, ou nenhum bate com a busca.
-            </p>
-          ) : null}
-        </div>
-      </aside>
+        {compact ? (
+          <button
+            type="button"
+            className="sc-flow-palette-close"
+            aria-label="Fechar"
+            onClick={() => setPaletteOpen(false)}
+          >
+            <IonIcon icon={closeOutline} />
+          </button>
+        ) : null}
+      </div>
+      <input
+        className="sc-search sc-flow-palette-search"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Buscar card…"
+        aria-label="Buscar card"
+      />
+      <div className="sc-flow-palette-list">
+        {available.map((card) => (
+          <button
+            key={card.id}
+            type="button"
+            className="sc-flow-palette-item"
+            draggable={!compact}
+            onDragStart={(e) => onDragStart(e, card)}
+            onClick={() => addCard(card)}
+          >
+            <span className="sc-flow-palette-tag">{card.tag}</span>
+            <span className="sc-flow-palette-title">{card.front}</span>
+          </button>
+        ))}
+        {!available.length ? (
+          <p className="sc-flow-palette-empty">
+            Todos os cards já estão no canvas, ou nenhum bate com a busca.
+          </p>
+        ) : null}
+      </div>
+      {compact ? (
+        <p className="sc-flow-palette-hint">Toque num card para colocá-lo no mapa</p>
+      ) : (
+        <p className="sc-flow-palette-hint">Arraste ou clique para adicionar</p>
+      )}
+    </>
+  );
+
+  return (
+    <div
+      className={`sc-flow-workspace${compact ? ' is-compact' : ''}${paletteOpen ? ' is-palette-open' : ''}`}
+    >
+      {!compact ? <aside className="sc-flow-palette">{palette}</aside> : null}
+
+      {compact ? (
+        <>
+          <button
+            type="button"
+            className="sc-flow-palette-backdrop"
+            aria-label="Fechar cards"
+            tabIndex={paletteOpen ? 0 : -1}
+            onClick={() => setPaletteOpen(false)}
+          />
+          <aside
+            className="sc-flow-palette sc-flow-palette-sheet"
+            aria-hidden={!paletteOpen}
+          >
+            <div className="sc-flow-palette-grab" aria-hidden />
+            {palette}
+          </aside>
+        </>
+      ) : null}
 
       <div
         className="sc-flow-canvas"
@@ -343,22 +427,42 @@ function FlowCanvas({
           <span className="sc-flow-save">
             {saving ? 'Salvando…' : 'Salvo'}
           </span>
-          <button
-            type="button"
-            className="sc-btn"
-            disabled={!selected.length}
-            onClick={removeSelected}
-          >
-            Remover seleção
-          </button>
-          <button
-            type="button"
-            className="sc-btn"
-            onClick={() => fitView({ padding: 0.2 })}
-          >
-            Enquadrar
-          </button>
+          <div className="sc-flow-toolbar-actions">
+            <button
+              type="button"
+              className="sc-btn sc-flow-tool-btn"
+              disabled={!selected.length}
+              onClick={removeSelected}
+              aria-label="Remover seleção"
+              title="Remover seleção"
+            >
+              <IonIcon icon={trashOutline} />
+              {!compact ? <span>Remover</span> : null}
+            </button>
+            <button
+              type="button"
+              className="sc-btn sc-flow-tool-btn"
+              onClick={() => fitView({ padding: compact ? 0.15 : 0.2 })}
+              aria-label="Enquadrar"
+              title="Enquadrar"
+            >
+              <IonIcon icon={expandOutline} />
+              {!compact ? <span>Enquadrar</span> : null}
+            </button>
+            {compact ? (
+              <button
+                type="button"
+                className="sc-btn primary sc-flow-tool-btn"
+                onClick={() => setPaletteOpen(true)}
+                aria-label="Adicionar card"
+              >
+                <IonIcon icon={addOutline} />
+                <span>Cards</span>
+              </button>
+            ) : null}
+          </div>
         </div>
+
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -370,17 +474,25 @@ function FlowCanvas({
           nodeTypes={nodeTypes}
           fitView
           colorMode={resolved}
-          deleteKeyCode={['Backspace', 'Delete']}
+          deleteKeyCode={compact ? null : ['Backspace', 'Delete']}
+          panOnScroll={!compact}
+          zoomOnPinch
+          panOnDrag
+          selectionOnDrag={!compact}
+          minZoom={0.25}
+          maxZoom={1.8}
           proOptions={{ hideAttribution: true }}
         >
           <Background
             variant={BackgroundVariant.Dots}
-            gap={18}
+            gap={compact ? 16 : 18}
             size={1}
             color="var(--border)"
           />
-          <Controls />
-          <MiniMap pannable zoomable nodeColor={() => 'var(--text-accent)'} />
+          <Controls showInteractive={!compact} position="bottom-left" />
+          {!compact ? (
+            <MiniMap pannable zoomable nodeColor={() => 'var(--text-accent)'} />
+          ) : null}
         </ReactFlow>
       </div>
     </div>
@@ -445,7 +557,9 @@ export default function FlowEditorPage() {
           </IonButtons>
           <IonTitle>
             {board?.name ?? 'Fluxograma'}
-            {subjectName ? ` · ${subjectName}` : ''}
+            {subjectName ? (
+              <span className="sc-flow-editor-sub"> · {subjectName}</span>
+            ) : null}
           </IonTitle>
         </IonToolbar>
       </IonHeader>
