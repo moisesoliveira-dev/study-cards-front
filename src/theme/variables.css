@@ -793,7 +793,7 @@ body.sc-card-modal-open {
 .sc-card-as-modal {
   position: fixed;
   inset: 0;
-  z-index: 20000;
+  z-index: 10000;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -803,6 +803,28 @@ body.sc-card-modal-open {
     var(--modal-scrim);
   backdrop-filter: blur(6px);
   animation: sc-card-backdrop 0.25s ease-out;
+}
+
+/* Ionic overlays must stay above custom portals (.sc-card-as-modal) */
+ion-alert,
+ion-action-sheet {
+  --z-index: 40000;
+}
+
+ion-loading {
+  --z-index: 41000;
+}
+
+ion-toast {
+  --z-index: 42000;
+}
+
+ion-modal {
+  --z-index: 15000;
+}
+
+ion-popover {
+  --z-index: 16000;
 }
 
 @keyframes sc-card-backdrop {
