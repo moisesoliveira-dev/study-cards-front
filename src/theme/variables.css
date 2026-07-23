@@ -417,6 +417,12 @@ body {
   box-shadow: 0 0 0 1px var(--text-accent);
 }
 
+.sc-face-add {
+  border-style: dashed;
+  background: transparent;
+  justify-content: center;
+}
+
 .card-corner {
   position: absolute;
   font-size: 10px;

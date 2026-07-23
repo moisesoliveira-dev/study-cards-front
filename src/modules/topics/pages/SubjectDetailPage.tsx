@@ -180,7 +180,31 @@ export default function SubjectDetailPage() {
               ))}
               {!cards.length && !loading ? (
                 <div className="sc-empty" style={{ gridColumn: '1 / -1' }}>
-                  Sem cards neste nível. Abra um grupo para criar.
+                  <p style={{ marginBottom: 12 }}>
+                    Para criar cards: abra uma pasta de <strong>Grupo</strong> acima.
+                    Lá você verá <strong>+ Novo card</strong>.
+                  </p>
+                  {tree[0] ? (
+                    <button
+                      type="button"
+                      className="sc-btn primary"
+                      onClick={() =>
+                        history.push(
+                          `/topics/${tree[0].id}?subjectId=${subjectId}`,
+                        )
+                      }
+                    >
+                      Abrir “{tree[0].name}” e criar card
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="sc-btn primary"
+                      onClick={() => setOpen(true)}
+                    >
+                      Criar primeiro grupo
+                    </button>
+                  )}
                 </div>
               ) : null}
             </div>

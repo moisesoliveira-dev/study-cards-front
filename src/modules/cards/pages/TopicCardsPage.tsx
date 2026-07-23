@@ -249,7 +249,9 @@ export default function TopicCardsPage() {
           </IonButtons>
           <IonTitle>{topicName}</IonTitle>
           <IonButtons slot="end">
-            <IonButton onClick={() => setCreateOpen(true)}>Novo card</IonButton>
+            <IonButton color="primary" onClick={() => setCreateOpen(true)}>
+              + Novo card
+            </IonButton>
           </IonButtons>
         </IonToolbar>
       </IonHeader>
@@ -261,13 +263,22 @@ export default function TopicCardsPage() {
                 <span className="deck-label">{topicName}</span>
                 <span className="deck-count">{cards.length} cards</span>
               </div>
-              <div className="progress-row">
-                <span className="pip pip-ok" />
-                <span className="pip-label">{counts.known} sabidos</span>
-                <span className="pip pip-rev" />
-                <span className="pip-label">{counts.review} revisar</span>
-                <span className="pip pip-new" />
-                <span className="pip-label">{counts.neu} novos</span>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <div className="progress-row">
+                  <span className="pip pip-ok" />
+                  <span className="pip-label">{counts.known} sabidos</span>
+                  <span className="pip pip-rev" />
+                  <span className="pip-label">{counts.review} revisar</span>
+                  <span className="pip pip-new" />
+                  <span className="pip-label">{counts.neu} novos</span>
+                </div>
+                <button
+                  type="button"
+                  className="sc-btn primary"
+                  onClick={() => setCreateOpen(true)}
+                >
+                  + Novo card
+                </button>
               </div>
             </div>
 
@@ -292,9 +303,22 @@ export default function TopicCardsPage() {
                       }}
                     />
                   ))}
-                  {!filteredHand.length ? (
-                    <div className="sc-empty">Nenhum card neste grupo.</div>
-                  ) : null}
+                  <button
+                    type="button"
+                    className="sc-face-card sc-face-add"
+                    onClick={() => setCreateOpen(true)}
+                    aria-label="Criar card"
+                  >
+                    <div className="card-suit" style={{ color: 'var(--text-muted)' }}>
+                      Novo
+                    </div>
+                    <div className="card-title" style={{ color: 'var(--text-muted)' }}>
+                      + Criar card
+                    </div>
+                    <div className="card-body">
+                      Conceito na frente, explicação no verso.
+                    </div>
+                  </button>
                 </div>
 
                 <div className="sc-groups">
