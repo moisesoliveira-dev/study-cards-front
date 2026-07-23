@@ -767,3 +767,126 @@ body {
 .sc-auth-switch a:hover {
   text-decoration: underline;
 }
+
+body.sc-dragging {
+  cursor: grabbing !important;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+body.sc-dragging * {
+  cursor: grabbing !important;
+}
+
+.sc-drag-ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 10000;
+  pointer-events: none;
+  max-width: 220px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 0.5px solid var(--border-strong);
+  background: var(--surface-1);
+  box-shadow: 0 10px 28px rgba(26, 25, 23, 0.16);
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sc-drag-ghost[data-kind='folder'] {
+  border-color: #BA7517;
+}
+
+.sc-drag-ghost[data-kind='card'] {
+  border-color: var(--text-accent);
+}
+
+.sc-drag-item {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.sc-drag-item.is-dragging {
+  opacity: 0.35;
+}
+
+.sc-drop-zone {
+  border-radius: 10px;
+  transition: box-shadow 0.12s, background 0.12s, outline-color 0.12s;
+}
+
+.sc-drop-zone.is-over {
+  outline: 2px solid var(--text-accent);
+  outline-offset: 2px;
+  background: color-mix(in srgb, var(--bg-accent) 55%, transparent);
+}
+
+.sc-drop-zone.is-over[data-drop-kind='card'] {
+  outline-color: #7F77DD;
+  background: color-mix(in srgb, #7F77DD 12%, transparent);
+}
+
+.sc-drop-zone.is-over[data-drop-kind='folder'] {
+  outline-color: #BA7517;
+  background: color-mix(in srgb, #BA7517 12%, transparent);
+}
+
+.sc-drop-root {
+  min-height: 48px;
+  margin-bottom: 10px;
+  border: 1px dashed transparent;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 12px;
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
+}
+
+.sc-drop-root.is-over,
+.sc-drop-zone.is-over > .sc-drop-root {
+  border-color: var(--text-accent);
+  color: var(--text-accent);
+  background: var(--bg-accent);
+}
+
+.sc-dnd-hint {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.sc-grid > .sc-drop-zone,
+.sc-hand > .sc-drop-zone,
+.sc-list-view > .sc-drop-zone,
+.sc-groups > .sc-drop-zone {
+  min-width: 0;
+}
+
+.sc-hand > .sc-drop-zone,
+.sc-hand > .sc-drop-zone > .sc-drag-item {
+  width: 136px;
+  height: 188px;
+}
+
+.sc-hand > .sc-drop-zone > .sc-drag-item > .sc-face-card {
+  width: 100%;
+  height: 100%;
+}
+
+.sc-grid > .sc-drop-zone > .sc-drag-item > .sc-item {
+  height: 100%;
+  width: 100%;
+}
+
+.sc-group-drop .sc-group {
+  margin: 0;
+}

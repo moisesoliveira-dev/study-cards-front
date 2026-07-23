@@ -22,6 +22,7 @@ import { DriveTopBar } from '../../../shared/components/DriveTopBar';
 import { DriveFolderItem } from '../../../shared/components/DriveFolderItem';
 import { Field, TextArea } from '../../../shared/components/Field';
 import { DriveCardItem } from '../../../shared/components/DriveCardItem';
+import { DragItem, DropZone, useDriveDrop } from '../../../shared/dnd/DragDrop';
 import { useAppToast } from '../../../shared/hooks/useAppToast';
 
 function flattenTopics(nodes: TopicTreeNode[]): TopicTreeNode[] {
@@ -40,6 +41,8 @@ export default function SubjectDetailPage() {
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [folderOpen, setFolderOpen] = useState(false);
   const [cardOpen, setCardOpen] = useState(false);
+  const [mergeOpen, setMergeOpen] = useState(false);
+  const [mergeSources, setMergeSources] = useState<Card[]>([]);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [front, setFront] = useState('');
@@ -89,6 +92,59 @@ export default function SubjectDetailPage() {
     );
   }, [looseCards, query]);
 
+  const handleDrop = useCallback(
+    async (detail: {
+      payload: { kind: string; id: string; label?: string };
+      over: { kind: string; id?: string } | null;
+      moved: boolean;
+    }) => {
+      if (!detail.moved || !detail.over) return;
+      const { payload, over } = detail;
+
+      try {
+        if (payload.kind === 'card' && over.kind === 'folder' && over.id) {
+          await cardsFacade.move(payload.id, over.id);
+          toast.success('Card movido para a pasta');
+          await load();
+          return;
+        }
+
+        if (payload.kind === 'card' && over.kind === 'card' && over.id) {
+          if (payload.id === over.id) return;
+          const a = looseCards.find((c) => c.id === payload.id);
+          const b = looseCards.find((c) => c.id === over.id);
+          if (!a || !b) return;
+          setMergeSources([a, b]);
+          setFront(`${a.front} + ${b.front}`);
+          setBack(`• ${a.front}: ${a.back}\n• ${b.front}: ${b.back}`);
+          setHint('');
+          setTag('Síntese');
+          setMergeOpen(true);
+          return;
+        }
+
+        if (payload.kind === 'folder' && over.kind === 'folder' && over.id) {
+          if (payload.id === over.id) return;
+          await topicsFacade.update(payload.id, { parentId: over.id });
+          toast.success('Pasta movida');
+          await load();
+          return;
+        }
+
+        if (payload.kind === 'folder' && over.kind === 'root') {
+          await topicsFacade.update(payload.id, { parentId: null });
+          toast.success('Pasta na raiz');
+          await load();
+        }
+      } catch (error) {
+        toast.error(error);
+      }
+    },
+    [load, looseCards, toast],
+  );
+
+  useDriveDrop(handleDrop);
+
   const createTopic = async () => {
     if (!name.trim()) return;
     setSaving(true);
@@ -131,6 +187,35 @@ export default function SubjectDetailPage() {
     }
   };
 
+  const mergeCards = async () => {
+    if (mergeSources.length < 2 || !front.trim() || !back.trim()) return;
+    setSaving(true);
+    try {
+      const created = await cardsFacade.merge({
+        subjectId,
+        topicId: null,
+        sourceCardIds: mergeSources.map((c) => c.id),
+        front,
+        back,
+        hint,
+        tag: tag || 'Síntese',
+      });
+      setMergeOpen(false);
+      setMergeSources([]);
+      setFront('');
+      setBack('');
+      setHint('');
+      setTag('Conceito');
+      toast.success('Cards unidos');
+      await load();
+      setDetail(created);
+    } catch (error) {
+      toast.error(error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const totalTopics = flattenTopics(tree).length;
 
   return (
@@ -162,6 +247,11 @@ export default function SubjectDetailPage() {
             onNewCard={() => setCardOpen(true)}
           />
 
+          <p className="sc-dnd-hint">
+            Arraste card sobre card para unir · card sobre pasta para mover · pasta
+            sobre pasta para aninhar
+          </p>
+
           <div className="sc-section-label">Pastas</div>
           {loading ? (
             <div className="sc-empty">
@@ -170,15 +260,26 @@ export default function SubjectDetailPage() {
           ) : (
             <div className="sc-grid">
               {folders.map((node) => (
-                <DriveFolderItem
-                  key={node.id}
-                  name={node.name}
-                  subtitle={`${node.children.length} sub · abrir`}
-                  color={subject?.color}
-                  onClick={() =>
-                    history.push(`/topics/${node.id}?subjectId=${subjectId}`)
-                  }
-                />
+                <DropZone key={node.id} target={{ kind: 'folder', id: node.id }}>
+                  <DragItem
+                    payload={{
+                      kind: 'folder',
+                      id: node.id,
+                      subjectId,
+                      parentId: node.parentId,
+                      label: node.name,
+                    }}
+                    onClick={() =>
+                      history.push(`/topics/${node.id}?subjectId=${subjectId}`)
+                    }
+                  >
+                    <DriveFolderItem
+                      name={node.name}
+                      subtitle={`${node.children.length} sub · abrir`}
+                      color={subject?.color}
+                    />
+                  </DragItem>
+                </DropZone>
               ))}
               <DriveFolderItem
                 name="Nova pasta"
@@ -192,31 +293,49 @@ export default function SubjectDetailPage() {
           {view === 'grid' ? (
             <div className="sc-grid">
               {cards.map((card) => (
-                <DriveCardItem
-                  key={card.id}
-                  card={card}
-                  onClick={() => setDetail(card)}
-                />
+                <DropZone key={card.id} target={{ kind: 'card', id: card.id }}>
+                  <DragItem
+                    payload={{
+                      kind: 'card',
+                      id: card.id,
+                      subjectId: card.subjectId,
+                      topicId: card.topicId,
+                      label: card.front,
+                    }}
+                    onClick={() => setDetail(card)}
+                  >
+                    <DriveCardItem card={card} />
+                  </DragItem>
+                </DropZone>
               ))}
               {!cards.length && !loading ? (
                 <div className="sc-empty" style={{ gridColumn: '1 / -1' }}>
-                  Nenhum card na raiz. Use <strong>+ Card</strong> para criar aqui.
+                  Nenhum card na raiz. Use <strong>+ Card</strong> ou arraste de
+                  uma pasta.
                 </div>
               ) : null}
             </div>
           ) : (
             <div className="sc-list-view">
               {cards.map((card) => (
-                <DriveCardItem
-                  key={card.id}
-                  card={card}
-                  view="list"
-                  onClick={() => setDetail(card)}
-                />
+                <DropZone key={card.id} target={{ kind: 'card', id: card.id }}>
+                  <DragItem
+                    payload={{
+                      kind: 'card',
+                      id: card.id,
+                      subjectId: card.subjectId,
+                      topicId: card.topicId,
+                      label: card.front,
+                    }}
+                    onClick={() => setDetail(card)}
+                  >
+                    <DriveCardItem card={card} view="list" />
+                  </DragItem>
+                </DropZone>
               ))}
               {!cards.length && !loading ? (
                 <div className="sc-empty">
-                  Nenhum card na raiz. Use <strong>+ Card</strong> para criar aqui.
+                  Nenhum card na raiz. Use <strong>+ Card</strong> para criar.
                 </div>
               ) : null}
             </div>
@@ -230,7 +349,9 @@ export default function SubjectDetailPage() {
               type="button"
               className="sc-btn"
               onClick={() => {
-                history.push(`/study/${subjectId}?subjectId=${subjectId}&scope=subject&filter=REVIEW`);
+                history.push(
+                  `/study/${subjectId}?subjectId=${subjectId}&scope=subject&filter=REVIEW`,
+                );
               }}
             >
               Revisar pendentes ↗
@@ -303,6 +424,50 @@ export default function SubjectDetailPage() {
             onClick={() => void createCard()}
           >
             Criar
+          </button>
+        </IonContent>
+      </IonModal>
+
+      <IonModal
+        isOpen={mergeOpen}
+        onDidDismiss={() => {
+          setMergeOpen(false);
+          setMergeSources([]);
+        }}
+      >
+        <IonHeader>
+          <IonToolbar>
+            <IonTitle>Unir cards</IonTitle>
+            <IonButtons slot="end">
+              <IonButton
+                onClick={() => {
+                  setMergeOpen(false);
+                  setMergeSources([]);
+                }}
+              >
+                Fechar
+              </IonButton>
+            </IonButtons>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent className="ion-padding sc-form">
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 0 }}>
+            {mergeSources.length} cards serão ligados a este novo conceito.
+          </p>
+          <div className="sc-auth-fields">
+            <Field label="Novo conceito" value={front} onChange={setFront} autoFocus />
+            <TextArea label="Síntese / explicação" value={back} onChange={setBack} />
+            <Field label="Tag" value={tag} onChange={setTag} />
+            <Field label="Dica" value={hint} onChange={setHint} />
+          </div>
+          <button
+            type="button"
+            className="sc-btn primary"
+            style={{ marginTop: 16 }}
+            disabled={saving || !front.trim() || !back.trim()}
+            onClick={() => void mergeCards()}
+          >
+            Criar conceito unido
           </button>
         </IonContent>
       </IonModal>

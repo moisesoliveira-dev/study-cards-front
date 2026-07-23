@@ -24,4 +24,5 @@ export type UpdateTopicInput = {
   name?: string;
   description?: string | null;
   position?: number;
+  parentId?: string | null;
 };

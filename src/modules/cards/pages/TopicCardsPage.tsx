@@ -19,6 +19,7 @@ import type { Card } from '../types/card.types';
 import type { TopicTreeNode } from '../../topics/types/topic.types';
 import { FaceCard } from '../../../shared/components/DriveCardItem';
 import { Field, TextArea } from '../../../shared/components/Field';
+import { DragItem, DropZone, useDriveDrop } from '../../../shared/dnd/DragDrop';
 import { useAppToast } from '../../../shared/hooks/useAppToast';
 import {
   statusClass,
@@ -244,6 +245,72 @@ export default function TopicCardsPage() {
     setMergeOpen(true);
   };
 
+  const handleDrop = useCallback(
+    async (detail: {
+      payload: {
+        kind: string;
+        id: string;
+        subjectId?: string;
+        topicId?: string | null;
+        parentId?: string | null;
+      };
+      over: { kind: string; id?: string } | null;
+      moved: boolean;
+    }) => {
+      if (!detail.moved || !detail.over || !subjectId) return;
+      const { payload, over } = detail;
+
+      try {
+        if (payload.kind === 'card' && over.kind === 'card' && over.id) {
+          if (payload.id === over.id) return;
+          const a = cards.find((c) => c.id === payload.id);
+          const b = cards.find((c) => c.id === over.id);
+          if (!a || !b) return;
+          setSelected([a.id, b.id]);
+          setFront(`${a.front} + ${b.front}`);
+          setBack(`• ${a.front}: ${a.back}\n• ${b.front}: ${b.back}`);
+          setHint('');
+          setTag('Síntese');
+          setMergeOpen(true);
+          return;
+        }
+
+        if (payload.kind === 'card' && over.kind === 'folder' && over.id) {
+          await cardsFacade.move(payload.id, over.id);
+          toast.success('Card movido');
+          await load();
+          return;
+        }
+
+        if (payload.kind === 'card' && over.kind === 'root') {
+          await cardsFacade.move(payload.id, null);
+          toast.success('Card enviado à raiz do grupo');
+          await load();
+          return;
+        }
+
+        if (payload.kind === 'folder' && over.kind === 'folder' && over.id) {
+          if (payload.id === over.id) return;
+          await topicsFacade.update(payload.id, { parentId: over.id });
+          toast.success('Pasta movida');
+          await load();
+          return;
+        }
+
+        if (payload.kind === 'folder' && over.kind === 'root') {
+          await topicsFacade.update(payload.id, { parentId: null });
+          toast.success('Pasta na raiz do grupo');
+          await load();
+        }
+      } catch (error) {
+        toast.error(error);
+      }
+    },
+    [cards, load, subjectId, toast],
+  );
+
+  useDriveDrop(handleDrop);
+
   return (
     <IonPage>
       <IonHeader>
@@ -294,20 +361,40 @@ export default function TopicCardsPage() {
               </div>
             ) : (
               <>
+                <p className="sc-dnd-hint">
+                  Arraste card sobre card para unir · card sobre subpasta para
+                  mover · solte em “Raiz” para sair da pasta
+                </p>
+
+                <DropZone target={{ kind: 'root' }}>
+                  <div className="sc-drop-root">Soltar na raiz do grupo</div>
+                </DropZone>
+
                 <div className="sc-hand" role="list" aria-label="Cards">
                   {filteredHand.map((card) => (
-                    <FaceCard
-                      key={card.id}
-                      card={card}
-                      selected={selected.includes(card.id)}
-                      onClick={() => {
-                        if (selectMode) {
-                          toggleSelect(card.id);
-                        } else {
-                          setDetail(card);
-                        }
-                      }}
-                    />
+                    <DropZone key={card.id} target={{ kind: 'card', id: card.id }}>
+                      <DragItem
+                        payload={{
+                          kind: 'card',
+                          id: card.id,
+                          subjectId: card.subjectId,
+                          topicId: card.topicId,
+                          label: card.front,
+                        }}
+                        onClick={() => {
+                          if (selectMode) {
+                            toggleSelect(card.id);
+                          } else {
+                            setDetail(card);
+                          }
+                        }}
+                      >
+                        <FaceCard
+                          card={card}
+                          selected={selected.includes(card.id)}
+                        />
+                      </DragItem>
+                    </DropZone>
                   ))}
                   <button
                     type="button"
@@ -329,61 +416,56 @@ export default function TopicCardsPage() {
 
                 <div className="sc-groups">
                   {children.map((child, idx) => (
-                    <div key={child.id} className="sc-group">
-                      <div className="group-head">
-                        <span
-                          className="group-dot"
-                          style={{
-                            background: ['#7F77DD', '#1D9E75', '#BA7517', '#378ADD'][
-                              idx % 4
-                            ],
-                          }}
-                        />
-                        <span className="group-name">{child.name}</span>
-                        <button
-                          type="button"
-                          className="sc-btn"
-                          onClick={() =>
-                            history.push(
-                              `/topics/${child.id}?subjectId=${subjectId}`,
-                            )
-                          }
-                        >
-                          Abrir
-                        </button>
-                      </div>
-                      <div className="group-cards">
-                        {(childCards[child.id] ?? []).map((card) => (
-                          <button
-                            key={card.id}
-                            type="button"
-                            className="mini-card"
-                            onClick={() =>
-                              history.push(
-                                `/topics/${child.id}?subjectId=${subjectId}&cardId=${card.id}`,
-                              )
-                            }
-                          >
-                            <div className="mini-title">{card.front}</div>
-                            <div className="mini-tag">
-                              {card.tag} · {statusLabel(card.status).toLowerCase()}
-                            </div>
-                          </button>
-                        ))}
-                        <button
-                          type="button"
-                          className="mini-card mini-add"
-                          onClick={() =>
-                            history.push(
-                              `/topics/${child.id}?subjectId=${subjectId}`,
-                            )
-                          }
-                          aria-label="Abrir subgrupo"
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
+                    <DropZone
+                      key={child.id}
+                      target={{ kind: 'folder', id: child.id }}
+                      className="sc-group-drop"
+                    >
+                      <DragItem
+                        payload={{
+                          kind: 'folder',
+                          id: child.id,
+                          subjectId: subjectId!,
+                          parentId: child.parentId,
+                          label: child.name,
+                        }}
+                        onClick={() =>
+                          history.push(
+                            `/topics/${child.id}?subjectId=${subjectId}`,
+                          )
+                        }
+                      >
+                        <div className="sc-group">
+                          <div className="group-head">
+                            <span
+                              className="group-dot"
+                              style={{
+                                background: [
+                                  '#7F77DD',
+                                  '#1D9E75',
+                                  '#BA7517',
+                                  '#378ADD',
+                                ][idx % 4],
+                              }}
+                            />
+                            <span className="group-name">{child.name}</span>
+                            <span className="sc-btn">Abrir</span>
+                          </div>
+                          <div className="group-cards">
+                            {(childCards[child.id] ?? []).map((card) => (
+                              <div key={card.id} className="mini-card">
+                                <div className="mini-title">{card.front}</div>
+                                <div className="mini-tag">
+                                  {card.tag} ·{' '}
+                                  {statusLabel(card.status).toLowerCase()}
+                                </div>
+                              </div>
+                            ))}
+                            <div className="mini-card mini-add">+</div>
+                          </div>
+                        </div>
+                      </DragItem>
+                    </DropZone>
                   ))}
                   <div className="sc-group">
                     <div className="group-head">

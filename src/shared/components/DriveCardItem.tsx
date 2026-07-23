@@ -9,15 +9,16 @@ import {
 type Props = {
   card: Card;
   selected?: boolean;
-  onClick: () => void;
+  onClick?: () => void;
   view?: 'grid' | 'list';
 };
 
 export function DriveCardItem({ card, selected, onClick, view = 'grid' }: Props) {
   if (view === 'list') {
     return (
-      <button
-        type="button"
+      <div
+        role={onClick ? 'button' : undefined}
+        tabIndex={onClick ? 0 : undefined}
         className={`sc-list-row${selected ? ' selected' : ''}`}
         onClick={onClick}
       >
@@ -28,13 +29,14 @@ export function DriveCardItem({ card, selected, onClick, view = 'grid' }: Props)
           {statusLabel(card.status)}
         </span>
         <span className="list-links">{card.linkCount} links</span>
-      </button>
+      </div>
     );
   }
 
   return (
-    <button
-      type="button"
+    <div
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
       className={`sc-item card-item${selected ? ' selected' : ''}`}
       onClick={onClick}
     >
@@ -49,21 +51,22 @@ export function DriveCardItem({ card, selected, onClick, view = 'grid' }: Props)
           {statusLabel(card.status)} · {card.linkCount} links
         </div>
       </div>
-    </button>
+    </div>
   );
 }
 
 type FaceProps = {
   card: Card;
   selected?: boolean;
-  onClick: () => void;
+  onClick?: () => void;
 };
 
 export function FaceCard({ card, selected, onClick }: FaceProps) {
   const initials = cardInitials(card.front);
   return (
-    <button
-      type="button"
+    <div
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
       className={`sc-face-card${selected ? ' selected' : ''}`}
       onClick={onClick}
     >
@@ -78,7 +81,7 @@ export function FaceCard({ card, selected, onClick }: FaceProps) {
         {statusLabel(card.status)}
       </span>
       <div className="card-links">→ {card.linkCount} links</div>
-    </button>
+    </div>
   );
 }
 

@@ -6,7 +6,7 @@ type Props = {
   subtitle?: string;
   color?: string;
   dashed?: boolean;
-  onClick: () => void;
+  onClick?: () => void;
 };
 
 export function DriveFolderItem({
@@ -17,10 +17,21 @@ export function DriveFolderItem({
   onClick,
 }: Props) {
   return (
-    <button
-      type="button"
+    <div
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
       className={`sc-item folder${dashed ? ' dashed' : ''}`}
       onClick={onClick}
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
     >
       <div className="thumb">
         <IonIcon
@@ -37,6 +48,6 @@ export function DriveFolderItem({
         </div>
         {subtitle ? <div className="item-sub">{subtitle}</div> : null}
       </div>
-    </button>
+    </div>
   );
 }

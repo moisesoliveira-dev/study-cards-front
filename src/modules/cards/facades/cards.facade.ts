@@ -43,6 +43,10 @@ export class CardsFacade {
     });
   }
 
+  move(id: string, topicId: string | null) {
+    return cardsApi.move(id, topicId);
+  }
+
   update(id: string, input: UpdateCardInput) {
     return cardsApi.update(id, input);
   }
