@@ -5,12 +5,9 @@ import {
   IonButtons,
   IonContent,
   IonHeader,
-  IonInput,
-  IonItem,
   IonModal,
   IonPage,
   IonSpinner,
-  IonTextarea,
   IonTitle,
   IonToolbar,
 } from '@ionic/react';
@@ -23,6 +20,7 @@ import type { TopicTreeNode } from '../types/topic.types';
 import type { Card } from '../../cards/types/card.types';
 import { DriveTopBar } from '../../../shared/components/DriveTopBar';
 import { DriveFolderItem } from '../../../shared/components/DriveFolderItem';
+import { Field, TextArea } from '../../../shared/components/Field';
 import { DriveCardItem } from '../../../shared/components/DriveCardItem';
 import { useAppToast } from '../../../shared/hooks/useAppToast';
 
@@ -257,27 +255,18 @@ export default function SubjectDetailPage() {
           </IonToolbar>
         </IonHeader>
         <IonContent className="ion-padding sc-form">
-          <IonItem>
-            <IonInput
-              label="Nome"
-              labelPlacement="stacked"
-              value={name}
-              onIonInput={(e) => setName(e.detail.value ?? '')}
-            />
-          </IonItem>
-          <IonItem>
-            <IonTextarea
+          <div className="sc-auth-fields">
+            <Field label="Nome" value={name} onChange={setName} autoFocus />
+            <TextArea
               label="Descrição"
-              labelPlacement="stacked"
               value={description}
-              onIonInput={(e) => setDescription(e.detail.value ?? '')}
-              autoGrow
+              onChange={setDescription}
             />
-          </IonItem>
+          </div>
           <button
             type="button"
             className="sc-btn primary"
-            style={{ marginTop: 12 }}
+            style={{ marginTop: 16 }}
             disabled={saving}
             onClick={() => void createTopic()}
           >

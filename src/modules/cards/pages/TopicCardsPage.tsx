@@ -5,12 +5,9 @@ import {
   IonButtons,
   IonContent,
   IonHeader,
-  IonInput,
-  IonItem,
   IonModal,
   IonPage,
   IonSpinner,
-  IonTextarea,
   IonTitle,
   IonToolbar,
   useIonAlert,
@@ -21,6 +18,7 @@ import { cardsFacade } from '../facades/cards.facade';
 import type { Card } from '../types/card.types';
 import type { TopicTreeNode } from '../../topics/types/topic.types';
 import { FaceCard } from '../../../shared/components/DriveCardItem';
+import { Field, TextArea } from '../../../shared/components/Field';
 import { useAppToast } from '../../../shared/hooks/useAppToast';
 import {
   statusClass,
@@ -534,44 +532,26 @@ export default function TopicCardsPage() {
           </IonToolbar>
         </IonHeader>
         <IonContent className="ion-padding sc-form">
-          <IonItem>
-            <IonInput
+          <div className="sc-auth-fields">
+            <Field
               label="Conceito (título)"
-              labelPlacement="stacked"
               value={front}
-              onIonInput={(e) => setFront(e.detail.value ?? '')}
+              onChange={setFront}
+              autoFocus
             />
-          </IonItem>
-          <IonItem>
-            <IonTextarea
-              label="Explicação"
-              labelPlacement="stacked"
-              value={back}
-              onIonInput={(e) => setBack(e.detail.value ?? '')}
-              autoGrow
-            />
-          </IonItem>
-          <IonItem>
-            <IonInput
+            <TextArea label="Explicação" value={back} onChange={setBack} />
+            <Field
               label="Tag"
-              labelPlacement="stacked"
               value={tag}
-              onIonInput={(e) => setTag(e.detail.value ?? '')}
+              onChange={setTag}
               placeholder="Conceito, API, Dado..."
             />
-          </IonItem>
-          <IonItem>
-            <IonInput
-              label="Dica"
-              labelPlacement="stacked"
-              value={hint}
-              onIonInput={(e) => setHint(e.detail.value ?? '')}
-            />
-          </IonItem>
+            <Field label="Dica" value={hint} onChange={setHint} />
+          </div>
           <button
             type="button"
             className="sc-btn primary"
-            style={{ marginTop: 12 }}
+            style={{ marginTop: 16 }}
             disabled={saving}
             onClick={() => void createCard()}
           >
@@ -593,35 +573,24 @@ export default function TopicCardsPage() {
           <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 0 }}>
             {selected.length} cards serão ligados a este novo conceito.
           </p>
-          <IonItem>
-            <IonInput
+          <div className="sc-auth-fields">
+            <Field
               label="Novo conceito"
-              labelPlacement="stacked"
               value={front}
-              onIonInput={(e) => setFront(e.detail.value ?? '')}
+              onChange={setFront}
+              autoFocus
             />
-          </IonItem>
-          <IonItem>
-            <IonTextarea
+            <TextArea
               label="Síntese / explicação"
-              labelPlacement="stacked"
               value={back}
-              onIonInput={(e) => setBack(e.detail.value ?? '')}
-              autoGrow
+              onChange={setBack}
             />
-          </IonItem>
-          <IonItem>
-            <IonInput
-              label="Tag"
-              labelPlacement="stacked"
-              value={tag}
-              onIonInput={(e) => setTag(e.detail.value ?? '')}
-            />
-          </IonItem>
+            <Field label="Tag" value={tag} onChange={setTag} />
+          </div>
           <button
             type="button"
             className="sc-btn primary"
-            style={{ marginTop: 12 }}
+            style={{ marginTop: 16 }}
             disabled={saving}
             onClick={() => void merge()}
           >
@@ -640,18 +609,13 @@ export default function TopicCardsPage() {
           </IonToolbar>
         </IonHeader>
         <IonContent className="ion-padding sc-form">
-          <IonItem>
-            <IonInput
-              label="Nome"
-              labelPlacement="stacked"
-              value={subName}
-              onIonInput={(e) => setSubName(e.detail.value ?? '')}
-            />
-          </IonItem>
+          <div className="sc-auth-fields">
+            <Field label="Nome" value={subName} onChange={setSubName} autoFocus />
+          </div>
           <button
             type="button"
             className="sc-btn primary"
-            style={{ marginTop: 12 }}
+            style={{ marginTop: 16 }}
             disabled={saving}
             onClick={() => void createSub()}
           >

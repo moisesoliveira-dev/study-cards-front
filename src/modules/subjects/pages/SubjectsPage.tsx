@@ -4,12 +4,9 @@ import {
   IonButtons,
   IonContent,
   IonHeader,
-  IonInput,
-  IonItem,
   IonModal,
   IonPage,
   IonSpinner,
-  IonTextarea,
   IonTitle,
   IonToolbar,
 } from '@ionic/react';
@@ -18,6 +15,7 @@ import { subjectsFacade } from '../facades/subjects.facade';
 import type { Subject } from '../types/subject.types';
 import { DriveTopBar } from '../../../shared/components/DriveTopBar';
 import { DriveFolderItem } from '../../../shared/components/DriveFolderItem';
+import { Field, TextArea } from '../../../shared/components/Field';
 import { useAppToast } from '../../../shared/hooks/useAppToast';
 import { useAuth } from '../../auth/context/AuthContext';
 
@@ -166,23 +164,14 @@ export default function SubjectsPage() {
           </IonToolbar>
         </IonHeader>
         <IonContent className="ion-padding sc-form">
-          <IonItem>
-            <IonInput
-              label="Nome"
-              labelPlacement="stacked"
-              value={name}
-              onIonInput={(e) => setName(e.detail.value ?? '')}
-            />
-          </IonItem>
-          <IonItem>
-            <IonTextarea
+          <div className="sc-auth-fields">
+            <Field label="Nome" value={name} onChange={setName} autoFocus />
+            <TextArea
               label="Descrição"
-              labelPlacement="stacked"
               value={description}
-              onIonInput={(e) => setDescription(e.detail.value ?? '')}
-              autoGrow
+              onChange={setDescription}
             />
-          </IonItem>
+          </div>
           <div style={{ display: 'flex', gap: 8, padding: '8px 0 16px', flexWrap: 'wrap' }}>
             {COLORS.map((c) => (
               <button

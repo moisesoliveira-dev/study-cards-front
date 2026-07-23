@@ -1,15 +1,9 @@
 import { useState } from 'react';
-import {
-  IonButton,
-  IonContent,
-  IonInput,
-  IonItem,
-  IonPage,
-  IonSpinner,
-} from '@ionic/react';
-import { Redirect, useHistory } from 'react-router-dom';
+import { IonContent, IonPage, IonSpinner } from '@ionic/react';
+import { Link, Redirect, useHistory } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useAppToast } from '../../../shared/hooks/useAppToast';
+import { Field } from '../../../shared/components/Field';
 
 export default function LoginPage() {
   const { login, isAuthenticated, loading } = useAuth();
@@ -38,7 +32,7 @@ export default function LoginPage() {
 
   return (
     <IonPage>
-      <IonContent>
+      <IonContent fullscreen>
         <div className="sc-auth-shell">
           <div className="sc-auth-card">
             <div className="sc-auth-brand">Study Cards</div>
@@ -47,29 +41,26 @@ export default function LoginPage() {
               Acesse seu ambiente de estudo pessoal.
             </p>
 
-            <IonItem className="sc-auth-item">
-              <IonInput
-                type="email"
+            <div className="sc-auth-fields">
+              <Field
                 label="E-mail"
-                labelPlacement="stacked"
+                type="email"
                 value={email}
-                onIonInput={(e) => setEmail(e.detail.value ?? '')}
-                autocomplete="email"
+                onChange={setEmail}
+                placeholder="voce@email.com"
+                autoComplete="email"
+                autoFocus
               />
-            </IonItem>
-            <IonItem className="sc-auth-item">
-              <IonInput
-                type="password"
+              <Field
                 label="Senha"
-                labelPlacement="stacked"
+                type="password"
                 value={password}
-                onIonInput={(e) => setPassword(e.detail.value ?? '')}
-                autocomplete="current-password"
-                onKeyUp={(e) => {
-                  if (e.key === 'Enter') void submit();
-                }}
+                onChange={setPassword}
+                placeholder="••••••••"
+                autoComplete="current-password"
+                onEnter={() => void submit()}
               />
-            </IonItem>
+            </div>
 
             <button
               type="button"
@@ -81,15 +72,7 @@ export default function LoginPage() {
             </button>
 
             <p className="sc-auth-switch">
-              Não tem conta?{' '}
-              <IonButton
-                fill="clear"
-                size="small"
-                routerLink="/register"
-                routerDirection="forward"
-              >
-                Criar conta
-              </IonButton>
+              Não tem conta? <Link to="/register">Criar conta</Link>
             </p>
           </div>
         </div>
