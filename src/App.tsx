@@ -1,5 +1,5 @@
-import { Redirect, Route } from 'react-router-dom';
-import { IonApp, IonRouterOutlet, setupIonicReact } from '@ionic/react';
+import { Redirect, Route, Switch } from 'react-router-dom';
+import { IonApp, IonRouterOutlet, IonSpinner, setupIonicReact } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
 import SubjectsPage from './modules/subjects/pages/SubjectsPage';
 import SubjectDetailPage from './modules/topics/pages/SubjectDetailPage';
@@ -9,9 +9,9 @@ import LoginPage from './modules/auth/pages/LoginPage';
 import RegisterPage from './modules/auth/pages/RegisterPage';
 import FlowsListPage from './modules/flows/pages/FlowsListPage';
 import FlowEditorPage from './modules/flows/pages/FlowEditorPage';
-import { AuthProvider } from './modules/auth/context/AuthContext';
-import { PrivateRoute } from './core/auth/PrivateRoute';
+import { AuthProvider, useAuth } from './modules/auth/context/AuthContext';
 import { ThemeProvider } from './shared/theme/ThemeContext';
+import { AppShell } from './shared/layout/AppShell';
 
 import '@ionic/react/css/core.css';
 import '@ionic/react/css/normalize.css';
@@ -28,32 +28,48 @@ import './theme/variables.css';
 
 setupIonicReact({ mode: 'md' });
 
+function AuthenticatedShell() {
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="sc-auth-shell">
+        <IonSpinner name="crescent" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Redirect to="/login" />;
+  }
+
+  return (
+    <AppShell>
+      <IonRouterOutlet>
+        <Route exact path="/home" component={SubjectsPage} />
+        <Route exact path="/subjects/:subjectId" component={SubjectDetailPage} />
+        <Route exact path="/topics/:topicId" component={TopicCardsPage} />
+        <Route exact path="/flows" component={FlowsListPage} />
+        <Route exact path="/flows/:flowId" component={FlowEditorPage} />
+        <Route exact path="/study/:topicId" component={StudyPage} />
+        <Route exact path="/">
+          <Redirect to="/home" />
+        </Route>
+      </IonRouterOutlet>
+    </AppShell>
+  );
+}
+
 const App: React.FC = () => (
   <IonApp>
     <ThemeProvider>
       <AuthProvider>
         <IonReactRouter>
-          <IonRouterOutlet>
+          <Switch>
             <Route exact path="/login" component={LoginPage} />
             <Route exact path="/register" component={RegisterPage} />
-          <PrivateRoute exact path="/home" component={SubjectsPage} />
-          <PrivateRoute
-            exact
-            path="/subjects/:subjectId"
-            component={SubjectDetailPage}
-          />
-          <PrivateRoute
-            exact
-            path="/topics/:topicId"
-            component={TopicCardsPage}
-          />
-          <PrivateRoute exact path="/flows" component={FlowsListPage} />
-          <PrivateRoute exact path="/flows/:flowId" component={FlowEditorPage} />
-          <PrivateRoute exact path="/study/:topicId" component={StudyPage} />
-            <Route exact path="/">
-              <Redirect to="/home" />
-            </Route>
-          </IonRouterOutlet>
+            <Route path="/" component={AuthenticatedShell} />
+          </Switch>
         </IonReactRouter>
       </AuthProvider>
     </ThemeProvider>
