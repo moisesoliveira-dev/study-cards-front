@@ -51,6 +51,7 @@ export function CardDocumentSheet({
   const [saving, setSaving] = useState(false);
   const [linked, setLinked] = useState<Card[]>([]);
   const [loadingLinks, setLoadingLinks] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const hydrate = (next: Card) => {
     setFront(next.front);
@@ -65,6 +66,7 @@ export function CardDocumentSheet({
     hydrate(card);
     setMode('card');
     setEditing(false);
+    setConfirmDelete(false);
   }, [card]);
 
   useEffect(() => {
@@ -94,6 +96,10 @@ export function CardDocumentSheet({
     if (!card) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
+      if (confirmDelete) {
+        setConfirmDelete(false);
+        return;
+      }
       if (editing) {
         hydrate(card);
         setEditing(false);
@@ -111,7 +117,7 @@ export function CardDocumentSheet({
       globalThis.document.body.classList.remove('sc-card-modal-open');
       window.removeEventListener('keydown', onKey);
     };
-  }, [card, onClose, editing, mode]);
+  }, [card, onClose, editing, mode, confirmDelete]);
 
   if (!card) return null;
 
@@ -192,7 +198,7 @@ export function CardDocumentSheet({
       <button
         type="button"
         className="sc-edit-icon sc-delete-icon"
-        onClick={() => onDelete(card.id)}
+        onClick={() => setConfirmDelete(true)}
         aria-label="Excluir"
         title="Excluir"
       >
@@ -502,6 +508,42 @@ export function CardDocumentSheet({
         </motion.div>
       )}
       </AnimatePresence>
+
+      {confirmDelete ? (
+        <div
+          className="sc-confirm-overlay"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="sc-confirm-delete-title"
+          aria-describedby="sc-confirm-delete-desc"
+        >
+          <div className="sc-confirm-dialog">
+            <h3 id="sc-confirm-delete-title">Excluir card?</h3>
+            <p id="sc-confirm-delete-desc">
+              Essa ação não pode ser desfeita.
+            </p>
+            <div className="sc-confirm-actions">
+              <button
+                type="button"
+                className="sc-btn"
+                onClick={() => setConfirmDelete(false)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="sc-btn sc-confirm-danger"
+                onClick={() => {
+                  setConfirmDelete(false);
+                  onDelete?.(card.id);
+                }}
+              >
+                Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </motion.div>,
     globalThis.document.body,
   );

@@ -10,7 +10,6 @@ import {
   IonSpinner,
   IonTitle,
   IonToolbar,
-  useIonAlert,
 } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
 import { subjectsFacade } from '../../modules/subjects/facades/subjects.facade';
@@ -86,7 +85,6 @@ type Props = {
 export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   const history = useHistory();
   const toast = useAppToast();
-  const [presentAlert] = useIonAlert();
   const touchUi = useTouchUi();
   const lastTapRef = useRef<{ id: string; at: number } | null>(null);
 
@@ -388,29 +386,18 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   };
 
   const removeCard = (id: string) => {
-    presentAlert({
-      header: 'Excluir card?',
-      message: 'Essa ação não pode ser desfeita.',
-      buttons: [
-        { text: 'Cancelar', role: 'cancel' },
-        {
-          text: 'Excluir',
-          role: 'destructive',
-          handler: () => {
-            void (async () => {
-              try {
-                await cardsFacade.remove(id);
-                setDetail(null);
-                toast.success('Card excluído');
-                await load();
-              } catch (error) {
-                toast.error(error);
-              }
-            })();
-          },
-        },
-      ],
-    });
+    void (async () => {
+      try {
+        await cardsFacade.remove(id);
+        setDetail(null);
+        setMergePickIds((prev) => prev.filter((pickId) => pickId !== id));
+        setRaisedId((prev) => (prev === id ? null : prev));
+        toast.success('Card excluído');
+        await load();
+      } catch (error) {
+        toast.error(error);
+      }
+    })();
   };
 
   const studyHref = isRoot

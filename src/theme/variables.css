@@ -827,6 +827,57 @@ ion-popover {
   --z-index: 16000;
 }
 
+.sc-confirm-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 16px;
+  background: color-mix(in srgb, var(--text-primary) 42%, transparent);
+  backdrop-filter: blur(4px);
+}
+
+.sc-confirm-dialog {
+  width: min(100%, 340px);
+  padding: 20px 18px 16px;
+  border-radius: 14px;
+  border: 0.5px solid var(--border);
+  background: var(--surface-1);
+  box-shadow: 0 18px 48px color-mix(in srgb, var(--text-primary) 22%, transparent);
+}
+
+.sc-confirm-dialog h3 {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+  font-weight: 650;
+  color: var(--text-primary);
+}
+
+.sc-confirm-dialog p {
+  margin: 0 0 18px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.sc-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.sc-confirm-danger {
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface-1));
+  border-color: color-mix(in srgb, var(--danger) 40%, var(--border));
+  color: var(--danger);
+}
+
+.sc-confirm-danger:hover {
+  background: color-mix(in srgb, var(--danger) 18%, var(--surface-1));
+}
+
 @keyframes sc-card-backdrop {
   from { opacity: 0; }
   to { opacity: 1; }
