@@ -53,6 +53,7 @@ RUN chmod +x /docker-entrypoint-custom.sh
 
 ENV PORT=80
 ENV API_URL=/api
+ENV BACKEND_UPSTREAM=http://backend:3000
 
 EXPOSE 80
 
