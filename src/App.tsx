@@ -10,6 +10,7 @@ import RegisterPage from './modules/auth/pages/RegisterPage';
 import ProfilePage from './modules/auth/pages/ProfilePage';
 import FlowsListPage from './modules/flows/pages/FlowsListPage';
 import FlowEditorPage from './modules/flows/pages/FlowEditorPage';
+import PdfLibraryPage from './modules/pdf-library/pages/PdfLibraryPage';
 import { AuthProvider, useAuth } from './modules/auth/context/AuthContext';
 import { ThemeProvider } from './shared/theme/ThemeContext';
 import { AppShell } from './shared/layout/AppShell';
@@ -52,6 +53,7 @@ function AuthenticatedShell() {
         <Route exact path="/topics/:topicId" component={TopicCardsPage} />
         <Route exact path="/flows" component={FlowsListPage} />
         <Route path="/flows/:flowId" component={FlowEditorPage} />
+        <Route exact path="/library" component={PdfLibraryPage} />
         <Route exact path="/study/:topicId" component={StudyPage} />
         <Route exact path="/profile" component={ProfilePage} />
         <Route exact path="/">

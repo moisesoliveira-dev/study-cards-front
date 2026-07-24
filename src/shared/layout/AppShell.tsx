@@ -5,6 +5,7 @@ import {
   albumsOutline,
   closeOutline,
   gitNetworkOutline,
+  libraryOutline,
   logOutOutline,
   menuOutline,
   personOutline,
@@ -32,6 +33,12 @@ const NAV = [
     label: 'Fluxogramas',
     icon: gitNetworkOutline,
     match: (path: string) => path.startsWith('/flows'),
+  },
+  {
+    to: '/library',
+    label: 'Biblioteca',
+    icon: libraryOutline,
+    match: (path: string) => path.startsWith('/library'),
   },
 ];
 

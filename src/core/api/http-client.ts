@@ -17,10 +17,11 @@ async function request<T>(
   options: RequestInit = {},
 ): Promise<T> {
   const token = authStorage.getToken();
+  const isFormData = options.body instanceof FormData;
   const response = await fetch(`${env.apiUrl}${path}`, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      ...(!isFormData ? { 'Content-Type': 'application/json' } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers ?? {}),
     },
@@ -61,5 +62,26 @@ export const httpClient = {
     request<T>(path, { method: 'POST', body: JSON.stringify(body) }),
   patch: <T>(path: string, body: unknown) =>
     request<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
+  postForm: <T>(path: string, body: FormData) =>
+    request<T>(path, { method: 'POST', body }),
+  getBlob: async (path: string) => {
+    const token = authStorage.getToken();
+    const response = await fetch(`${env.apiUrl}${path}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!response.ok) {
+      let message = response.statusText;
+      try {
+        const body = await response.json();
+        message = Array.isArray(body.message)
+          ? body.message.join(', ')
+          : (body.message ?? message);
+      } catch {
+        /* ignore */
+      }
+      throw new ApiError(response.status, message);
+    }
+    return response.blob();
+  },
   delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
 };

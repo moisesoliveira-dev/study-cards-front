@@ -7,6 +7,9 @@ server {
     gzip on;
     gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
 
+    # PDFs na Biblioteca (multer limita a 30MB no backend)
+    client_max_body_size 32m;
+
     location /api/ {
         proxy_pass ${BACKEND_UPSTREAM}/api/;
         proxy_http_version 1.1;
@@ -14,6 +17,7 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        client_max_body_size 32m;
     }
 
     location / {
