@@ -179,6 +179,33 @@ export const CARD_ICON_CATEGORIES: {
   { id: 'symbols', label: 'Símbolos' },
 ];
 
+const QUICK_EMOJIS = [
+  '💡',
+  '🚀',
+  '🔥',
+  '⭐',
+  '🎯',
+  '🧠',
+  '📚',
+  '🧪',
+  '⚙️',
+  '🔐',
+  '🌐',
+  '🗺️',
+  '🧩',
+  '📡',
+  '🖥️',
+  '📱',
+  '☁️',
+  '🔑',
+  '✅',
+  '⚠️',
+  '❤️',
+  '🎵',
+  '🏆',
+  '📌',
+];
+
 export const CARD_ICON_OPTIONS: CardIconOption[] = [
   // Tech
   { id: 'code', label: 'Código', category: 'tech', icon: codeSlashOutline },
@@ -577,6 +604,7 @@ export function CardIconPicker({ value, onChange, accent }: PickerProps) {
                   </button>
                 </div>
 
+                <div className="sc-icon-sheet-body">
                 {category === 'custom' ? (
                   <div className="sc-icon-custom">
                     <div className="sc-icon-custom-preview">
@@ -610,25 +638,43 @@ export function CardIconPicker({ value, onChange, accent }: PickerProps) {
                       PNG, JPG, WEBP, GIF ou SVG · redimensionado automaticamente
                     </p>
 
-                    <div className="sc-icon-emoji-row">
-                      <label className="sc-icon-emoji-field">
-                        <span>Ou use um emoji</span>
-                        <input
-                          value={emojiDraft}
-                          onChange={(e) => setEmojiDraft(e.target.value)}
-                          placeholder="Ex.: 🚀"
-                          maxLength={16}
-                          autoComplete="off"
-                        />
-                      </label>
-                      <button
-                        type="button"
-                        className="sc-btn"
-                        disabled={!emojiDraft.trim()}
-                        onClick={applyEmoji}
-                      >
-                        Usar
-                      </button>
+                    <div className="sc-icon-emoji-block">
+                      <p className="sc-icon-emoji-title">Ou escolha um emoji</p>
+                      <div className="sc-icon-emoji-grid" role="listbox" aria-label="Emojis">
+                        {QUICK_EMOJIS.map((emoji) => (
+                          <button
+                            key={emoji}
+                            type="button"
+                            role="option"
+                            aria-selected={value === `emoji:${emoji}`}
+                            className={`sc-icon-emoji-item${value === `emoji:${emoji}` ? ' is-active' : ''}`}
+                            onClick={() => pick(`emoji:${emoji}`)}
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="sc-icon-emoji-row">
+                        <label className="sc-icon-emoji-field">
+                          <span>Outro emoji</span>
+                          <input
+                            value={emojiDraft}
+                            onChange={(e) => setEmojiDraft(e.target.value)}
+                            placeholder="Cole ou digite"
+                            maxLength={16}
+                            autoComplete="off"
+                            inputMode="text"
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          className="sc-btn"
+                          disabled={!emojiDraft.trim()}
+                          onClick={applyEmoji}
+                        >
+                          Usar
+                        </button>
+                      </div>
                     </div>
 
                     {uploadError ? (
@@ -685,6 +731,7 @@ export function CardIconPicker({ value, onChange, accent }: PickerProps) {
                     ) : null}
                   </>
                 )}
+                </div>
               </motion.div>
             </motion.div>
           ) : null}
