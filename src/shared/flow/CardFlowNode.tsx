@@ -7,7 +7,6 @@ import {
 } from 'react';
 import {
   Handle,
-  NodeResizer,
   Position,
   useReactFlow,
   type Node,
@@ -80,25 +79,21 @@ function CardFlowNodeComponent({ id, data, selected }: NodeProps) {
 
   const onHandlePointerDown = useCallback(
     (e: ReactPointerEvent, side: Side, handleKey: string) => {
-      // Alt+arrastar reposiciona o ponto no corpo do nó
       if (!e.altKey) return;
       e.preventDefault();
       e.stopPropagation();
 
       const el = nodeRef.current;
       if (!el) return;
-      const pointerId = e.pointerId;
-      (e.target as HTMLElement).setPointerCapture?.(pointerId);
+      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
 
       const move = (ev: PointerEvent) => {
         const rect = el.getBoundingClientRect();
         if (rect.width <= 0 || rect.height <= 0) return;
-        let next = 0.5;
-        if (side === 'left' || side === 'right') {
-          next = (ev.clientY - rect.top) / rect.height;
-        } else {
-          next = (ev.clientX - rect.left) / rect.width;
-        }
+        const next =
+          side === 'left' || side === 'right'
+            ? (ev.clientY - rect.top) / rect.height
+            : (ev.clientX - rect.left) / rect.width;
         setHandleOffset(handleKey, next);
       };
 
@@ -119,16 +114,6 @@ function CardFlowNodeComponent({ id, data, selected }: NodeProps) {
       ref={nodeRef}
       className={`sc-flow-card-node${selected ? ' is-selected' : ''}`}
     >
-      <NodeResizer
-        isVisible={selected}
-        minWidth={140}
-        minHeight={96}
-        maxWidth={420}
-        maxHeight={360}
-        lineClassName="sc-flow-resize-line"
-        handleClassName="sc-flow-resize-handle"
-      />
-
       {SIDES.map((side) =>
         Array.from({ length: SLOT_COUNT }, (_, slot) => {
           const tId = handleId('target', side, slot);

@@ -3780,10 +3780,8 @@ ion-toast.sc-toast--info::part(container) {
 }
 
 .sc-flow-card-node {
-  width: 100%;
-  height: 100%;
-  min-width: 140px;
-  min-height: 96px;
+  width: 180px;
+  min-height: 110px;
   box-sizing: border-box;
   padding: 10px 12px 12px;
   border-radius: 12px;
@@ -3792,7 +3790,6 @@ ion-toast.sc-toast--info::part(container) {
     linear-gradient(160deg, var(--surface-1) 0%, var(--surface-2) 100%);
   box-shadow: 0 8px 24px color-mix(in srgb, var(--text-primary) 12%, transparent);
   font-size: 12px;
-  overflow: hidden;
 }
 
 .sc-flow-card-node.is-selected {
@@ -3880,16 +3877,9 @@ ion-toast.sc-toast--info::part(container) {
   transform: scale(1.25);
 }
 
-.sc-flow-resize-line {
-  border-color: color-mix(in srgb, var(--text-accent) 55%, transparent) !important;
-}
-
-.sc-flow-resize-handle {
-  width: 8px !important;
-  height: 8px !important;
-  border-radius: 2px !important;
-  background: var(--text-accent) !important;
-  border: 1px solid var(--surface-1) !important;
+.sc-flow-edge-particle {
+  pointer-events: none;
+  filter: drop-shadow(0 0 3px color-mix(in srgb, currentColor 40%, transparent));
 }
 
 .sc-flow-edge-label {
@@ -3900,7 +3890,8 @@ ion-toast.sc-toast--info::part(container) {
   gap: 4px;
 }
 
-.sc-flow-edge-badge {
+.sc-flow-edge-badge,
+.sc-flow-edge-text {
   font-size: 10px;
   font-weight: 650;
   letter-spacing: 0.02em;
@@ -3909,6 +3900,16 @@ ion-toast.sc-toast--info::part(container) {
   border: 0.5px solid color-mix(in srgb, var(--text-accent) 35%, var(--border));
   border-radius: 999px;
   padding: 2px 7px;
+}
+
+.sc-flow-edge-text {
+  color: var(--text-primary);
+  background: var(--surface-1);
+  border-color: var(--border);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sc-flow-edge-delete {
@@ -3931,14 +3932,213 @@ ion-toast.sc-toast--info::part(container) {
   background: color-mix(in srgb, var(--danger, #c0392b) 12%, var(--surface-1));
 }
 
-.react-flow__edge-path {
-  stroke: var(--border-accent) !important;
+.sc-flow-inspector {
+  width: 272px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-left: 0.5px solid var(--border);
+  background: var(--surface-1);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sc-flow-inspector-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 0.5px solid var(--border);
+}
+
+.sc-flow-inspector-head > div {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.sc-flow-inspector-head ion-icon {
+  font-size: 18px;
+  color: var(--text-accent);
+}
+
+.sc-flow-inspector-close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.sc-flow-inspector-close:hover {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+
+.sc-flow-inspector-body {
+  overflow: auto;
+  padding: 12px 14px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sc-flow-inspector-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sc-flow-inspector-section h3 {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.sc-flow-inspector-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.sc-flow-inspector-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.sc-flow-inspector-field select,
+.sc-flow-inspector-field input[type='text'] {
+  width: 100%;
+  border: 0.5px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text-primary);
+  padding: 8px 10px;
+  font: inherit;
+}
+
+.sc-flow-inspector-field input[type='range'] {
+  width: 100%;
+}
+
+.sc-flow-inspector-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  cursor: pointer;
+}
+
+.sc-flow-inspector-toggle span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sc-flow-inspector-toggle strong {
+  font-size: 12px;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.sc-flow-inspector-toggle small {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.sc-flow-inspector-toggle input {
+  accent-color: var(--text-accent);
+  width: 16px;
+  height: 16px;
+}
+
+.sc-flow-inspector-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sc-flow-inspector-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.sc-flow-inspector-swatch.is-active {
+  border-color: var(--text-primary);
+  box-shadow: 0 0 0 2px var(--surface-1);
+}
+
+.sc-flow-inspector-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 0.5px solid var(--border);
+}
+
+.sc-flow-inspector-card-tag {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-accent);
+}
+
+.sc-flow-inspector-card strong {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.sc-flow-inspector-card p {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.sc-flow-inspector-danger {
+  color: var(--danger, #c0392b) !important;
+  border-color: color-mix(in srgb, var(--danger, #c0392b) 35%, var(--border)) !important;
+}
+
+.sc-flow-inspector-fab {
+  display: none;
+}
+
+.sc-flow-inspector-backdrop {
+  display: none;
 }
 
 .react-flow__edge.selected .react-flow__edge-path,
 .react-flow__edge:focus .react-flow__edge-path {
-  stroke: var(--text-accent) !important;
-  stroke-width: 2.5px !important;
+  stroke-width: 2.75px !important;
 }
 
 .react-flow__controls,
@@ -4038,6 +4238,61 @@ ion-toast.sc-toast--info::part(container) {
   .sc-flow-workspace.is-compact.is-palette-open .sc-flow-palette-backdrop {
     opacity: 1;
     pointer-events: auto;
+  }
+
+  .sc-flow-workspace.is-compact .sc-flow-inspector {
+    display: none;
+  }
+
+  .sc-flow-workspace.is-compact .sc-flow-inspector-fab {
+    display: inline-flex;
+    position: absolute;
+    right: 12px;
+    bottom: 14px;
+    z-index: 12;
+    width: 44px;
+    height: 44px;
+    border-radius: 999px;
+    border: 0.5px solid var(--border);
+    background: var(--surface-1);
+    color: var(--text-accent);
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--text-primary) 14%, transparent);
+    cursor: pointer;
+  }
+
+  .sc-flow-workspace.is-compact .sc-flow-inspector-fab.is-open {
+    background: var(--bg-accent);
+  }
+
+  .sc-flow-workspace.is-compact .sc-flow-inspector-backdrop {
+    display: block;
+    position: absolute;
+    inset: 0;
+    border: none;
+    margin: 0;
+    padding: 0;
+    background: color-mix(in srgb, var(--text-primary) 35%, transparent);
+    opacity: 1;
+    pointer-events: auto;
+    z-index: 20;
+  }
+
+  .sc-flow-workspace.is-compact .sc-flow-inspector-sheet {
+    display: flex;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    max-height: min(72vh, 520px);
+    border-left: none;
+    border-top: 0.5px solid var(--border);
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -12px 40px color-mix(in srgb, var(--text-primary) 16%, transparent);
+    z-index: 25;
   }
 
   .sc-flow-workspace.is-compact .sc-flow-palette-item {

@@ -51,19 +51,40 @@ import {
 } from '../../../shared/flow/CardFlowNode';
 import { CardFlowEdge } from '../../../shared/flow/CardFlowEdge';
 import {
+  FlowInspector,
+  type FlowCanvasSettings,
+} from '../../../shared/flow/FlowInspector';
+import {
+  getEdgeData,
   isSynthesisEdge,
   withEdgeFlags,
+  type FlowEdgeData,
 } from '../../../shared/flow/flow-edge.utils';
 import { useAppToast } from '../../../shared/hooks/useAppToast';
 import { useTheme } from '../../../shared/theme/ThemeContext';
 
 const nodeTypes = { cardNode: CardFlowNode };
-const edgeTypes = { smoothstep: CardFlowEdge };
+const edgeTypes = { flowEdge: CardFlowEdge };
 
-const DEFAULT_NODE_WIDTH = 180;
-const DEFAULT_NODE_HEIGHT = 140;
 const DEFAULT_SOURCE_HANDLE = 's-right-1';
 const DEFAULT_TARGET_HANDLE = 't-left-1';
+
+const DEFAULT_SETTINGS: FlowCanvasSettings = {
+  snapToGrid: false,
+  showMiniMap: true,
+  showGrid: true,
+  defaultSvgAnimate: true,
+};
+
+function loadSettings(flowId: string): FlowCanvasSettings {
+  try {
+    const raw = localStorage.getItem(`sc-flow-settings:${flowId}`);
+    if (!raw) return DEFAULT_SETTINGS;
+    return { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as FlowCanvasSettings) };
+  } catch {
+    return DEFAULT_SETTINGS;
+  }
+}
 
 function useIsCompactFlow() {
   const [compact, setCompact] = useState(
@@ -118,8 +139,6 @@ function FlowCanvas({
       board.nodes.map((n) => {
         const cardId = String(n.data?.cardId ?? '');
         const card = cardMap.get(cardId);
-        const width = n.width ?? DEFAULT_NODE_WIDTH;
-        const height = n.height ?? DEFAULT_NODE_HEIGHT;
         const handleOffsets =
           (n.data?.handleOffsets as CardFlowNodeData['handleOffsets']) ??
           undefined;
@@ -138,9 +157,6 @@ function FlowCanvas({
           id: n.id,
           type: 'cardNode',
           position: n.position,
-          width,
-          height,
-          style: { width, height },
           data: {
             ...baseData,
             handleOffsets,
@@ -159,10 +175,10 @@ function FlowCanvas({
           target: e.target,
           sourceHandle: e.sourceHandle ?? DEFAULT_SOURCE_HANDLE,
           targetHandle: e.targetHandle ?? DEFAULT_TARGET_HANDLE,
-          type: e.type ?? 'smoothstep',
+          type: 'flowEdge',
           label: e.label,
           data: e.data,
-          animated: true,
+          animated: false,
         }),
       ),
     [board.edges],
@@ -172,13 +188,27 @@ function FlowCanvas({
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges);
   const [query, setQuery] = useState('');
   const [saving, setSaving] = useState(false);
-  const [selected, setSelected] = useState<string[]>([]);
+  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
+  const [selectedEdgeIds, setSelectedEdgeIds] = useState<string[]>([]);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [settings, setSettings] = useState<FlowCanvasSettings>(() =>
+    loadSettings(board.id),
+  );
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const nodesRef = useRef(nodes);
   const edgesRef = useRef(edges);
   nodesRef.current = nodes;
   edgesRef.current = edges;
+
+  const selectedNodes = useMemo(
+    () => nodes.filter((n) => selectedNodeIds.includes(n.id)),
+    [nodes, selectedNodeIds],
+  );
+  const selectedEdges = useMemo(
+    () => edges.filter((e) => selectedEdgeIds.includes(e.id)),
+    [edges, selectedEdgeIds],
+  );
 
   const usedIds = useMemo(() => {
     const ids = new Set<string>();
@@ -192,6 +222,7 @@ function FlowCanvas({
   useEffect(() => {
     setNodes(initialNodes);
     setEdges(initialEdges);
+    setSettings(loadSettings(board.id));
     requestAnimationFrame(() => fitView({ padding: compact ? 0.15 : 0.2 }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [board.id]);
@@ -199,6 +230,13 @@ function FlowCanvas({
   useEffect(() => {
     if (!compact) setPaletteOpen(false);
   }, [compact]);
+
+  useEffect(() => {
+    localStorage.setItem(
+      `sc-flow-settings:${board.id}`,
+      JSON.stringify(settings),
+    );
+  }, [board.id, settings]);
 
   useEffect(() => {
     if (!paletteOpen) return;
@@ -216,22 +254,10 @@ function FlowCanvas({
         const updated = await flowsFacade.update(board.id, {
           nodes: nextNodes.map((n) => {
             const data = n.data as CardFlowNodeData;
-            const width =
-              n.width ??
-              (typeof n.style?.width === 'number' ? n.style.width : undefined) ??
-              DEFAULT_NODE_WIDTH;
-            const height =
-              n.height ??
-              (typeof n.style?.height === 'number'
-                ? n.style.height
-                : undefined) ??
-              DEFAULT_NODE_HEIGHT;
             return {
               id: n.id,
               type: n.type,
               position: n.position,
-              width,
-              height,
               data: {
                 cardId: data.cardId,
                 front: data.front,
@@ -287,13 +313,10 @@ function FlowCanvas({
       onNodesChange(changes);
       const shouldSave = changes.some(
         (c) =>
-          (c.type === 'dimensions' && c.resizing === false) ||
-          (c.type === 'position' && c.dragging === false) ||
-          c.type === 'remove',
+          (c.type === 'position' && c.dragging === false) || c.type === 'remove',
       );
       if (shouldSave) {
-        const next = applyNodeChanges(changes, nodes);
-        scheduleSave(next, edges);
+        scheduleSave(applyNodeChanges(changes, nodes), edges);
       }
     },
     [edges, nodes, onNodesChange, scheduleSave],
@@ -325,10 +348,15 @@ function FlowCanvas({
         const next = addEdge(
           {
             ...connection,
-            type: 'smoothstep',
-            animated: true,
+            type: 'flowEdge',
+            animated: false,
             sourceHandle: connection.sourceHandle ?? DEFAULT_SOURCE_HANDLE,
             targetHandle: connection.targetHandle ?? DEFAULT_TARGET_HANDLE,
+            data: {
+              svgAnimate: settings.defaultSvgAnimate,
+              pathType: 'smoothstep',
+              dashed: false,
+            } satisfies FlowEdgeData,
           },
           eds,
         ).map((e) => withEdgeFlags(e));
@@ -336,7 +364,7 @@ function FlowCanvas({
         return next;
       });
     },
-    [nodes, scheduleSave, setEdges],
+    [nodes, scheduleSave, setEdges, settings.defaultSvgAnimate],
   );
 
   const onReconnect = useCallback(
@@ -379,8 +407,64 @@ function FlowCanvas({
   }, [edges, nodes, scheduleSave]);
 
   const onSelectionChange = useCallback((params: OnSelectionChangeParams) => {
-    setSelected(params.nodes.map((n) => n.id));
-  }, []);
+    setSelectedNodeIds(params.nodes.map((n) => n.id));
+    setSelectedEdgeIds(params.edges.map((e) => e.id));
+    if (compact && (params.nodes.length || params.edges.length)) {
+      setInspectorOpen(true);
+    }
+  }, [compact]);
+
+  const updateEdge = useCallback(
+    (edgeId: string, patch: Partial<Edge> & { data?: FlowEdgeData }) => {
+      setEdges((eds) => {
+        const next = eds.map((e) => {
+          if (e.id !== edgeId) return e;
+          const merged = withEdgeFlags({
+            ...e,
+            ...patch,
+            data: {
+              ...getEdgeData(e),
+              ...(patch.data ?? {}),
+            },
+            label: patch.label !== undefined ? patch.label : e.label,
+          });
+          return merged;
+        });
+        scheduleSave(nodes, next);
+        return next;
+      });
+    },
+    [nodes, scheduleSave, setEdges],
+  );
+
+  const deleteEdgeById = useCallback(
+    (edgeId: string) => {
+      const edge = edges.find((e) => e.id === edgeId);
+      if (!edge || isSynthesisEdge(edge)) return;
+      const next = edges.filter((e) => e.id !== edgeId);
+      setEdges(next);
+      setSelectedEdgeIds((ids) => ids.filter((id) => id !== edgeId));
+      scheduleSave(nodes, next);
+    },
+    [edges, nodes, scheduleSave, setEdges],
+  );
+
+  const deleteNodesByIds = useCallback(
+    (nodeIds: string[]) => {
+      if (!nodeIds.length) return;
+      const idSet = new Set(nodeIds);
+      const nextNodes = nodes.filter((n) => !idSet.has(n.id));
+      const nextEdges = edges.filter(
+        (e) => !idSet.has(e.source) && !idSet.has(e.target),
+      );
+      setNodes(nextNodes);
+      setEdges(nextEdges);
+      setSelectedNodeIds([]);
+      setSelectedEdgeIds([]);
+      scheduleSave(nextNodes, nextEdges);
+    },
+    [edges, nodes, scheduleSave, setEdges, setNodes],
+  );
 
   const addCard = useCallback(
     (card: Card, position?: { x: number; y: number }) => {
@@ -399,9 +483,6 @@ function FlowCanvas({
         id,
         type: 'cardNode',
         position: pos,
-        width: DEFAULT_NODE_WIDTH,
-        height: DEFAULT_NODE_HEIGHT,
-        style: { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT },
         data: cardToNodeData(card),
       };
 
@@ -416,10 +497,14 @@ function FlowCanvas({
               target: id,
               sourceHandle: DEFAULT_SOURCE_HANDLE,
               targetHandle: DEFAULT_TARGET_HANDLE,
-              type: 'smoothstep',
-              animated: true,
+              type: 'flowEdge',
+              animated: false,
               label: 'síntese',
-              data: { kind: 'synthesis' },
+              data: {
+                kind: 'synthesis',
+                svgAnimate: settings.defaultSvgAnimate,
+                pathType: 'smoothstep',
+              },
             }),
           );
         }
@@ -442,19 +527,36 @@ function FlowCanvas({
       setNodes,
       toast,
       usedIds,
+      settings.defaultSvgAnimate,
     ],
   );
 
   const removeSelected = useCallback(() => {
-    if (!selected.length) return;
-    const nextNodes = nodes.filter((n) => !selected.includes(n.id));
-    const nextEdges = edges.filter(
-      (e) => !selected.includes(e.source) && !selected.includes(e.target),
-    );
-    setNodes(nextNodes);
-    setEdges(nextEdges);
-    scheduleSave(nextNodes, nextEdges);
-  }, [edges, nodes, scheduleSave, selected, setEdges, setNodes]);
+    if (selectedEdgeIds.length) {
+      const removable = selectedEdgeIds.filter((id) => {
+        const edge = edges.find((e) => e.id === id);
+        return edge && !isSynthesisEdge(edge);
+      });
+      if (removable.length) {
+        const removeSet = new Set(removable);
+        const nextEdges = edges.filter((e) => !removeSet.has(e.id));
+        setEdges(nextEdges);
+        setSelectedEdgeIds([]);
+        scheduleSave(nodes, nextEdges);
+      }
+    }
+    if (selectedNodeIds.length) {
+      deleteNodesByIds(selectedNodeIds);
+    }
+  }, [
+    deleteNodesByIds,
+    edges,
+    nodes,
+    scheduleSave,
+    selectedEdgeIds,
+    selectedNodeIds,
+    setEdges,
+  ]);
 
   const available = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -543,7 +645,7 @@ function FlowCanvas({
 
   return (
     <div
-      className={`sc-flow-workspace${compact ? ' is-compact' : ''}${paletteOpen ? ' is-palette-open' : ''}`}
+      className={`sc-flow-workspace${compact ? ' is-compact' : ''}${paletteOpen ? ' is-palette-open' : ''}${inspectorOpen ? ' is-inspector-open' : ''}`}
     >
       {!compact ? <aside className="sc-flow-palette">{palette}</aside> : null}
 
@@ -582,7 +684,7 @@ function FlowCanvas({
             <button
               type="button"
               className="sc-btn sc-flow-tool-btn"
-              disabled={!selected.length}
+              disabled={!selectedNodeIds.length && !selectedEdgeIds.length}
               onClick={removeSelected}
               aria-label="Remover seleção"
               title="Remover seleção"
@@ -626,11 +728,20 @@ function FlowCanvas({
           onSelectionChange={onSelectionChange}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
-          defaultEdgeOptions={{ type: 'smoothstep', animated: true }}
+          defaultEdgeOptions={{
+            type: 'flowEdge',
+            animated: false,
+            data: {
+              svgAnimate: settings.defaultSvgAnimate,
+              pathType: 'smoothstep',
+            },
+          }}
           fitView
           colorMode={resolved}
           deleteKeyCode={compact ? null : ['Backspace', 'Delete']}
           edgesReconnectable
+          snapToGrid={settings.snapToGrid}
+          snapGrid={[16, 16]}
           panOnScroll={!compact}
           zoomOnPinch
           panOnDrag
@@ -639,18 +750,33 @@ function FlowCanvas({
           maxZoom={1.8}
           proOptions={{ hideAttribution: true }}
         >
-          <Background
-            variant={BackgroundVariant.Dots}
-            gap={compact ? 16 : 18}
-            size={1}
-            color="var(--border)"
-          />
+          {settings.showGrid ? (
+            <Background
+              variant={BackgroundVariant.Dots}
+              gap={compact ? 16 : 18}
+              size={1}
+              color="var(--border)"
+            />
+          ) : null}
           <Controls showInteractive={!compact} position="bottom-left" />
-          {!compact ? (
+          {!compact && settings.showMiniMap ? (
             <MiniMap pannable zoomable nodeColor={() => 'var(--text-accent)'} />
           ) : null}
         </ReactFlow>
       </div>
+
+      <FlowInspector
+        open={inspectorOpen}
+        onOpenChange={setInspectorOpen}
+        compact={compact}
+        selectedNodes={selectedNodes}
+        selectedEdges={selectedEdges}
+        settings={settings}
+        onSettingsChange={setSettings}
+        onUpdateEdge={updateEdge}
+        onDeleteEdge={deleteEdgeById}
+        onDeleteNodes={deleteNodesByIds}
+      />
     </div>
   );
 }

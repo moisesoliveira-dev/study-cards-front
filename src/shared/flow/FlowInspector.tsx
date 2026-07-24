@@ -1,0 +1,342 @@
+import { IonIcon } from '@ionic/react';
+import { closeOutline, optionsOutline } from 'ionicons/icons';
+import type { Edge, Node } from '@xyflow/react';
+import type { CardFlowNodeData } from './CardFlowNode';
+import {
+  getEdgeData,
+  isSynthesisEdge,
+  type FlowEdgeData,
+  type FlowEdgePathType,
+} from './flow-edge.utils';
+
+export type FlowCanvasSettings = {
+  snapToGrid: boolean;
+  showMiniMap: boolean;
+  showGrid: boolean;
+  defaultSvgAnimate: boolean;
+};
+
+type Props = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  compact?: boolean;
+  selectedNodes: Node[];
+  selectedEdges: Edge[];
+  settings: FlowCanvasSettings;
+  onSettingsChange: (next: FlowCanvasSettings) => void;
+  onUpdateEdge: (edgeId: string, patch: Partial<Edge> & { data?: FlowEdgeData }) => void;
+  onDeleteEdge: (edgeId: string) => void;
+  onDeleteNodes: (nodeIds: string[]) => void;
+};
+
+const PATH_OPTIONS: { value: FlowEdgePathType; label: string }[] = [
+  { value: 'smoothstep', label: 'Suave' },
+  { value: 'bezier', label: 'Curva' },
+  { value: 'step', label: 'Degrau' },
+  { value: 'straight', label: 'Reta' },
+];
+
+const COLOR_PRESETS = [
+  'var(--border-accent)',
+  '#7F77DD',
+  '#1D9E75',
+  '#378ADD',
+  '#BA7517',
+  '#D4537E',
+  '#5F6368',
+];
+
+function Toggle({
+  checked,
+  onChange,
+  label,
+  hint,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+  hint?: string;
+}) {
+  return (
+    <label className="sc-flow-inspector-toggle">
+      <span>
+        <strong>{label}</strong>
+        {hint ? <small>{hint}</small> : null}
+      </span>
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+    </label>
+  );
+}
+
+export function FlowInspector({
+  open,
+  onOpenChange,
+  compact,
+  selectedNodes,
+  selectedEdges,
+  settings,
+  onSettingsChange,
+  onUpdateEdge,
+  onDeleteEdge,
+  onDeleteNodes,
+}: Props) {
+  const edge = selectedEdges.length === 1 ? selectedEdges[0] : null;
+  const node = selectedNodes.length === 1 ? selectedNodes[0] : null;
+  const multiNodes = selectedNodes.length > 1;
+  const edgeData = edge ? getEdgeData(edge) : null;
+  const synthesis = edge ? isSynthesisEdge(edge) : false;
+  const nodeData = node ? (node.data as CardFlowNodeData) : null;
+
+  const body = (
+    <>
+      <div className="sc-flow-inspector-head">
+        <div>
+          <IonIcon icon={optionsOutline} />
+          <strong>Formatar</strong>
+        </div>
+        {compact ? (
+          <button
+            type="button"
+            className="sc-flow-inspector-close"
+            aria-label="Fechar"
+            onClick={() => onOpenChange(false)}
+          >
+            <IonIcon icon={closeOutline} />
+          </button>
+        ) : null}
+      </div>
+
+      <div className="sc-flow-inspector-body">
+        {edge && edgeData ? (
+          <section className="sc-flow-inspector-section">
+            <h3>Conexão</h3>
+            {synthesis ? (
+              <p className="sc-flow-inspector-note">
+                Ligação de síntese — só reposiciona; não remove.
+              </p>
+            ) : null}
+
+            <label className="sc-flow-inspector-field">
+              <span>Formato da linha</span>
+              <select
+                value={edgeData.pathType ?? 'smoothstep'}
+                onChange={(e) =>
+                  onUpdateEdge(edge.id, {
+                    data: {
+                      ...edgeData,
+                      pathType: e.target.value as FlowEdgePathType,
+                    },
+                  })
+                }
+              >
+                {PATH_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="sc-flow-inspector-field">
+              <span>Espessura</span>
+              <input
+                type="range"
+                min={1}
+                max={6}
+                step={0.5}
+                value={edgeData.strokeWidth ?? 2}
+                onChange={(e) =>
+                  onUpdateEdge(edge.id, {
+                    data: {
+                      ...edgeData,
+                      strokeWidth: Number(e.target.value),
+                    },
+                  })
+                }
+              />
+            </label>
+
+            <div className="sc-flow-inspector-field">
+              <span>Cor</span>
+              <div className="sc-flow-inspector-swatches">
+                {COLOR_PRESETS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    className={`sc-flow-inspector-swatch${(edgeData.strokeColor ?? 'var(--border-accent)') === c ? ' is-active' : ''}`}
+                    style={{ background: c }}
+                    aria-label={`Cor ${c}`}
+                    onClick={() =>
+                      onUpdateEdge(edge.id, {
+                        data: { ...edgeData, strokeColor: c },
+                      })
+                    }
+                  />
+                ))}
+              </div>
+            </div>
+
+            <Toggle
+              label="Animating SVG"
+              hint="Partícula percorrendo a linha"
+              checked={edgeData.svgAnimate ?? true}
+              onChange={(v) =>
+                onUpdateEdge(edge.id, {
+                  data: { ...edgeData, svgAnimate: v },
+                })
+              }
+            />
+
+            <Toggle
+              label="Tracejada"
+              checked={Boolean(edgeData.dashed)}
+              onChange={(v) =>
+                onUpdateEdge(edge.id, {
+                  data: { ...edgeData, dashed: v },
+                })
+              }
+            />
+
+            {!synthesis ? (
+              <label className="sc-flow-inspector-field">
+                <span>Rótulo</span>
+                <input
+                  type="text"
+                  value={typeof edge.label === 'string' ? edge.label : ''}
+                  placeholder="Opcional"
+                  onChange={(e) =>
+                    onUpdateEdge(edge.id, { label: e.target.value })
+                  }
+                />
+              </label>
+            ) : null}
+
+            {!synthesis ? (
+              <button
+                type="button"
+                className="sc-btn sc-flow-inspector-danger"
+                onClick={() => onDeleteEdge(edge.id)}
+              >
+                Remover conexão
+              </button>
+            ) : null}
+          </section>
+        ) : null}
+
+        {node && nodeData ? (
+          <section className="sc-flow-inspector-section">
+            <h3>Nó</h3>
+            <div className="sc-flow-inspector-card">
+              <span className="sc-flow-inspector-card-tag">{nodeData.tag}</span>
+              <strong>{nodeData.front}</strong>
+              <p>{nodeData.back}</p>
+            </div>
+            <p className="sc-flow-inspector-note">
+              Alt+arrastar um ponto de conexão para mover no corpo do nó. Arraste
+              a ponta da linha para outro handle.
+            </p>
+            <button
+              type="button"
+              className="sc-btn sc-flow-inspector-danger"
+              onClick={() => onDeleteNodes([node.id])}
+            >
+              Remover nó
+            </button>
+          </section>
+        ) : null}
+
+        {multiNodes ? (
+          <section className="sc-flow-inspector-section">
+            <h3>Seleção</h3>
+            <p className="sc-flow-inspector-note">
+              {selectedNodes.length} nós selecionados
+            </p>
+            <button
+              type="button"
+              className="sc-btn sc-flow-inspector-danger"
+              onClick={() => onDeleteNodes(selectedNodes.map((n) => n.id))}
+            >
+              Remover seleção
+            </button>
+          </section>
+        ) : null}
+
+        {!edge && !node && !multiNodes ? (
+          <section className="sc-flow-inspector-section">
+            <h3>Diagrama</h3>
+            <p className="sc-flow-inspector-note">
+              Selecione um nó ou uma conexão para editar o estilo — ou ajuste o
+              canvas abaixo.
+            </p>
+          </section>
+        ) : null}
+
+        <section className="sc-flow-inspector-section">
+          <h3>Canvas</h3>
+          <Toggle
+            label="Grade"
+            checked={settings.showGrid}
+            onChange={(v) => onSettingsChange({ ...settings, showGrid: v })}
+          />
+          <Toggle
+            label="Encaixar na grade"
+            checked={settings.snapToGrid}
+            onChange={(v) => onSettingsChange({ ...settings, snapToGrid: v })}
+          />
+          {!compact ? (
+            <Toggle
+              label="Mini mapa"
+              checked={settings.showMiniMap}
+              onChange={(v) =>
+                onSettingsChange({ ...settings, showMiniMap: v })
+              }
+            />
+          ) : null}
+          <Toggle
+            label="SVG animado (novas linhas)"
+            hint="Padrão ao criar conexões"
+            checked={settings.defaultSvgAnimate}
+            onChange={(v) =>
+              onSettingsChange({ ...settings, defaultSvgAnimate: v })
+            }
+          />
+        </section>
+      </div>
+    </>
+  );
+
+  if (compact) {
+    return (
+      <>
+        <button
+          type="button"
+          className={`sc-flow-inspector-fab${open ? ' is-open' : ''}`}
+          aria-label="Formatar"
+          title="Formatar"
+          onClick={() => onOpenChange(!open)}
+        >
+          <IonIcon icon={optionsOutline} />
+        </button>
+        {open ? (
+          <>
+            <button
+              type="button"
+              className="sc-flow-inspector-backdrop"
+              aria-label="Fechar painel"
+              onClick={() => onOpenChange(false)}
+            />
+            <aside className="sc-flow-inspector sc-flow-inspector-sheet">
+              {body}
+            </aside>
+          </>
+        ) : null}
+      </>
+    );
+  }
+
+  return <aside className="sc-flow-inspector">{body}</aside>;
+}
