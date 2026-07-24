@@ -161,28 +161,30 @@ function nodeWantsDragTree(node: Node): boolean {
   return Boolean((node.data as { dragTree?: boolean } | undefined)?.dragTree);
 }
 
-function nodeWantsCollisions(node: Node, global: boolean): boolean {
-  if (global) return true;
+function nodeHasCollisionsFlag(node: Node): boolean {
   return Boolean(
     (node.data as { nodeCollisions?: boolean } | undefined)?.nodeCollisions,
   );
 }
 
+/** True if this drag should resolve collisions (global, self, or any hit). */
+function shouldResolveCollisions(
+  moving: Node,
+  others: Node[],
+  global: boolean,
+): boolean {
+  if (global || nodeHasCollisionsFlag(moving)) return true;
+  return others.some(nodeHasCollisionsFlag);
+}
+
 function collectDragTreeTargets(
   node: Node,
-  allNodes: Node[],
+  _allNodes: Node[],
   edges: Edge[],
 ): Set<string> {
   if (!nodeWantsDragTree(node)) return new Set();
-  if (node.type === 'groupNode') {
-    const ids = new Set<string>();
-    const children = allNodes.filter((n) => n.parentId === node.id);
-    for (const child of children) {
-      for (const id of getTreeDescendantIds(child.id, edges)) ids.add(id);
-    }
-    for (const id of getTreeDescendantIds(node.id, edges)) ids.add(id);
-    return ids;
-  }
+  // Drag tree is card-level only (not subflow)
+  if (node.type === 'groupNode') return new Set();
   return getTreeDescendantIds(node.id, edges);
 }
 
@@ -225,8 +227,6 @@ function FlowCanvas({
           height: n.height,
           data: {
             label: String(n.data?.label ?? 'Subfluxo'),
-            dragTree: Boolean(n.data?.dragTree),
-            nodeCollisions: Boolean(n.data?.nodeCollisions),
           },
           zIndex: -1,
         });
@@ -448,15 +448,8 @@ function FlowCanvas({
                     : undefined),
                 style: (n.style as Record<string, unknown>) ?? undefined,
                 data: {
-                  ...(n.data as Record<string, unknown>),
                   label: String(
                     (n.data as { label?: string })?.label ?? 'Subfluxo',
-                  ),
-                  dragTree: Boolean(
-                    (n.data as { dragTree?: boolean })?.dragTree,
-                  ),
-                  nodeCollisions: Boolean(
-                    (n.data as { nodeCollisions?: boolean })?.nodeCollisions,
                   ),
                 },
               };
@@ -742,6 +735,9 @@ function FlowCanvas({
 
   const onNodeDrag = useCallback(
     (_: MouseEvent | TouchEvent, node: Node) => {
+      // Subflows: no drag-tree, no card collisions (groups move freely)
+      if (node.type === 'groupNode') return;
+
       if (nodeWantsDragTree(node)) {
         const last = lastDragPosRef.current;
         if (last && last.id === node.id) {
@@ -761,8 +757,6 @@ function FlowCanvas({
         }
       }
 
-      if (node.type === 'groupNode') return;
-
       setNodes((ns) => {
         const withLive = ns.map((n) =>
           n.id === node.id ? { ...n, position: node.position } : n,
@@ -777,26 +771,37 @@ function FlowCanvas({
         const hoverGroup = findGroupAtPoint(withLive, center, node.id);
         const hoverId = hoverGroup?.id;
 
+        const siblings = withLive.filter(
+          (n) =>
+            n.id !== node.id &&
+            n.type !== 'groupNode' &&
+            (n.parentId ?? null) === (live.parentId ?? null),
+        );
+
         let collideIds = new Set<string>();
-        if (nodeWantsCollisions(live, settings.nodeCollisions)) {
+        if (shouldResolveCollisions(live, siblings, settings.nodeCollisions)) {
           const mw = size.width;
           const mh = size.height;
           const mx = live.position.x;
           const my = live.position.y;
-          for (const other of withLive) {
+          for (const other of siblings) {
             if (
-              other.id === node.id ||
-              other.type === 'groupNode' ||
-              (other.parentId ?? null) !== (live.parentId ?? null)
+              !settings.nodeCollisions &&
+              !nodeHasCollisionsFlag(live) &&
+              !nodeHasCollisionsFlag(other)
             ) {
               continue;
             }
             const ow = getNodeSize(other).width;
             const oh = getNodeSize(other).height;
             const overlapX =
-              (mw + ow) / 2 + 8 - Math.abs(mx + mw / 2 - (other.position.x + ow / 2));
+              (mw + ow) / 2 +
+              8 -
+              Math.abs(mx + mw / 2 - (other.position.x + ow / 2));
             const overlapY =
-              (mh + oh) / 2 + 8 - Math.abs(my + mh / 2 - (other.position.y + oh / 2));
+              (mh + oh) / 2 +
+              8 -
+              Math.abs(my + mh / 2 - (other.position.y + oh / 2));
             if (overlapX > 0 && overlapY > 0) collideIds.add(other.id);
           }
           if (collideIds.size) collideIds.add(node.id);
@@ -829,8 +834,18 @@ function FlowCanvas({
             position: node.position,
           });
           const live = next.find((n) => n.id === node.id) ?? node;
-          if (nodeWantsCollisions(live, settings.nodeCollisions)) {
-            next = pushApartCollisions(next, node.id).nodes;
+          const siblings = next.filter(
+            (n) =>
+              n.id !== live.id &&
+              n.type !== 'groupNode' &&
+              (n.parentId ?? null) === (live.parentId ?? null),
+          );
+          if (
+            shouldResolveCollisions(live, siblings, settings.nodeCollisions)
+          ) {
+            next = pushApartCollisions(next, node.id, {
+              global: settings.nodeCollisions,
+            }).nodes;
           }
         }
 

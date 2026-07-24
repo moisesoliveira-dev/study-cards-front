@@ -108,10 +108,6 @@ export function FlowInspector({
     node && !isGroup ? (node.data as CardFlowNodeData) : null;
   const isEnvironment = !edge && !node && !multiNodes;
 
-  const nodeFlags = node
-    ? (node.data as { dragTree?: boolean; nodeCollisions?: boolean })
-    : null;
-
   const body = (
     <>
       <div className="sc-flow-inspector-head">
@@ -269,20 +265,6 @@ export function FlowInspector({
                 }
               />
             </label>
-            <Toggle
-              label="Drag Tree"
-              hint="Ao arrastar este subfluxo, move descendentes ligados dos cards internos"
-              checked={Boolean(nodeFlags?.dragTree)}
-              onChange={(v) => onUpdateNodeData?.(node.id, { dragTree: v })}
-            />
-            <Toggle
-              label="Node Collisions"
-              hint="Só este subfluxo / seus cards afastam sobreposição ao arrastar"
-              checked={Boolean(nodeFlags?.nodeCollisions)}
-              onChange={(v) =>
-                onUpdateNodeData?.(node.id, { nodeCollisions: v })
-              }
-            />
             <p className="sc-flow-inspector-note">
               Duplo clique no título também renomeia. Arraste cards para fora
               para removê-los — o subfluxo continua existindo.

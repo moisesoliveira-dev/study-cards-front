@@ -197,27 +197,35 @@ export function resolveSubflowParenting(
   return nodes;
 }
 
+function nodeHasCollisionsFlag(node: Node): boolean {
+  return Boolean(
+    (node.data as { nodeCollisions?: boolean } | undefined)?.nodeCollisions,
+  );
+}
+
 /**
- * Push overlapping sibling nodes away from `movingId` with a small gap.
- * The moving node stays put; others settle with CSS transition.
+ * Push overlapping sibling nodes apart.
+ * Resolves when the moving node OR the other node has collisions (or `global`).
+ * If only the other is protected, the moving node is pushed away.
  */
 export function pushApartCollisions(
   nodes: Node[],
   movingId: string,
-  gap = COLLISION_GAP,
+  options: { global?: boolean; gap?: number } = {},
 ): { nodes: Node[]; moved: boolean } {
+  const gap = options.gap ?? COLLISION_GAP;
+  const global = Boolean(options.global);
   const moving = nodes.find((n) => n.id === movingId);
   if (!moving || moving.type === 'groupNode') {
     return { nodes, moved: false };
   }
 
+  const movingProtected = global || nodeHasCollisionsFlag(moving);
   const mw = getNodeSize(moving).width;
   const mh = getNodeSize(moving).height;
-  const mx = moving.position.x;
-  const my = moving.position.y;
-  const mcx = mx + mw / 2;
-  const mcy = my + mh / 2;
 
+  let mx = moving.position.x;
+  let my = moving.position.y;
   const updates = new Map<string, XYPosition>();
 
   const siblings = nodes.filter(
@@ -227,13 +235,18 @@ export function pushApartCollisions(
       (n.parentId ?? null) === (moving.parentId ?? null),
   );
 
-  // Iterate a few times so chain-pushes settle
-  for (let pass = 0; pass < 3; pass++) {
+  for (let pass = 0; pass < 4; pass++) {
+    let movedThisPass = false;
     for (const other of siblings) {
+      const otherProtected = global || nodeHasCollisionsFlag(other);
+      if (!movingProtected && !otherProtected) continue;
+
       const ow = getNodeSize(other).width;
       const oh = getNodeSize(other).height;
       const ox = updates.get(other.id)?.x ?? other.position.x;
       const oy = updates.get(other.id)?.y ?? other.position.y;
+      const mcx = mx + mw / 2;
+      const mcy = my + mh / 2;
       const ocx = ox + ow / 2;
       const ocy = oy + oh / 2;
 
@@ -241,14 +254,40 @@ export function pushApartCollisions(
       const overlapY = (mh + oh) / 2 + gap - Math.abs(mcy - ocy);
       if (overlapX <= 0 || overlapY <= 0) continue;
 
+      // Prefer keeping a protected node still: push the unprotected (or the other).
+      const pushMoving = !movingProtected && otherProtected;
       if (overlapX < overlapY) {
-        const dir = ocx >= mcx ? 1 : -1;
-        updates.set(other.id, { x: ox + dir * overlapX, y: oy });
+        const dir = pushMoving
+          ? mcx >= ocx
+            ? 1
+            : -1
+          : ocx >= mcx
+            ? 1
+            : -1;
+        if (pushMoving) {
+          mx += dir * overlapX;
+          updates.set(movingId, { x: mx, y: my });
+        } else {
+          updates.set(other.id, { x: ox + dir * overlapX, y: oy });
+        }
       } else {
-        const dir = ocy >= mcy ? 1 : -1;
-        updates.set(other.id, { x: ox, y: oy + dir * overlapY });
+        const dir = pushMoving
+          ? mcy >= ocy
+            ? 1
+            : -1
+          : ocy >= mcy
+            ? 1
+            : -1;
+        if (pushMoving) {
+          my += dir * overlapY;
+          updates.set(movingId, { x: mx, y: my });
+        } else {
+          updates.set(other.id, { x: ox, y: oy + dir * overlapY });
+        }
       }
+      movedThisPass = true;
     }
+    if (!movedThisPass) break;
   }
 
   if (!updates.size) return { nodes, moved: false };
@@ -257,7 +296,9 @@ export function pushApartCollisions(
     moved: true,
     nodes: nodes.map((n) => {
       const pos = updates.get(n.id);
-      if (!pos) return { ...n, className: undefined };
+      if (!pos) {
+        return n.id === movingId ? { ...n, className: undefined } : n;
+      }
       return {
         ...n,
         position: pos,
@@ -277,7 +318,7 @@ export function resolveAllCollisions(
   for (let round = 0; round < 4; round++) {
     let any = false;
     for (const card of cards) {
-      const result = pushApartCollisions(next, card.id, gap);
+      const result = pushApartCollisions(next, card.id, { global: true, gap });
       if (result.moved) {
         next = result.nodes;
         any = true;
