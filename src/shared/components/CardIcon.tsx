@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { IonIcon } from '@ionic/react';
@@ -14,6 +14,7 @@ import {
   beakerOutline,
   bicycleOutline,
   bluetoothOutline,
+  boatOutline,
   bookOutline,
   briefcaseOutline,
   brushOutline,
@@ -30,10 +31,13 @@ import {
   chatbubbleOutline,
   checkboxOutline,
   clipboardOutline,
+  closeOutline,
   cloudOutline,
+  cloudUploadOutline,
   cloudyOutline,
   codeSlashOutline,
   colorPaletteOutline,
+  colorWandOutline,
   compassOutline,
   constructOutline,
   cubeOutline,
@@ -41,19 +45,21 @@ import {
   diamondOutline,
   documentTextOutline,
   earthOutline,
+  ellipseOutline,
   extensionPuzzleOutline,
   eyeOutline,
   fitnessOutline,
+  flagOutline,
   flashOutline,
   flaskOutline,
   flowerOutline,
   folderOutline,
   footstepsOutline,
-  flagOutline,
   gameControllerOutline,
   gitBranchOutline,
   gitNetworkOutline,
   globeOutline,
+  gridOutline,
   hammerOutline,
   hardwareChipOutline,
   headsetOutline,
@@ -134,13 +140,14 @@ import {
   waterOutline,
   wifiOutline,
   wineOutline,
-  closeOutline,
-  gridOutline,
-  boatOutline,
-  colorWandOutline,
-  ellipseOutline,
 } from 'ionicons/icons';
 import { fadeIn, scaleIn, tapScale } from '../motion';
+import {
+  fileToCardIconDataUrl,
+  getEmojiFromIcon,
+  isCustomImageIcon,
+  isEmojiIcon,
+} from './card-icon.utils';
 
 export type CardIconCategory =
   | 'tech'
@@ -336,12 +343,14 @@ const LABEL_MAP = Object.fromEntries(
 ) as Record<string, string>;
 
 export function resolveCardIcon(icon: string | null | undefined) {
-  if (!icon) return null;
+  if (!icon || isCustomImageIcon(icon) || isEmojiIcon(icon)) return null;
   return ICON_MAP[icon] ?? null;
 }
 
 export function cardIconLabel(icon: string | null | undefined) {
   if (!icon) return 'Sem ícone';
+  if (isCustomImageIcon(icon)) return 'Personalizado';
+  if (isEmojiIcon(icon)) return getEmojiFromIcon(icon);
   return LABEL_MAP[icon] ?? icon;
 }
 
@@ -358,6 +367,24 @@ export function CardFaceIcon({
   className = 'card-face-icon',
   style,
 }: FaceIconProps) {
+  if (!icon) return null;
+
+  if (isCustomImageIcon(icon)) {
+    return (
+      <div className={className} style={style} aria-hidden>
+        <img className="card-face-icon-img" src={icon} alt="" />
+      </div>
+    );
+  }
+
+  if (isEmojiIcon(icon)) {
+    return (
+      <div className={`${className} is-emoji`} style={style} aria-hidden>
+        <span className="card-face-emoji">{getEmojiFromIcon(icon)}</span>
+      </div>
+    );
+  }
+
   const src = resolveCardIcon(icon);
   if (!src) return null;
   return (
@@ -373,11 +400,17 @@ type PickerProps = {
   accent?: string;
 };
 
+type PickerTab = CardIconCategory | 'all' | 'custom';
+
 export function CardIconPicker({ value, onChange, accent }: PickerProps) {
   const reduce = useReducedMotion();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [category, setCategory] = useState<CardIconCategory | 'all'>('all');
+  const [category, setCategory] = useState<PickerTab>('all');
+  const [emojiDraft, setEmojiDraft] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -392,10 +425,17 @@ export function CardIconPicker({ value, onChange, accent }: PickerProps) {
     if (!open) {
       setQuery('');
       setCategory('all');
+      setEmojiDraft('');
+      setUploadError(null);
+      setUploading(false);
+    } else if (value && (isCustomImageIcon(value) || isEmojiIcon(value))) {
+      setCategory('custom');
+      if (isEmojiIcon(value)) setEmojiDraft(getEmojiFromIcon(value));
     }
-  }, [open]);
+  }, [open, value]);
 
   const filtered = useMemo(() => {
+    if (category === 'custom') return [];
     const q = query.trim().toLowerCase();
     return CARD_ICON_OPTIONS.filter((opt) => {
       if (category !== 'all' && opt.category !== category) return false;
@@ -408,11 +448,32 @@ export function CardIconPicker({ value, onChange, accent }: PickerProps) {
     });
   }, [category, query]);
 
-  const selected = value ? resolveCardIcon(value) : null;
-
   const pick = (next: string | null) => {
     onChange(next);
     setOpen(false);
+  };
+
+  const onUpload = async (file: File | null) => {
+    if (!file) return;
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const dataUrl = await fileToCardIconDataUrl(file);
+      pick(dataUrl);
+    } catch (error) {
+      setUploadError(
+        error instanceof Error ? error.message : 'Falha ao enviar ícone',
+      );
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
+  const applyEmoji = () => {
+    const emoji = emojiDraft.trim();
+    if (!emoji) return;
+    pick(`emoji:${emoji}`);
   };
 
   return (
@@ -426,15 +487,17 @@ export function CardIconPicker({ value, onChange, accent }: PickerProps) {
         aria-expanded={open}
       >
         <span className="card-icon-trigger-preview" aria-hidden>
-          {selected ? (
-            <IonIcon icon={selected} />
+          {value ? (
+            <CardFaceIcon icon={value} className="card-icon-trigger-face" />
           ) : (
             <IonIcon icon={gridOutline} />
           )}
         </span>
         <span className="card-icon-trigger-copy">
           <strong>{value ? cardIconLabel(value) : 'Escolher ícone'}</strong>
-          <small>{value ? 'Toque para trocar' : 'Central na face da carta'}</small>
+          <small>
+            {value ? 'Toque para trocar' : 'Biblioteca ou personalizado'}
+          </small>
         </span>
       </button>
 
@@ -477,16 +540,18 @@ export function CardIconPicker({ value, onChange, accent }: PickerProps) {
                   </button>
                 </header>
 
-                <label className="sc-icon-sheet-search">
-                  <IonIcon icon={searchOutline} aria-hidden />
-                  <input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Buscar ícone…"
-                    autoFocus
-                    autoComplete="off"
-                  />
-                </label>
+                {category !== 'custom' ? (
+                  <label className="sc-icon-sheet-search">
+                    <IonIcon icon={searchOutline} aria-hidden />
+                    <input
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Buscar ícone…"
+                      autoFocus
+                      autoComplete="off"
+                    />
+                  </label>
+                ) : null}
 
                 <div className="sc-icon-sheet-cats" role="tablist" aria-label="Categorias">
                   {CARD_ICON_CATEGORIES.map((cat) => (
@@ -501,44 +566,125 @@ export function CardIconPicker({ value, onChange, accent }: PickerProps) {
                       {cat.label}
                     </button>
                   ))}
-                </div>
-
-                <div className="sc-icon-sheet-grid" role="listbox" aria-label="Ícones">
                   <button
                     type="button"
-                    role="option"
-                    aria-selected={!value}
-                    className={`sc-icon-sheet-item is-none${!value ? ' is-active' : ''}`}
-                    onClick={() => pick(null)}
+                    role="tab"
+                    aria-selected={category === 'custom'}
+                    className={`sc-icon-sheet-cat${category === 'custom' ? ' is-active' : ''}`}
+                    onClick={() => setCategory('custom')}
                   >
-                    <span className="sc-icon-sheet-glyph">—</span>
-                    <span>Nenhum</span>
+                    Meus
                   </button>
-                  {filtered.map((opt) => (
-                    <motion.button
-                      key={opt.id}
-                      type="button"
-                      role="option"
-                      aria-selected={value === opt.id}
-                      className={`sc-icon-sheet-item${value === opt.id ? ' is-active' : ''}`}
-                      onClick={() => pick(opt.id)}
-                      title={opt.label}
-                      whileTap={reduce ? undefined : tapScale}
-                      style={
-                        value === opt.id && accent
-                          ? { color: accent, borderColor: accent }
-                          : undefined
-                      }
-                    >
-                      <IonIcon icon={opt.icon} />
-                      <span>{opt.label}</span>
-                    </motion.button>
-                  ))}
                 </div>
 
-                {!filtered.length ? (
-                  <p className="sc-icon-sheet-empty">Nenhum ícone com esse nome.</p>
-                ) : null}
+                {category === 'custom' ? (
+                  <div className="sc-icon-custom">
+                    <div className="sc-icon-custom-preview">
+                      {value && (isCustomImageIcon(value) || isEmojiIcon(value)) ? (
+                        <CardFaceIcon icon={value} className="sc-icon-custom-face" />
+                      ) : (
+                        <span className="sc-icon-custom-placeholder">
+                          Seu ícone aparece aqui
+                        </span>
+                      )}
+                    </div>
+
+                    <input
+                      ref={fileRef}
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+                      hidden
+                      onChange={(e) => void onUpload(e.target.files?.[0] ?? null)}
+                    />
+
+                    <button
+                      type="button"
+                      className="sc-btn primary sc-icon-upload-btn"
+                      disabled={uploading}
+                      onClick={() => fileRef.current?.click()}
+                    >
+                      <IonIcon icon={cloudUploadOutline} />
+                      {uploading ? 'Processando…' : 'Enviar imagem'}
+                    </button>
+                    <p className="sc-icon-custom-hint">
+                      PNG, JPG, WEBP, GIF ou SVG · redimensionado automaticamente
+                    </p>
+
+                    <div className="sc-icon-emoji-row">
+                      <label className="sc-icon-emoji-field">
+                        <span>Ou use um emoji</span>
+                        <input
+                          value={emojiDraft}
+                          onChange={(e) => setEmojiDraft(e.target.value)}
+                          placeholder="Ex.: 🚀"
+                          maxLength={16}
+                          autoComplete="off"
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        className="sc-btn"
+                        disabled={!emojiDraft.trim()}
+                        onClick={applyEmoji}
+                      >
+                        Usar
+                      </button>
+                    </div>
+
+                    {uploadError ? (
+                      <p className="sc-icon-sheet-empty">{uploadError}</p>
+                    ) : null}
+
+                    <button
+                      type="button"
+                      className="sc-btn sc-icon-clear-btn"
+                      onClick={() => pick(null)}
+                    >
+                      Remover ícone
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="sc-icon-sheet-grid" role="listbox" aria-label="Ícones">
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={!value}
+                        className={`sc-icon-sheet-item is-none${!value ? ' is-active' : ''}`}
+                        onClick={() => pick(null)}
+                      >
+                        <span className="sc-icon-sheet-glyph">—</span>
+                        <span>Nenhum</span>
+                      </button>
+                      {filtered.map((opt) => (
+                        <motion.button
+                          key={opt.id}
+                          type="button"
+                          role="option"
+                          aria-selected={value === opt.id}
+                          className={`sc-icon-sheet-item${value === opt.id ? ' is-active' : ''}`}
+                          onClick={() => pick(opt.id)}
+                          title={opt.label}
+                          whileTap={reduce ? undefined : tapScale}
+                          style={
+                            value === opt.id && accent
+                              ? { color: accent, borderColor: accent }
+                              : undefined
+                          }
+                        >
+                          <IonIcon icon={opt.icon} />
+                          <span>{opt.label}</span>
+                        </motion.button>
+                      ))}
+                    </div>
+
+                    {!filtered.length ? (
+                      <p className="sc-icon-sheet-empty">
+                        Nenhum ícone com esse nome.
+                      </p>
+                    ) : null}
+                  </>
+                )}
               </motion.div>
             </motion.div>
           ) : null}

@@ -1408,15 +1408,27 @@ ion-popover {
   align-items: center;
   justify-content: center;
   flex: 1;
-  min-height: 56px;
+  min-height: 72px;
   margin: 2px 0 6px;
 }
 
 .card-face-icon ion-icon {
-  font-size: 52px;
-  width: 52px;
-  height: 52px;
+  font-size: 68px;
+  width: 68px;
+  height: 68px;
   opacity: 0.92;
+}
+
+.card-face-icon-img {
+  width: 68px;
+  height: 68px;
+  object-fit: contain;
+  border-radius: 12px;
+}
+
+.card-face-emoji {
+  font-size: 58px;
+  line-height: 1;
 }
 
 .sc-face-card.has-icon .card-title {
@@ -1430,13 +1442,18 @@ ion-popover {
 }
 
 .sc-face-compose .card-face-icon {
-  min-height: 64px;
+  min-height: 80px;
 }
 
-.sc-face-compose .card-face-icon ion-icon {
-  font-size: 64px;
-  width: 64px;
-  height: 64px;
+.sc-face-compose .card-face-icon ion-icon,
+.sc-face-compose .card-face-icon-img {
+  font-size: 76px;
+  width: 76px;
+  height: 76px;
+}
+
+.sc-face-compose .card-face-emoji {
+  font-size: 66px;
 }
 
 .card-compose-icon-block {
@@ -1480,18 +1497,36 @@ ion-popover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 56px;
-  height: 56px;
+  width: 64px;
+  height: 64px;
   flex-shrink: 0;
   border-radius: 14px;
   background: var(--surface-1);
   border: 0.5px solid var(--border);
+  overflow: hidden;
 }
 
 .card-icon-trigger-preview ion-icon {
+  font-size: 34px;
+  width: 34px;
+  height: 34px;
+}
+
+.card-icon-trigger-face {
+  min-height: 0;
+  margin: 0;
+  flex: none;
+}
+
+.card-icon-trigger-face ion-icon,
+.card-icon-trigger-face .card-face-icon-img {
+  font-size: 36px;
+  width: 36px;
+  height: 36px;
+}
+
+.card-icon-trigger-face .card-face-emoji {
   font-size: 30px;
-  width: 30px;
-  height: 30px;
 }
 
 .card-icon-trigger-copy {
@@ -1692,6 +1727,93 @@ ion-popover {
   color: var(--text-muted);
 }
 
+.sc-icon-custom {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 220px;
+}
+
+.sc-icon-custom-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  border-radius: 16px;
+  border: 0.5px dashed var(--border-strong);
+  background: var(--surface-2);
+}
+
+.sc-icon-custom-face {
+  min-height: 0;
+  margin: 0;
+}
+
+.sc-icon-custom-face ion-icon,
+.sc-icon-custom-face .card-face-icon-img {
+  font-size: 72px;
+  width: 72px;
+  height: 72px;
+}
+
+.sc-icon-custom-face .card-face-emoji {
+  font-size: 64px;
+}
+
+.sc-icon-custom-placeholder {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.sc-icon-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.sc-icon-upload-btn ion-icon {
+  font-size: 18px;
+}
+
+.sc-icon-custom-hint {
+  margin: -4px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.sc-icon-emoji-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.sc-icon-emoji-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.sc-icon-emoji-field input {
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 0.5px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 18px;
+}
+
+.sc-icon-clear-btn {
+  width: 100%;
+}
+
 @media (min-width: 720px) {
   .sc-icon-sheet-backdrop {
     align-items: center;
@@ -1710,16 +1832,26 @@ ion-popover {
   flex: 1;
 }
 
-.list-face-icon ion-icon {
-  font-size: 16px;
-  width: 16px;
-  height: 16px;
+.list-face-icon ion-icon,
+.list-face-icon .card-face-icon-img {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
 }
 
-.thumb-face-icon ion-icon {
-  font-size: 36px;
-  width: 36px;
-  height: 36px;
+.list-face-icon .card-face-emoji {
+  font-size: 16px;
+}
+
+.thumb-face-icon ion-icon,
+.thumb-face-icon .card-face-icon-img {
+  font-size: 44px;
+  width: 44px;
+  height: 44px;
+}
+
+.thumb-face-icon .card-face-emoji {
+  font-size: 40px;
 }
 
 .card-title {
@@ -3581,10 +3713,15 @@ ion-toast.sc-toast--info::part(container) {
   margin: 2px 0 6px;
 }
 
-.sc-flow-card-icon ion-icon {
-  font-size: 28px;
-  width: 28px;
-  height: 28px;
+.sc-flow-card-icon ion-icon,
+.sc-flow-card-icon .card-face-icon-img {
+  font-size: 36px;
+  width: 36px;
+  height: 36px;
+}
+
+.sc-flow-card-icon .card-face-emoji {
+  font-size: 32px;
 }
 
 .sc-flow-card-title {
