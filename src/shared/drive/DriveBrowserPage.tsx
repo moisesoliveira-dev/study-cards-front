@@ -412,6 +412,9 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         setDetail(null);
         setMergePickIds((prev) => prev.filter((pickId) => pickId !== id));
         setRaisedId((prev) => (prev === id ? null : prev));
+        window.dispatchEvent(
+          new CustomEvent('sc-card-deleted', { detail: { id } }),
+        );
         toast.success('Card excluído');
         await load();
       } catch (error) {

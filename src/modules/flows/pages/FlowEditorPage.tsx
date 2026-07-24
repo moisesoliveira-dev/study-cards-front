@@ -294,6 +294,9 @@ function FlowCanvas({
   edgesRef.current = edges;
   const cardsRef = useRef(cards);
   cardsRef.current = cards;
+  /** Cards deleted in this session — blocks autosave from resurrecting nodes. */
+  const deletedCardIdsRef = useRef<Set<string>>(new Set());
+
   const { menu: ctxMenu, open: openCtx, close: closeCtx } = useContextMenu();
 
   const selectedNodes = useMemo(
@@ -315,6 +318,7 @@ function FlowCanvas({
   }, [nodes]);
 
   useEffect(() => {
+    deletedCardIdsRef.current = new Set();
     setNodes(initialNodes);
     setEdges(initialEdges);
     setSettings(loadSettings(board.id));
@@ -347,11 +351,21 @@ function FlowCanvas({
       setSaving(true);
       try {
         const knownCards = new Set(cardsRef.current.map((c) => c.id));
+        const banned = deletedCardIdsRef.current;
         const removeIds = new Set<string>();
         for (const n of nextNodes) {
           if (n.type === 'groupNode') continue;
           const cardId = (n.data as CardFlowNodeData | undefined)?.cardId;
-          if (!cardId || !knownCards.has(cardId)) removeIds.add(n.id);
+          const fromId =
+            n.id.startsWith('card-') && n.id.length > 5 ? n.id.slice(5) : '';
+          const resolved = cardId || fromId;
+          if (
+            !resolved ||
+            !knownCards.has(resolved) ||
+            banned.has(resolved)
+          ) {
+            removeIds.add(n.id);
+          }
         }
         let expanded = true;
         while (expanded) {
@@ -450,13 +464,19 @@ function FlowCanvas({
   /** Drop canvas nodes when their cards disappear; refresh labels from live cards. */
   const syncGraphWithCards = useCallback(() => {
     const known = new Map(cardsRef.current.map((c) => [c.id, c]));
+    const banned = deletedCardIdsRef.current;
     const ns = nodesRef.current;
     const eds = edgesRef.current;
     const removeIds = new Set<string>();
     for (const n of ns) {
       if (n.type === 'groupNode') continue;
       const cardId = (n.data as CardFlowNodeData | undefined)?.cardId;
-      if (!cardId || !known.has(cardId)) removeIds.add(n.id);
+      const fromId =
+        n.id.startsWith('card-') && n.id.length > 5 ? n.id.slice(5) : '';
+      const resolved = cardId || fromId;
+      if (!resolved || !known.has(resolved) || banned.has(resolved)) {
+        removeIds.add(n.id);
+      }
     }
     let expanded = true;
     while (expanded) {
@@ -1017,6 +1037,57 @@ function FlowCanvas({
     [edges, nodes, scheduleSave, setEdges, setNodes],
   );
 
+  /** Remove every canvas node that represents this card (by data.cardId or id). */
+  const removeCardFromGraph = useCallback(
+    (cardId: string) => {
+      deletedCardIdsRef.current.add(cardId);
+      const ns = nodesRef.current;
+      const eds = edgesRef.current;
+      const removeIds = new Set<string>();
+      for (const n of ns) {
+        if (n.type === 'groupNode') continue;
+        const dataId = (n.data as CardFlowNodeData | undefined)?.cardId;
+        const fromId =
+          n.id.startsWith('card-') && n.id.length > 5 ? n.id.slice(5) : '';
+        if (
+          dataId === cardId ||
+          fromId === cardId ||
+          n.id === `card-${cardId}` ||
+          n.id === cardId
+        ) {
+          removeIds.add(n.id);
+        }
+      }
+      if (!removeIds.size) {
+        // Still persist so server-side prune runs
+        scheduleSave(ns, eds);
+        return;
+      }
+      let expanded = true;
+      while (expanded) {
+        expanded = false;
+        for (const n of ns) {
+          if (n.parentId && removeIds.has(n.parentId) && !removeIds.has(n.id)) {
+            removeIds.add(n.id);
+            expanded = true;
+          }
+        }
+      }
+      const nextNodes = ns.filter((n) => !removeIds.has(n.id));
+      const kept = new Set(nextNodes.map((n) => n.id));
+      const nextEdges = eds.filter(
+        (e) => kept.has(e.source) && kept.has(e.target),
+      );
+      setNodes(nextNodes);
+      setEdges(nextEdges);
+      setSelectedNodeIds((ids) => ids.filter((id) => !removeIds.has(id)));
+      setSelectedEdgeIds([]);
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      void persist(nextNodes, nextEdges);
+    },
+    [persist, scheduleSave, setEdges, setNodes],
+  );
+
   const syncCardIntoGraph = useCallback(
     (card: Card) => {
       setNodes((ns) => {
@@ -1086,16 +1157,31 @@ function FlowCanvas({
     async (id: string) => {
       try {
         await cardsFacade.remove(id);
-        onCardsChange(cards.filter((c) => c.id !== id));
-        deleteNodesByIds([`card-${id}`]);
+        const nextCards = cardsRef.current.filter((c) => c.id !== id);
+        cardsRef.current = nextCards;
+        onCardsChange(nextCards);
+        removeCardFromGraph(id);
         setDetail(null);
         toast.success('Carta excluída');
       } catch (error) {
         toast.error(error);
       }
     },
-    [cards, deleteNodesByIds, onCardsChange, toast],
+    [onCardsChange, removeCardFromGraph, toast],
   );
+
+  useEffect(() => {
+    const onCardDeleted = (event: Event) => {
+      const id = (event as CustomEvent<{ id?: string }>).detail?.id;
+      if (!id) return;
+      const nextCards = cardsRef.current.filter((c) => c.id !== id);
+      cardsRef.current = nextCards;
+      onCardsChange(nextCards);
+      removeCardFromGraph(id);
+    };
+    window.addEventListener('sc-card-deleted', onCardDeleted);
+    return () => window.removeEventListener('sc-card-deleted', onCardDeleted);
+  }, [onCardsChange, removeCardFromGraph]);
 
   const onNodeDoubleClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
