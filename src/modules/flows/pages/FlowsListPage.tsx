@@ -1,6 +1,5 @@
 import {
   useCallback,
-  useEffect,
   useMemo,
   useState,
   type CSSProperties,
@@ -11,6 +10,7 @@ import {
   IonPage,
   IonSpinner,
   useIonAlert,
+  useIonViewWillEnter,
 } from '@ionic/react';
 import { IonIcon } from '@ionic/react';
 import {
@@ -59,9 +59,11 @@ export default function FlowsListPage() {
     return flows.filter((f) => f.subjectId === filterSubjectId);
   }, [flows, filterSubjectId]);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setLoadError(null);
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) {
+      setLoading(true);
+      setLoadError(null);
+    }
     try {
       const [f, s] = await Promise.all([
         flowsFacade.list(),
@@ -69,34 +71,54 @@ export default function FlowsListPage() {
       ]);
       setFlows(f);
       setSubjects(s);
-      setSubjectId((prev) => prev || s[0]?.id || '');
-    } catch (error) {
-      setLoadError(
-        error instanceof Error ? error.message : 'Falha ao carregar fluxogramas',
+      setSubjectId((prev) =>
+        prev && s.some((item) => item.id === prev) ? prev : s[0]?.id || '',
       );
+      setFilterSubjectId((prev) =>
+        prev === 'all' || s.some((item) => item.id === prev) ? prev : 'all',
+      );
+    } catch (error) {
+      if (!opts?.silent) {
+        setLoadError(
+          error instanceof Error
+            ? error.message
+            : 'Falha ao carregar fluxogramas',
+        );
+      }
       toast.error(error);
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
+  useIonViewWillEnter(() => {
     void load();
-  }, [load]);
+  });
 
-  const openComposer = () => {
-    if (!subjects.length) {
-      toast.error(
-        new Error('Crie um grupo em Cartas antes de montar um fluxograma.'),
+  const openComposer = async () => {
+    try {
+      const latest = await subjectsFacade.list();
+      setSubjects(latest);
+      if (!latest.length) {
+        toast.error(
+          new Error(
+            'Crie um grupo em Cartas (nível principal) antes de montar um fluxograma.',
+          ),
+        );
+        return;
+      }
+      setName('');
+      setSubjectId(
+        filterSubjectId !== 'all' &&
+          latest.some((s) => s.id === filterSubjectId)
+          ? filterSubjectId
+          : latest[0].id,
       );
-      return;
+      setComposing(true);
+    } catch (error) {
+      toast.error(error);
     }
-    setName('');
-    setSubjectId(
-      filterSubjectId !== 'all' ? filterSubjectId : subjects[0].id,
-    );
-    setComposing(true);
   };
 
   const create = async () => {
@@ -197,7 +219,7 @@ export default function FlowsListPage() {
               <motion.button
                 type="button"
                 className="sc-btn primary sc-flow-cta"
-                onClick={openComposer}
+                onClick={() => void openComposer()}
                 whileTap={reduce ? undefined : tapScale}
               >
                 <IonIcon icon={addOutline} />
@@ -409,7 +431,7 @@ export default function FlowsListPage() {
               </h2>
               <p>
                 {!subjects.length
-                  ? 'Primeiro crie um grupo em Cartas; depois volte para montar o mapa.'
+                  ? 'Fluxogramas usam os grupos da tela Cartas (Novo grupo). Pastas dentro de um grupo não aparecem aqui.'
                   : flows.length
                     ? 'Troque o filtro ou crie um fluxograma novo para este grupo.'
                     : 'Crie um fluxograma e arraste cards do grupo para o canvas.'}
@@ -418,7 +440,7 @@ export default function FlowsListPage() {
                 <motion.button
                   type="button"
                   className="sc-btn primary"
-                  onClick={openComposer}
+                  onClick={() => void openComposer()}
                   whileTap={reduce ? undefined : tapScale}
                 >
                   {flows.length ? 'Novo mapa' : 'Criar o primeiro'}
