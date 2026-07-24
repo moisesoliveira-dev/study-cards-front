@@ -14,6 +14,8 @@ export type FlowCanvasSettings = {
   showMiniMap: boolean;
   showGrid: boolean;
   defaultSvgAnimate: boolean;
+  dragTree: boolean;
+  nodeCollisions: boolean;
 };
 
 type Props = {
@@ -434,6 +436,22 @@ export function FlowInspector({
             checked={settings.defaultSvgAnimate}
             onChange={(v) =>
               onSettingsChange({ ...settings, defaultSvgAnimate: v })
+            }
+          />
+          <Toggle
+            label="Drag Tree"
+            hint="Ao arrastar um nó, move os descendentes ligados"
+            checked={settings.dragTree}
+            onChange={(v) =>
+              onSettingsChange({ ...settings, dragTree: v })
+            }
+          />
+          <Toggle
+            label="Node Collisions"
+            hint="Impede nós de ficarem sobrepostos"
+            checked={settings.nodeCollisions}
+            onChange={(v) =>
+              onSettingsChange({ ...settings, nodeCollisions: v })
             }
           />
         </section>

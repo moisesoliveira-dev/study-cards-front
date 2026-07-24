@@ -15,11 +15,15 @@ import type { ContextMenuItem } from '../../../shared/components/ContextMenu';
 import {
   addOutline,
   arrowBackOutline,
+  brushOutline,
   closeOutline,
   createOutline,
   documentTextOutline,
+  downloadOutline,
   expandOutline,
+  gitNetworkOutline,
   gridOutline,
+  layersOutline,
   trashOutline,
 } from 'ionicons/icons';
 import { useHistory, useParams } from 'react-router-dom';
@@ -28,6 +32,7 @@ import {
   Background,
   Controls,
   MiniMap,
+  Panel,
   addEdge,
   applyEdgeChanges,
   applyNodeChanges,
@@ -55,6 +60,8 @@ import {
   type CardFlowNodeData,
 } from '../../../shared/flow/CardFlowNode';
 import { CardFlowEdge } from '../../../shared/flow/CardFlowEdge';
+import { SubFlowGroupNode } from '../../../shared/flow/SubFlowGroupNode';
+import { FlowEraser } from '../../../shared/flow/FlowEraser';
 import {
   FlowInspector,
   type FlowCanvasSettings,
@@ -69,13 +76,22 @@ import {
   isValidFlowConnection,
   withBlockedSource,
 } from '../../../shared/flow/flow-connection.utils';
+import {
+  downloadFlowImage,
+  getTreeDescendantIds,
+  moveNodesByDelta,
+  nodesAbsoluteBounds,
+} from '../../../shared/flow/flow-tools.utils';
 import { FaceCardComposer } from '../../../shared/components/FaceCardComposer';
 import { CardDocumentSheet } from '../../../shared/components/CardDocumentSheet';
 import { documentToPlainText } from '../../../shared/components/DocumentEditor';
 import { useAppToast } from '../../../shared/hooks/useAppToast';
 import { useTheme } from '../../../shared/theme/ThemeContext';
 
-const nodeTypes = { cardNode: CardFlowNode };
+const nodeTypes = {
+  cardNode: CardFlowNode,
+  groupNode: SubFlowGroupNode,
+};
 const edgeTypes = { flowEdge: CardFlowEdge };
 
 const DEFAULT_SOURCE_HANDLE = 's-right-1';
@@ -86,6 +102,8 @@ const DEFAULT_SETTINGS: FlowCanvasSettings = {
   showMiniMap: true,
   showGrid: true,
   defaultSvgAnimate: true,
+  dragTree: false,
+  nodeCollisions: false,
 };
 
 function loadSettings(flowId: string): FlowCanvasSettings {
@@ -142,49 +160,81 @@ function FlowCanvas({
   const toast = useAppToast();
   const { resolved } = useTheme();
   const compact = useIsCompactFlow();
-  const { screenToFlowPosition, fitView } = useReactFlow();
+  const { screenToFlowPosition, fitView, getIntersectingNodes } = useReactFlow();
   const cardMap = useMemo(
     () => new Map(cards.map((c) => [c.id, c])),
     [cards],
   );
 
-  const initialNodes: Node[] = useMemo(
-    () =>
-      board.nodes.map((n) => {
-        const cardId = String(n.data?.cardId ?? '');
-        const card = cardMap.get(cardId);
-        const handleOffsets =
-          (n.data?.handleOffsets as CardFlowNodeData['handleOffsets']) ??
-          undefined;
-        const blockIncoming = Boolean(n.data?.blockIncoming);
-        const blockedSourceIds = Array.isArray(n.data?.blockedSourceIds)
-          ? (n.data.blockedSourceIds as string[])
-          : undefined;
-        const baseData = card
-          ? cardToNodeData(card)
-          : {
-              cardId,
-              front: String(n.data?.front ?? 'Card removido'),
-              back: String(n.data?.back ?? ''),
-              tag: String(n.data?.tag ?? '—'),
-              icon: (n.data?.icon as string | null) ?? null,
-              status: 'NEW' as const,
-              linkCount: 0,
-            };
+  const initialNodes: Node[] = useMemo(() => {
+    const mapped = board.nodes.map((n) => {
+      if (n.type === 'groupNode') {
         return {
           id: n.id,
-          type: 'cardNode',
+          type: 'groupNode',
           position: n.position,
-          data: {
-            ...baseData,
-            handleOffsets,
-            blockIncoming,
-            blockedSourceIds,
+          parentId: n.parentId,
+          extent: n.extent === 'parent' ? ('parent' as const) : undefined,
+          expandParent: n.expandParent,
+          style: n.style ?? {
+            width: n.width ?? 320,
+            height: n.height ?? 220,
           },
-        };
-      }),
-    [board.nodes, cardMap],
-  );
+          width: n.width,
+          height: n.height,
+          data: {
+            label: String(n.data?.label ?? 'Subfluxo'),
+          },
+          zIndex: -1,
+        } satisfies Node;
+      }
+
+      const cardId = String(n.data?.cardId ?? '');
+      const card = cardMap.get(cardId);
+      const handleOffsets =
+        (n.data?.handleOffsets as CardFlowNodeData['handleOffsets']) ??
+        undefined;
+      const blockIncoming = Boolean(n.data?.blockIncoming);
+      const blockedSourceIds = Array.isArray(n.data?.blockedSourceIds)
+        ? (n.data.blockedSourceIds as string[])
+        : undefined;
+      const baseData = card
+        ? cardToNodeData(card)
+        : {
+            cardId,
+            front: String(n.data?.front ?? 'Card removido'),
+            back: String(n.data?.back ?? ''),
+            tag: String(n.data?.tag ?? '—'),
+            icon: (n.data?.icon as string | null) ?? null,
+            status: 'NEW' as const,
+            linkCount: 0,
+          };
+      return {
+        id: n.id,
+        type: 'cardNode',
+        position: n.position,
+        parentId: n.parentId,
+        extent: n.extent === 'parent' ? ('parent' as const) : undefined,
+        expandParent: n.expandParent ?? Boolean(n.parentId),
+        data: {
+          ...baseData,
+          handleOffsets,
+          blockIncoming,
+          blockedSourceIds,
+        },
+      } satisfies Node;
+    });
+
+    // Parents must come before children for React Flow subflows
+    return mapped.sort((a, b) => {
+      const aGroup = a.type === 'groupNode' ? 0 : 1;
+      const bGroup = b.type === 'groupNode' ? 0 : 1;
+      if (aGroup !== bGroup) return aGroup - bGroup;
+      if (a.parentId && !b.parentId) return 1;
+      if (!a.parentId && b.parentId) return -1;
+      return 0;
+    });
+  }, [board.nodes, cardMap]);
 
   const initialEdges: Edge[] = useMemo(
     () =>
@@ -224,9 +274,14 @@ function FlowCanvas({
   const [hint, setHint] = useState('');
   const [icon, setIcon] = useState<string | null>(null);
   const [detail, setDetail] = useState<Card | null>(null);
+  const [eraserActive, setEraserActive] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const nodesRef = useRef(nodes);
   const edgesRef = useRef(edges);
+  const dragOriginRef = useRef<Record<string, { x: number; y: number }>>({});
+  const lastDragPosRef = useRef<{ id: string; x: number; y: number } | null>(
+    null,
+  );
   nodesRef.current = nodes;
   edgesRef.current = edges;
   const { menu: ctxMenu, open: openCtx, close: closeCtx } = useContextMenu();
@@ -283,11 +338,36 @@ function FlowCanvas({
       try {
         const updated = await flowsFacade.update(board.id, {
           nodes: nextNodes.map((n) => {
+            if (n.type === 'groupNode') {
+              return {
+                id: n.id,
+                type: n.type,
+                position: n.position,
+                parentId: n.parentId,
+                extent: n.extent === 'parent' ? 'parent' : undefined,
+                expandParent: n.expandParent,
+                width:
+                  n.width ??
+                  (typeof n.style?.width === 'number'
+                    ? n.style.width
+                    : undefined),
+                height:
+                  n.height ??
+                  (typeof n.style?.height === 'number'
+                    ? n.style.height
+                    : undefined),
+                style: (n.style as Record<string, unknown>) ?? undefined,
+                data: n.data as Record<string, unknown>,
+              };
+            }
             const data = n.data as CardFlowNodeData;
             return {
               id: n.id,
               type: n.type,
               position: n.position,
+              parentId: n.parentId,
+              extent: n.extent === 'parent' ? 'parent' : undefined,
+              expandParent: n.expandParent,
               data: {
                 cardId: data.cardId,
                 front: data.front,
@@ -447,9 +527,245 @@ function FlowCanvas({
     [],
   );
 
-  const onNodeDragStop = useCallback(() => {
-    scheduleSave(nodes, edges);
-  }, [edges, nodes, scheduleSave]);
+  const onNodeDragStart = useCallback(
+    (_: MouseEvent | TouchEvent, node: Node) => {
+      dragOriginRef.current[node.id] = { ...node.position };
+      lastDragPosRef.current = {
+        id: node.id,
+        x: node.position.x,
+        y: node.position.y,
+      };
+      if (settings.dragTree) {
+        const descendants = getTreeDescendantIds(node.id, edges);
+        for (const id of descendants) {
+          const child = nodes.find((n) => n.id === id);
+          if (child) dragOriginRef.current[id] = { ...child.position };
+        }
+      }
+    },
+    [edges, nodes, settings.dragTree],
+  );
+
+  const onNodeDrag = useCallback(
+    (_: MouseEvent | TouchEvent, node: Node) => {
+      if (settings.dragTree) {
+        const last = lastDragPosRef.current;
+        if (last && last.id === node.id) {
+          const delta = {
+            x: node.position.x - last.x,
+            y: node.position.y - last.y,
+          };
+          const descendants = getTreeDescendantIds(node.id, edges);
+          if (descendants.size && (delta.x || delta.y)) {
+            setNodes((ns) => moveNodesByDelta(ns, descendants, delta));
+          }
+          lastDragPosRef.current = {
+            id: node.id,
+            x: node.position.x,
+            y: node.position.y,
+          };
+        }
+      }
+
+      if (settings.nodeCollisions) {
+        const hits = getIntersectingNodes(node).filter(
+          (n) =>
+            n.id !== node.id &&
+            n.parentId !== node.id &&
+            node.parentId !== n.id &&
+            n.type !== 'groupNode',
+        );
+        const hitIds = new Set(hits.map((h) => h.id));
+        setNodes((ns) =>
+          ns.map((n) => ({
+            ...n,
+            className: hitIds.has(n.id) ? 'sc-flow-node-collide' : undefined,
+          })),
+        );
+      }
+    },
+    [
+      edges,
+      getIntersectingNodes,
+      setNodes,
+      settings.dragTree,
+      settings.nodeCollisions,
+    ],
+  );
+
+  const onNodeDragStop = useCallback(
+    (_: MouseEvent | TouchEvent, node: Node) => {
+      if (settings.nodeCollisions && node.type !== 'groupNode') {
+        const hits = getIntersectingNodes(node).filter(
+          (n) =>
+            n.id !== node.id &&
+            n.parentId !== node.id &&
+            node.parentId !== n.id &&
+            n.type !== 'groupNode',
+        );
+        if (hits.length) {
+          const origin = dragOriginRef.current[node.id];
+          if (origin) {
+            setNodes((ns) => {
+              const next = ns.map((n) => {
+                const orig = dragOriginRef.current[n.id];
+                if (orig) {
+                  return { ...n, position: orig, className: undefined };
+                }
+                return { ...n, className: undefined };
+              });
+              scheduleSave(next, edgesRef.current);
+              return next;
+            });
+            toast.error(new Error('Colisão: posição revertida'));
+            lastDragPosRef.current = null;
+            return;
+          }
+        }
+      }
+
+      setNodes((ns) => ns.map((n) => ({ ...n, className: undefined })));
+      // Persist after React Flow commits final drag positions
+      queueMicrotask(() => {
+        scheduleSave(nodesRef.current, edgesRef.current);
+      });
+      lastDragPosRef.current = null;
+    },
+    [getIntersectingNodes, scheduleSave, setNodes, settings.nodeCollisions, toast],
+  );
+
+  const createSubFlow = useCallback(() => {
+    const selected = nodes.filter(
+      (n) => selectedNodeIds.includes(n.id) && n.type !== 'groupNode',
+    );
+    if (!selected.length) {
+      toast.error(new Error('Selecione ao menos um card para o subfluxo'));
+      return;
+    }
+    const bounds = nodesAbsoluteBounds(selected);
+    const groupId = `group-${crypto.randomUUID().slice(0, 8)}`;
+    const groupNode: Node = {
+      id: groupId,
+      type: 'groupNode',
+      position: { x: bounds.x, y: bounds.y },
+      style: { width: bounds.width, height: bounds.height },
+      data: { label: 'Subfluxo' },
+      zIndex: -1,
+    };
+    const selectedIds = new Set(selected.map((n) => n.id));
+    const nextNodes = [
+      groupNode,
+      ...nodes.map((n) => {
+        if (!selectedIds.has(n.id)) return n;
+        return {
+          ...n,
+          parentId: groupId,
+          extent: 'parent' as const,
+          expandParent: true,
+          position: {
+            x: n.position.x - bounds.x,
+            y: n.position.y - bounds.y,
+          },
+        };
+      }),
+    ];
+    setNodes(nextNodes);
+    scheduleSave(nextNodes, edges);
+    setSelectedNodeIds([groupId]);
+    toast.success('Subfluxo criado');
+  }, [edges, nodes, scheduleSave, selectedNodeIds, setNodes, toast]);
+
+  const ungroupSelected = useCallback(() => {
+    const groups = nodes.filter(
+      (n) => selectedNodeIds.includes(n.id) && n.type === 'groupNode',
+    );
+    if (!groups.length) {
+      toast.error(new Error('Selecione um subfluxo para desagrupar'));
+      return;
+    }
+    const groupIds = new Set(groups.map((g) => g.id));
+    const nextNodes = nodes
+      .filter((n) => !groupIds.has(n.id))
+      .map((n) => {
+        if (!n.parentId || !groupIds.has(n.parentId)) return n;
+        const parent = groups.find((g) => g.id === n.parentId);
+        return {
+          ...n,
+          parentId: undefined,
+          extent: undefined,
+          expandParent: undefined,
+          position: {
+            x: n.position.x + (parent?.position.x ?? 0),
+            y: n.position.y + (parent?.position.y ?? 0),
+          },
+        };
+      });
+    setNodes(nextNodes);
+    scheduleSave(nextNodes, edges);
+    setSelectedNodeIds([]);
+    toast.success('Subfluxo desagrupado');
+  }, [edges, nodes, scheduleSave, selectedNodeIds, setNodes, toast]);
+
+  const ungroupByIds = useCallback(
+    (ids: string[]) => {
+      const groups = nodes.filter(
+        (n) => ids.includes(n.id) && n.type === 'groupNode',
+      );
+      if (!groups.length) return;
+      const groupIds = new Set(groups.map((g) => g.id));
+      const nextNodes = nodes
+        .filter((n) => !groupIds.has(n.id))
+        .map((n) => {
+          if (!n.parentId || !groupIds.has(n.parentId)) return n;
+          const parent = groups.find((g) => g.id === n.parentId);
+          return {
+            ...n,
+            parentId: undefined,
+            extent: undefined,
+            expandParent: undefined,
+            position: {
+              x: n.position.x + (parent?.position.x ?? 0),
+              y: n.position.y + (parent?.position.y ?? 0),
+            },
+          };
+        });
+      setNodes(nextNodes);
+      scheduleSave(nextNodes, edges);
+      setSelectedNodeIds([]);
+      toast.success('Subfluxo desagrupado');
+    },
+    [edges, nodes, scheduleSave, setNodes, toast],
+  );
+
+  const handleEraser = useCallback(
+    (nodeIds: string[], edgeIds: string[]) => {
+      const removeNodes = new Set(nodeIds);
+      for (const n of nodes) {
+        if (n.parentId && removeNodes.has(n.parentId)) removeNodes.add(n.id);
+      }
+      const nextNodes = nodes.filter((n) => !removeNodes.has(n.id));
+      const nextEdges = edges.filter((e) => {
+        if (removeNodes.has(e.source) || removeNodes.has(e.target)) return false;
+        if (edgeIds.includes(e.id) && !isSynthesisEdge(e)) return false;
+        return true;
+      });
+      setNodes(nextNodes);
+      setEdges(nextEdges);
+      scheduleSave(nextNodes, nextEdges);
+    },
+    [edges, nodes, scheduleSave, setEdges, setNodes],
+  );
+
+  const downloadImage = useCallback(async () => {
+    try {
+      await downloadFlowImage(
+        `${(board.name || 'fluxograma').replace(/\s+/g, '-').toLowerCase()}.png`,
+      );
+      toast.success('Imagem baixada');
+    } catch (error) {
+      toast.error(error);
+    }
+  }, [board.name, toast]);
 
   const onSelectionChange = useCallback((params: OnSelectionChangeParams) => {
     setSelectedNodeIds(params.nodes.map((n) => n.id));
@@ -483,14 +799,14 @@ function FlowCanvas({
   );
 
   const updateNodeData = useCallback(
-    (nodeId: string, patch: Partial<CardFlowNodeData>) => {
+    (nodeId: string, patch: Record<string, unknown>) => {
       setNodes((ns) => {
         const next = ns.map((n) => {
           if (n.id !== nodeId) return n;
           return {
             ...n,
             data: {
-              ...(n.data as CardFlowNodeData),
+              ...(n.data as Record<string, unknown>),
               ...patch,
             },
           };
@@ -518,6 +834,9 @@ function FlowCanvas({
     (nodeIds: string[]) => {
       if (!nodeIds.length) return;
       const idSet = new Set(nodeIds);
+      for (const n of nodes) {
+        if (n.parentId && idSet.has(n.parentId)) idSet.add(n.id);
+      }
       const nextNodes = nodes.filter((n) => !idSet.has(n.id));
       const nextEdges = edges.filter(
         (e) => !idSet.has(e.source) && !idSet.has(e.target),
@@ -621,8 +940,55 @@ function FlowCanvas({
 
   const onNodeContextMenu = useCallback(
     (event: React.MouseEvent, node: Node) => {
-      const data = node.data as CardFlowNodeData;
       const otherSelected = selectedNodeIds.filter((id) => id !== node.id);
+
+      if (node.type === 'groupNode') {
+        const label =
+          String((node.data as { label?: string })?.label ?? 'Subfluxo');
+        const items: ContextMenuItem[] = [
+          {
+            id: 'rename',
+            label: 'Renomear subfluxo',
+            icon: createOutline,
+            onSelect: () => {
+              const next = window.prompt('Nome do subfluxo', label);
+              if (next == null) return;
+              updateNodeData(node.id, { label: next.trim() || 'Subfluxo' });
+            },
+          },
+          {
+            id: 'ungroup',
+            label: 'Desagrupar subfluxo',
+            icon: gitNetworkOutline,
+            onSelect: () => ungroupByIds([node.id]),
+          },
+          {
+            id: 'focus',
+            label: 'Enquadrar grupo',
+            icon: expandOutline,
+            onSelect: () =>
+              fitView({
+                nodes: [{ id: node.id }],
+                padding: 0.35,
+                duration: 280,
+              }),
+          },
+          {
+            id: 'remove',
+            label: 'Remover grupo e cards',
+            icon: trashOutline,
+            danger: true,
+            separator: true,
+            onSelect: () => deleteNodesByIds([node.id]),
+          },
+        ];
+        setSelectedNodeIds([node.id]);
+        setSelectedEdgeIds([]);
+        openCtx(event, items, label);
+        return;
+      }
+
+      const data = node.data as CardFlowNodeData;
       const items: ContextMenuItem[] = [
         {
           id: 'edit',
@@ -642,11 +1008,17 @@ function FlowCanvas({
             }),
         },
         {
+          id: 'subflow',
+          label: 'Criar subfluxo com seleção',
+          icon: layersOutline,
+          separator: true,
+          onSelect: createSubFlow,
+        },
+        {
           id: 'block-in',
           label: data.blockIncoming
             ? 'Permitir entradas'
             : 'Bloquear entradas',
-          separator: true,
           onSelect: () =>
             updateNodeData(node.id, { blockIncoming: !data.blockIncoming }),
         },
@@ -685,12 +1057,14 @@ function FlowCanvas({
       openCtx(event, items, data.front || 'Nó');
     },
     [
+      createSubFlow,
       deleteNodesByIds,
       fitView,
       nodes,
       openCardEditor,
       openCtx,
       selectedNodeIds,
+      ungroupByIds,
       updateNodeData,
     ],
   );
@@ -786,10 +1160,16 @@ function FlowCanvas({
           },
         },
         {
+          id: 'subflow',
+          label: 'Criar subfluxo da seleção',
+          icon: layersOutline,
+          separator: true,
+          onSelect: createSubFlow,
+        },
+        {
           id: 'fit',
           label: 'Enquadrar tudo',
           icon: expandOutline,
-          separator: true,
           onSelect: () => fitView({ padding: compact ? 0.15 : 0.2 }),
         },
         {
@@ -808,15 +1188,30 @@ function FlowCanvas({
             setSettings((s) => ({ ...s, snapToGrid: !s.snapToGrid })),
         },
         {
+          id: 'download',
+          label: 'Download Image',
+          icon: downloadOutline,
+          separator: true,
+          onSelect: () => void downloadImage(),
+        },
+        {
           id: 'format',
           label: 'Abrir painel Formatar',
-          separator: true,
           onSelect: () => setInspectorOpen(true),
         },
       ];
       openCtx(event, items, 'Fluxograma');
     },
-    [compact, fitView, openComposer, openCtx, settings.showGrid, settings.snapToGrid],
+    [
+      compact,
+      createSubFlow,
+      downloadImage,
+      fitView,
+      openComposer,
+      openCtx,
+      settings.showGrid,
+      settings.snapToGrid,
+    ],
   );
 
   const addCard = useCallback(
@@ -1123,6 +1518,51 @@ function FlowCanvas({
           <div className="sc-flow-toolbar-actions">
             <button
               type="button"
+              className={`sc-btn sc-flow-tool-btn${eraserActive ? ' is-active' : ''}`}
+              onClick={() => setEraserActive((v) => !v)}
+              aria-label="Eraser Tool"
+              title="Eraser Tool"
+            >
+              <IonIcon icon={brushOutline} />
+              {!compact ? <span>Eraser</span> : null}
+            </button>
+            <button
+              type="button"
+              className="sc-btn sc-flow-tool-btn"
+              disabled={!selectedNodeIds.some((id) => {
+                const n = nodes.find((x) => x.id === id);
+                return n && n.type !== 'groupNode';
+              })}
+              onClick={createSubFlow}
+              aria-label="Sub Flow"
+              title="Criar Sub Flow da seleção"
+            >
+              <IonIcon icon={layersOutline} />
+              {!compact ? <span>Sub Flow</span> : null}
+            </button>
+            <button
+              type="button"
+              className="sc-btn sc-flow-tool-btn"
+              disabled={!selectedNodeIds.some((id) => nodes.find((n) => n.id === id)?.type === 'groupNode')}
+              onClick={ungroupSelected}
+              aria-label="Desagrupar"
+              title="Desagrupar Sub Flow"
+            >
+              <IonIcon icon={gitNetworkOutline} />
+              {!compact ? <span>Ungroup</span> : null}
+            </button>
+            <button
+              type="button"
+              className="sc-btn sc-flow-tool-btn"
+              onClick={() => void downloadImage()}
+              aria-label="Download Image"
+              title="Download Image"
+            >
+              <IonIcon icon={downloadOutline} />
+              {!compact ? <span>PNG</span> : null}
+            </button>
+            <button
+              type="button"
               className="sc-btn sc-flow-tool-btn"
               disabled={!selectedNodeIds.length && !selectedEdgeIds.length}
               onClick={removeSelected}
@@ -1175,6 +1615,8 @@ function FlowCanvas({
           onReconnect={onReconnect}
           isValidConnection={isValidConnection}
           onBeforeDelete={onBeforeDelete}
+          onNodeDragStart={onNodeDragStart}
+          onNodeDrag={onNodeDrag}
           onNodeDragStop={onNodeDragStop}
           onNodeDoubleClick={onNodeDoubleClick}
           onNodeContextMenu={onNodeContextMenu}
@@ -1195,17 +1637,21 @@ function FlowCanvas({
           }}
           fitView
           colorMode={resolved}
-          deleteKeyCode={compact ? null : ['Backspace', 'Delete']}
-          edgesReconnectable
+          deleteKeyCode={compact || eraserActive ? null : ['Backspace', 'Delete']}
+          edgesReconnectable={!eraserActive}
+          nodesDraggable={!eraserActive}
+          nodesConnectable={!eraserActive}
+          elementsSelectable={!eraserActive}
           snapToGrid={settings.snapToGrid}
           snapGrid={[16, 16]}
           panOnScroll={!compact}
           zoomOnPinch
-          panOnDrag
-          selectionOnDrag={!compact}
+          panOnDrag={eraserActive ? false : true}
+          selectionOnDrag={!compact && !eraserActive}
           minZoom={0.25}
           maxZoom={1.8}
           proOptions={{ hideAttribution: true }}
+          className={eraserActive ? 'sc-flow-erasing' : undefined}
         >
           {settings.showGrid ? (
             <Background
@@ -1218,6 +1664,12 @@ function FlowCanvas({
           <Controls showInteractive={!compact} position="bottom-left" />
           {!compact && settings.showMiniMap ? (
             <MiniMap pannable zoomable nodeColor={() => 'var(--text-accent)'} />
+          ) : null}
+          <FlowEraser active={eraserActive} onErase={handleEraser} />
+          {eraserActive ? (
+            <Panel position="top-center" className="sc-flow-eraser-hint">
+              Eraser ativo — arraste sobre nós/conexões
+            </Panel>
           ) : null}
         </ReactFlow>
       </div>

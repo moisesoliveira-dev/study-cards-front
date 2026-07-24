@@ -5,6 +5,10 @@ export type FlowNodeDto = {
   data: Record<string, unknown>;
   width?: number;
   height?: number;
+  parentId?: string;
+  extent?: 'parent' | string;
+  style?: Record<string, unknown>;
+  expandParent?: boolean;
 };
 
 export type FlowEdgeDto = {
