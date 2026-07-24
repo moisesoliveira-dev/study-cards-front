@@ -5,6 +5,7 @@ import type { AuthUser } from '../types/auth.types';
 export const authFacade = {
   async register(input: {
     email: string;
+    username: string;
     password: string;
     name?: string;
   }): Promise<AuthUser> {
@@ -13,7 +14,7 @@ export const authFacade = {
     return result.user;
   },
 
-  async login(input: { email: string; password: string }): Promise<AuthUser> {
+  async login(input: { login: string; password: string }): Promise<AuthUser> {
     const result = await authApi.login(input);
     authStorage.setSession(result.accessToken, result.user);
     return result.user;
@@ -35,6 +36,7 @@ export const authFacade = {
   async updateProfile(input: {
     name?: string;
     email?: string;
+    username?: string;
   }): Promise<AuthUser> {
     const user = await authApi.updateProfile(input);
     const token = authStorage.getToken();

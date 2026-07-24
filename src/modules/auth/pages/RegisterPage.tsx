@@ -13,12 +13,14 @@ import {
 } from '../../../shared/motion';
 import { ThemeToggle } from '../../../shared/theme/ThemeToggle';
 
+const USERNAME_RE = /^[a-zA-Z0-9_]{3,24}$/;
+
 export default function RegisterPage() {
   const { register, isAuthenticated, loading } = useAuth();
   const history = useHistory();
   const toast = useAppToast();
   const reduce = useReducedMotion();
-  const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [saving, setSaving] = useState(false);
@@ -27,14 +29,19 @@ export default function RegisterPage() {
     return <Redirect to="/home" />;
   }
 
+  const canSubmit =
+    USERNAME_RE.test(username.trim()) &&
+    email.trim().includes('@') &&
+    password.length >= 6;
+
   const submit = async () => {
-    if (!email.trim() || password.length < 6) return;
+    if (!canSubmit) return;
     setSaving(true);
     try {
       await register({
+        username: username.trim(),
         email: email.trim(),
         password,
-        name: name.trim() || undefined,
       });
       history.replace('/home');
     } catch (error) {
@@ -69,11 +76,11 @@ export default function RegisterPage() {
 
             <motion.div className="sc-auth-fields" variants={staggerItem}>
               <Field
-                label="Nome"
-                value={name}
-                onChange={setName}
-                placeholder="Como prefere ser chamado"
-                autoComplete="name"
+                label="Usuário"
+                value={username}
+                onChange={setUsername}
+                placeholder="seu_usuario"
+                autoComplete="username"
                 autoFocus
               />
               <Field
@@ -98,7 +105,7 @@ export default function RegisterPage() {
             <motion.button
               type="button"
               className="sc-btn primary sc-auth-submit"
-              disabled={saving || !email.trim() || password.length < 6}
+              disabled={saving || !canSubmit}
               onClick={() => void submit()}
               variants={staggerItem}
               whileTap={reduce ? undefined : tapScale}

@@ -18,7 +18,7 @@ export default function LoginPage() {
   const history = useHistory();
   const toast = useAppToast();
   const reduce = useReducedMotion();
-  const [email, setEmail] = useState('');
+  const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -27,10 +27,10 @@ export default function LoginPage() {
   }
 
   const submit = async () => {
-    if (!email.trim() || !password) return;
+    if (!loginId.trim() || !password) return;
     setSaving(true);
     try {
-      await login(email.trim(), password);
+      await login(loginId.trim(), password);
       history.replace('/home');
     } catch (error) {
       toast.error(error);
@@ -64,12 +64,11 @@ export default function LoginPage() {
 
             <motion.div className="sc-auth-fields" variants={staggerItem}>
               <Field
-                label="E-mail"
-                type="email"
-                value={email}
-                onChange={setEmail}
-                placeholder="voce@email.com"
-                autoComplete="email"
+                label="Usuário ou e-mail"
+                value={loginId}
+                onChange={setLoginId}
+                placeholder="seu_usuario ou voce@email.com"
+                autoComplete="username"
                 autoFocus
               />
               <Field
@@ -86,7 +85,7 @@ export default function LoginPage() {
             <motion.button
               type="button"
               className="sc-btn primary sc-auth-submit"
-              disabled={saving || !email.trim() || !password}
+              disabled={saving || !loginId.trim() || !password}
               onClick={() => void submit()}
               variants={staggerItem}
               whileTap={reduce ? undefined : tapScale}

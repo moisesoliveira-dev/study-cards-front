@@ -14,15 +14,17 @@ type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (login: string, password: string) => Promise<void>;
   register: (input: {
     email: string;
+    username: string;
     password: string;
     name?: string;
   }) => Promise<void>;
   updateProfile: (input: {
     name?: string;
     email?: string;
+    username?: string;
   }) => Promise<AuthUser>;
   changePassword: (input: {
     currentPassword: string;
@@ -57,13 +59,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const next = await authFacade.login({ email, password });
+  const login = useCallback(async (loginValue: string, password: string) => {
+    const next = await authFacade.login({ login: loginValue, password });
     setUser(next);
   }, []);
 
   const register = useCallback(
-    async (input: { email: string; password: string; name?: string }) => {
+    async (input: {
+      email: string;
+      username: string;
+      password: string;
+      name?: string;
+    }) => {
       const next = await authFacade.register(input);
       setUser(next);
     },
@@ -71,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const updateProfile = useCallback(
-    async (input: { name?: string; email?: string }) => {
+    async (input: { name?: string; email?: string; username?: string }) => {
       const next = await authFacade.updateProfile(input);
       setUser(next);
       return next;

@@ -135,7 +135,7 @@ export function AppShell({ children }: Props) {
           >
             <IonIcon icon={personOutline} />
             <span className="sc-sidebar-user">
-              {user?.name || user?.email}
+              @{user?.username || 'usuario'}
             </span>
           </NavLink>
           <button

@@ -19,13 +19,16 @@ import {
   tapScale,
 } from '../../../shared/motion';
 
+const USERNAME_RE = /^[a-zA-Z0-9_]{3,24}$/;
+
 export default function ProfilePage() {
   const { user, updateProfile, changePassword } = useAuth();
   const toast = useAppToast();
   const reduce = useReducedMotion();
 
-  const [name, setName] = useState(user?.name ?? '');
+  const [username, setUsername] = useState(user?.username ?? '');
   const [email, setEmail] = useState(user?.email ?? '');
+  const [name, setName] = useState(user?.name ?? '');
   const [savingProfile, setSavingProfile] = useState(false);
 
   const [currentPassword, setCurrentPassword] = useState('');
@@ -34,16 +37,23 @@ export default function ProfilePage() {
   const [savingPassword, setSavingPassword] = useState(false);
 
   useEffect(() => {
-    setName(user?.name ?? '');
+    setUsername(user?.username ?? '');
     setEmail(user?.email ?? '');
+    setName(user?.name ?? '');
   }, [user]);
 
-  const initials = (user?.name || user?.email || '?')
+  const initials = (user?.username || user?.email || '?')
     .trim()
     .slice(0, 2)
     .toUpperCase();
 
   const saveProfile = async () => {
+    if (!USERNAME_RE.test(username.trim())) {
+      toast.error(
+        new Error('O usuário deve ter 3–24 caracteres (letras, números ou _).'),
+      );
+      return;
+    }
     if (!email.trim()) {
       toast.error(new Error('Informe um e-mail válido.'));
       return;
@@ -51,8 +61,9 @@ export default function ProfilePage() {
     setSavingProfile(true);
     try {
       await updateProfile({
-        name: name.trim(),
+        username: username.trim(),
         email: email.trim(),
+        name: name.trim(),
       });
       toast.success('Perfil atualizado');
     } catch (error) {
@@ -110,7 +121,7 @@ export default function ProfilePage() {
             <div className="sc-profile-hero-copy">
               <p className="sc-profile-kicker">Conta</p>
               <h1 className="sc-profile-title">
-                {user?.name?.trim() || 'Seu perfil'}
+                @{user?.username || 'usuario'}
               </h1>
               <p className="sc-profile-email">{user?.email}</p>
             </div>
@@ -123,18 +134,18 @@ export default function ProfilePage() {
             animate="show"
           >
             <motion.h2 className="sc-profile-section-title" variants={staggerItem}>
-              Dados pessoais
+              Dados da conta
             </motion.h2>
             <motion.p className="sc-profile-section-lead" variants={staggerItem}>
-              Nome e e-mail usados na sua conta.
+              O usuário serve para login e aparece no menu.
             </motion.p>
             <motion.div className="sc-auth-fields" variants={staggerItem}>
               <Field
-                label="Nome"
-                value={name}
-                onChange={setName}
-                placeholder="Como você quer ser chamado"
-                autoComplete="name"
+                label="Usuário"
+                value={username}
+                onChange={setUsername}
+                placeholder="seu_usuario"
+                autoComplete="username"
               />
               <Field
                 label="E-mail"
@@ -143,6 +154,13 @@ export default function ProfilePage() {
                 onChange={setEmail}
                 placeholder="voce@email.com"
                 autoComplete="email"
+              />
+              <Field
+                label="Nome (opcional)"
+                value={name}
+                onChange={setName}
+                placeholder="Nome completo"
+                autoComplete="name"
               />
             </motion.div>
             <motion.button

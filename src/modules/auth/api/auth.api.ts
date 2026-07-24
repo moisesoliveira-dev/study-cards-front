@@ -2,11 +2,16 @@ import { httpClient } from '../../../core/api/http-client';
 import type { AuthResponse, AuthUser } from '../types/auth.types';
 
 export const authApi = {
-  register(input: { email: string; password: string; name?: string }) {
+  register(input: {
+    email: string;
+    username: string;
+    password: string;
+    name?: string;
+  }) {
     return httpClient.post<AuthResponse>('/auth/register', input);
   },
 
-  login(input: { email: string; password: string }) {
+  login(input: { login: string; password: string }) {
     return httpClient.post<AuthResponse>('/auth/login', input);
   },
 
@@ -14,7 +19,7 @@ export const authApi = {
     return httpClient.get<AuthUser>('/auth/me');
   },
 
-  updateProfile(input: { name?: string; email?: string }) {
+  updateProfile(input: { name?: string; email?: string; username?: string }) {
     return httpClient.patch<AuthUser>('/auth/me', input);
   },
 
