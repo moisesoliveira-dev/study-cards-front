@@ -436,7 +436,6 @@ export function CardDocumentSheet({
                 />
               </label>
               <div className="card-compose-icon-block">
-                <CardFaceIcon icon={icon} color={suitColor(tag)} />
                 <CardIconPicker
                   value={icon}
                   onChange={setIcon}

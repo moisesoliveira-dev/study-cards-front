@@ -7,7 +7,7 @@ import {
   DocumentEditor,
   documentToPlainText,
 } from './DocumentEditor';
-import { CardFaceIcon, CardIconPicker } from './CardIcon';
+import { CardIconPicker } from './CardIcon';
 import { docExpand, fadeIn, scaleIn, tapScale } from '../motion';
 
 export function suitColor(tag: string) {
@@ -166,7 +166,6 @@ export function FaceCardComposer({
                 </label>
 
                 <div className="card-compose-icon-block">
-                  <CardFaceIcon icon={icon} color={accent} />
                   <CardIconPicker
                     value={icon}
                     onChange={onIcon}
