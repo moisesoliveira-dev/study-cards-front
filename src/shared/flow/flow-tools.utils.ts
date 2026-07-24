@@ -205,6 +205,7 @@ function nodeHasCollisionsFlag(node: Node): boolean {
 
 /**
  * Push overlapping sibling nodes apart.
+ * Cards collide only with cards; subflows only with other subflows.
  * Resolves when the moving node OR the other node has collisions (or `global`).
  * If only the other is protected, the moving node is pushed away.
  */
@@ -216,10 +217,11 @@ export function pushApartCollisions(
   const gap = options.gap ?? COLLISION_GAP;
   const global = Boolean(options.global);
   const moving = nodes.find((n) => n.id === movingId);
-  if (!moving || moving.type === 'groupNode') {
+  if (!moving) {
     return { nodes, moved: false };
   }
 
+  const movingIsGroup = moving.type === 'groupNode';
   const movingProtected = global || nodeHasCollisionsFlag(moving);
   const mw = getNodeSize(moving).width;
   const mh = getNodeSize(moving).height;
@@ -228,10 +230,13 @@ export function pushApartCollisions(
   let my = moving.position.y;
   const updates = new Map<string, XYPosition>();
 
+  // Same kind only: group↔group or card↔card (never mix)
   const siblings = nodes.filter(
     (n) =>
       n.id !== movingId &&
-      n.type !== 'groupNode' &&
+      (movingIsGroup
+        ? n.type === 'groupNode'
+        : n.type !== 'groupNode') &&
       (n.parentId ?? null) === (moving.parentId ?? null),
   );
 
@@ -308,17 +313,16 @@ export function pushApartCollisions(
   };
 }
 
-/** Resolve overlaps across all card nodes (environment collisions on). */
+/** Resolve overlaps (cards among cards, subflows among subflows). */
 export function resolveAllCollisions(
   nodes: Node[],
   gap = COLLISION_GAP,
 ): Node[] {
   let next = nodes;
-  const cards = nodes.filter((n) => n.type !== 'groupNode');
   for (let round = 0; round < 4; round++) {
     let any = false;
-    for (const card of cards) {
-      const result = pushApartCollisions(next, card.id, { global: true, gap });
+    for (const node of nodes) {
+      const result = pushApartCollisions(next, node.id, { global: true, gap });
       if (result.moved) {
         next = result.nodes;
         any = true;
@@ -326,9 +330,10 @@ export function resolveAllCollisions(
     }
     if (!any) break;
   }
-  return clearNodeMotionClasses(next).map((n) =>
-    n.type !== 'groupNode' ? { ...n, className: 'sc-flow-node-settle' } : n,
-  );
+  return clearNodeMotionClasses(next).map((n) => ({
+    ...n,
+    className: 'sc-flow-node-settle',
+  }));
 }
 
 export function clearNodeMotionClasses(nodes: Node[]): Node[] {

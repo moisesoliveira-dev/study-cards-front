@@ -3,6 +3,8 @@ import { NodeResizer, useReactFlow, type NodeProps } from '@xyflow/react';
 
 export type SubFlowGroupData = {
   label: string;
+  /** Collide / push apart only against other subflows */
+  nodeCollisions?: boolean;
 };
 
 function SubFlowGroupNodeComponent({ id, data, selected }: NodeProps) {

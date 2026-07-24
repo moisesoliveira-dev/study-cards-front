@@ -227,6 +227,7 @@ function FlowCanvas({
           height: n.height,
           data: {
             label: String(n.data?.label ?? 'Subfluxo'),
+            nodeCollisions: Boolean(n.data?.nodeCollisions),
           },
           zIndex: -1,
         });
@@ -450,6 +451,9 @@ function FlowCanvas({
                 data: {
                   label: String(
                     (n.data as { label?: string })?.label ?? 'Subfluxo',
+                  ),
+                  nodeCollisions: Boolean(
+                    (n.data as { nodeCollisions?: boolean })?.nodeCollisions,
                   ),
                 },
               };
@@ -735,10 +739,7 @@ function FlowCanvas({
 
   const onNodeDrag = useCallback(
     (_: MouseEvent | TouchEvent, node: Node) => {
-      // Subflows: no drag-tree, no card collisions (groups move freely)
-      if (node.type === 'groupNode') return;
-
-      if (nodeWantsDragTree(node)) {
+      if (node.type !== 'groupNode' && nodeWantsDragTree(node)) {
         const last = lastDragPosRef.current;
         if (last && last.id === node.id) {
           const delta = {
@@ -763,6 +764,58 @@ function FlowCanvas({
         );
         const live = withLive.find((n) => n.id === node.id) ?? node;
         const size = getNodeSize(live);
+        const isGroup = live.type === 'groupNode';
+
+        // Subflows: collide only with other subflows
+        if (isGroup) {
+          const groupSiblings = withLive.filter(
+            (n) =>
+              n.id !== node.id &&
+              n.type === 'groupNode' &&
+              (n.parentId ?? null) === (live.parentId ?? null),
+          );
+          let collideIds = new Set<string>();
+          if (
+            shouldResolveCollisions(
+              live,
+              groupSiblings,
+              settings.nodeCollisions,
+            )
+          ) {
+            const mw = size.width;
+            const mh = size.height;
+            const mx = live.position.x;
+            const my = live.position.y;
+            for (const other of groupSiblings) {
+              if (
+                !settings.nodeCollisions &&
+                !nodeHasCollisionsFlag(live) &&
+                !nodeHasCollisionsFlag(other)
+              ) {
+                continue;
+              }
+              const ow = getNodeSize(other).width;
+              const oh = getNodeSize(other).height;
+              const overlapX =
+                (mw + ow) / 2 +
+                8 -
+                Math.abs(mx + mw / 2 - (other.position.x + ow / 2));
+              const overlapY =
+                (mh + oh) / 2 +
+                8 -
+                Math.abs(my + mh / 2 - (other.position.y + oh / 2));
+              if (overlapX > 0 && overlapY > 0) collideIds.add(other.id);
+            }
+            if (collideIds.size) collideIds.add(node.id);
+          }
+          return withLive.map((n) => {
+            const cls = collideIds.has(n.id)
+              ? 'sc-flow-node-collide'
+              : undefined;
+            return n.className === cls ? n : { ...n, className: cls };
+          });
+        }
+
         const abs = getAbsolutePosition(live, buildNodeMap(withLive));
         const center = {
           x: abs.x + size.width / 2,
@@ -828,7 +881,26 @@ function FlowCanvas({
           n.id === node.id ? { ...n, position: node.position } : n,
         );
 
-        if (node.type !== 'groupNode') {
+        if (node.type === 'groupNode') {
+          const live = next.find((n) => n.id === node.id) ?? node;
+          const groupSiblings = next.filter(
+            (n) =>
+              n.id !== live.id &&
+              n.type === 'groupNode' &&
+              (n.parentId ?? null) === (live.parentId ?? null),
+          );
+          if (
+            shouldResolveCollisions(
+              live,
+              groupSiblings,
+              settings.nodeCollisions,
+            )
+          ) {
+            next = pushApartCollisions(next, node.id, {
+              global: settings.nodeCollisions,
+            }).nodes;
+          }
+        } else {
           next = resolveSubflowParenting(next, {
             ...node,
             position: node.position,

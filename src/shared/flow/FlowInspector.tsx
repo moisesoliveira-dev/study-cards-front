@@ -265,6 +265,16 @@ export function FlowInspector({
                 }
               />
             </label>
+            <Toggle
+              label="Node Collisions"
+              hint="Só este subfluxo afasta / é afastado de outros subfluxos (não de cards)"
+              checked={Boolean(
+                (node.data as { nodeCollisions?: boolean }).nodeCollisions,
+              )}
+              onChange={(v) =>
+                onUpdateNodeData?.(node.id, { nodeCollisions: v })
+              }
+            />
             <p className="sc-flow-inspector-note">
               Duplo clique no título também renomeia. Arraste cards para fora
               para removê-los — o subfluxo continua existindo.
@@ -305,7 +315,7 @@ export function FlowInspector({
             />
             <Toggle
               label="Node Collisions"
-              hint="Só este nó afasta / é afastado em sobreposição"
+              hint="Só este nó afasta / é afastado de outros cards (não de subfluxos)"
               checked={Boolean(nodeData.nodeCollisions)}
               onChange={(v) =>
                 onUpdateNodeData?.(node.id, { nodeCollisions: v })
@@ -494,7 +504,7 @@ export function FlowInspector({
             />
             <Toggle
               label="Node Collisions"
-              hint="Afasta todos os nós sobrepostos (inclui os já empilhados)"
+              hint="Afasta cards entre si e subfluxos entre si (não mistura os dois)"
               checked={settings.nodeCollisions}
               onChange={(v) =>
                 onSettingsChange({ ...settings, nodeCollisions: v })
