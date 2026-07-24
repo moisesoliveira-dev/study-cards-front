@@ -175,34 +175,34 @@ function FlowCanvas({
   );
 
   const initialNodes: Node[] = useMemo(() => {
-    const mapped = board.nodes.flatMap((n) => {
+    const mapped: Node[] = [];
+    for (const n of board.nodes) {
       if (n.type === 'groupNode') {
-        return [
-          {
-            id: n.id,
-            type: 'groupNode',
-            position: n.position,
-            parentId: n.parentId,
-            extent: n.extent === 'parent' ? ('parent' as const) : undefined,
-            expandParent: n.expandParent,
-            style: n.style ?? {
-              width: n.width ?? 320,
-              height: n.height ?? 220,
-            },
-            width: n.width,
-            height: n.height,
-            data: {
-              label: String(n.data?.label ?? 'Subfluxo'),
-            },
-            zIndex: -1,
-          } satisfies Node,
-        ];
+        mapped.push({
+          id: n.id,
+          type: 'groupNode',
+          position: n.position,
+          parentId: n.parentId,
+          extent: n.extent === 'parent' ? ('parent' as const) : undefined,
+          expandParent: n.expandParent,
+          style: n.style ?? {
+            width: n.width ?? 320,
+            height: n.height ?? 220,
+          },
+          width: n.width,
+          height: n.height,
+          data: {
+            label: String(n.data?.label ?? 'Subfluxo'),
+          },
+          zIndex: -1,
+        });
+        continue;
       }
 
       const cardId = String(n.data?.cardId ?? '');
       const card = cardMap.get(cardId);
       // Drop nodes for cards that no longer exist (keep flow in sync)
-      if (!card) return [];
+      if (!card) continue;
 
       const handleOffsets =
         (n.data?.handleOffsets as CardFlowNodeData['handleOffsets']) ??
@@ -211,29 +211,27 @@ function FlowCanvas({
       const blockedSourceIds = Array.isArray(n.data?.blockedSourceIds)
         ? (n.data.blockedSourceIds as string[])
         : undefined;
-      return [
-        {
-          id: n.id,
-          type: 'cardNode',
-          position: n.position,
-          parentId: n.parentId,
-          extent: n.extent === 'parent' ? ('parent' as const) : undefined,
-          expandParent: n.expandParent ?? Boolean(n.parentId),
-          data: {
-            ...cardToNodeData(card),
-            handleOffsets,
-            blockIncoming,
-            blockedSourceIds,
-          },
-        } satisfies Node,
-      ];
-    });
+      mapped.push({
+        id: n.id,
+        type: 'cardNode',
+        position: n.position,
+        parentId: n.parentId,
+        extent: n.extent === 'parent' ? ('parent' as const) : undefined,
+        expandParent: n.expandParent ?? Boolean(n.parentId),
+        data: {
+          ...cardToNodeData(card),
+          handleOffsets,
+          blockIncoming,
+          blockedSourceIds,
+        },
+      });
+    }
 
     const keptIds = new Set(mapped.map((n) => n.id));
     // Drop group children whose parent was removed, and empty parent links
-    const withoutDangling = mapped
-      .filter((n) => !n.parentId || keptIds.has(n.parentId))
-      .map((n) => n);
+    const withoutDangling = mapped.filter(
+      (n) => !n.parentId || keptIds.has(n.parentId),
+    );
 
     // Parents must come before children for React Flow subflows
     return withoutDangling.sort((a, b) => {
