@@ -30,7 +30,7 @@ type Props = {
   onUpdateEdge: (edgeId: string, patch: Partial<Edge> & { data?: FlowEdgeData }) => void;
   onDeleteEdge: (edgeId: string) => void;
   onDeleteNodes: (nodeIds: string[]) => void;
-  onUpdateNodeData?: (nodeId: string, patch: Partial<CardFlowNodeData>) => void;
+  onUpdateNodeData?: (nodeId: string, patch: Record<string, unknown>) => void;
   onEditCard?: (cardId: string) => void;
   onCreateCard?: () => void;
 };
@@ -99,7 +99,12 @@ export function FlowInspector({
   const multiNodes = selectedNodes.length > 1;
   const edgeData = edge ? getEdgeData(edge) : null;
   const synthesis = edge ? isSynthesisEdge(edge) : false;
-  const nodeData = node ? (node.data as CardFlowNodeData) : null;
+  const isGroup = node?.type === 'groupNode';
+  const groupLabel = isGroup
+    ? String((node.data as { label?: string })?.label ?? 'Subfluxo')
+    : '';
+  const nodeData =
+    node && !isGroup ? (node.data as CardFlowNodeData) : null;
 
   const body = (
     <>
@@ -237,6 +242,41 @@ export function FlowInspector({
           </section>
         ) : null}
 
+        {node && isGroup ? (
+          <section className="sc-flow-inspector-section">
+            <h3>Subfluxo</h3>
+            <label className="sc-flow-inspector-field">
+              <span>Nome</span>
+              <input
+                type="text"
+                value={groupLabel}
+                placeholder="Subfluxo"
+                onChange={(e) =>
+                  onUpdateNodeData?.(node.id, {
+                    label: e.target.value,
+                  })
+                }
+                onBlur={(e) =>
+                  onUpdateNodeData?.(node.id, {
+                    label: e.target.value.trim() || 'Subfluxo',
+                  })
+                }
+              />
+            </label>
+            <p className="sc-flow-inspector-note">
+              Duplo clique no título do subfluxo também renomeia. Arraste cards
+              para fora para removê-los do grupo — o subfluxo continua existindo.
+            </p>
+            <button
+              type="button"
+              className="sc-btn sc-flow-inspector-danger"
+              onClick={() => onDeleteNodes([node.id])}
+            >
+              Remover subfluxo (manter cards)
+            </button>
+          </section>
+        ) : null}
+
         {node && nodeData ? (
           <section className="sc-flow-inspector-section">
             <h3>Nó</h3>
@@ -323,10 +363,11 @@ export function FlowInspector({
           <section className="sc-flow-inspector-section">
             <h3>Seleção · validação</h3>
             <p className="sc-flow-inspector-note">
-              {selectedNodes.length} nós selecionados. Escolha quem bloqueia
+              {selectedNodes.length} itens selecionados. Escolha quem bloqueia
               quem:
             </p>
-            {selectedNodes.length === 2 ? (
+            {selectedNodes.length === 2 &&
+            selectedNodes.every((n) => n.type !== 'groupNode') ? (
               <>
                 <button
                   type="button"
@@ -361,7 +402,8 @@ export function FlowInspector({
               </>
             ) : (
               <p className="sc-flow-inspector-note">
-                Selecione exatamente 2 nós para bloquear um de receber o outro.
+                Selecione exatamente 2 cards (não subfluxos) para bloquear um de
+                receber o outro.
               </p>
             )}
             <button
@@ -394,8 +436,8 @@ export function FlowInspector({
           <section className="sc-flow-inspector-section">
             <h3>Diagrama</h3>
             <p className="sc-flow-inspector-note">
-              Selecione um nó ou uma conexão para editar — ou crie uma carta
-              nova para o grupo.
+              Selecione um nó, um subfluxo ou uma conexão para editar — ou crie
+              uma carta nova para o grupo.
             </p>
             {onCreateCard ? (
               <button

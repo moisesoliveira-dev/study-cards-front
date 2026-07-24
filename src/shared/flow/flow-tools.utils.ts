@@ -136,8 +136,9 @@ export function attachNodeToGroup(
     return {
       ...n,
       parentId: groupId,
-      extent: 'parent' as const,
-      expandParent: true,
+      // No extent/expandParent — nodes can be dragged out freely
+      extent: undefined,
+      expandParent: false,
       position: {
         x: abs.x - groupAbs.x,
         y: abs.y - groupAbs.y,

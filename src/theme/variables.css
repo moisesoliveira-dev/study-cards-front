@@ -2170,6 +2170,20 @@ ion-popover {
   background: var(--surface-1);
 }
 
+.sc-field-select {
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+    linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 16px) calc(50% - 2px),
+    calc(100% - 11px) calc(50% - 2px);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 32px;
+  cursor: pointer;
+}
+
 .sc-field-textarea {
   resize: vertical;
   min-height: 72px;
@@ -4996,12 +5010,38 @@ ion-toast.sc-toast--info::part(container) {
 }
 
 .sc-flow-group-label {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-accent);
-  pointer-events: none;
+  cursor: text;
+  max-width: calc(100% - 8px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sc-flow-group-label-input {
+  display: block;
+  width: min(100%, 220px);
+  margin: 0;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 0.5px solid color-mix(in srgb, var(--text-accent) 45%, var(--border));
+  background: var(--surface-1);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  outline: none;
 }
 
 .sc-flow-resize-line {

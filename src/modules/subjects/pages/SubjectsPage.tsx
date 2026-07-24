@@ -24,7 +24,7 @@ import {
 } from '../../../shared/components/ContextMenu';
 import { useAppToast } from '../../../shared/hooks/useAppToast';
 import { MotionShell, MotionStagger, tapScale } from '../../../shared/motion';
-import { createOutline, openOutline, trashOutline } from 'ionicons/icons';
+import { createOutline, openOutline, pencilOutline, trashOutline } from 'ionicons/icons';
 import type { MouseEvent } from 'react';
 
 const COLORS = ['#BA7517', '#378ADD', '#1D9E75', '#7F77DD', '#D4537E', '#888780'];
@@ -38,6 +38,7 @@ export default function SubjectsPage() {
   const [query, setQuery] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Subject | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [color, setColor] = useState(COLORS[0]);
@@ -55,6 +56,12 @@ export default function SubjectsPage() {
         onSelect: () => history.push(`/subjects/${s.id}`),
       },
       {
+        id: 'rename',
+        label: 'Renomear / editar',
+        icon: pencilOutline,
+        onSelect: () => openEdit(s),
+      },
+      {
         id: 'delete',
         label: 'Excluir grupo',
         icon: trashOutline,
@@ -64,6 +71,22 @@ export default function SubjectsPage() {
       },
     ];
     openCtx(e, items, s.name);
+  };
+
+  const openCreate = () => {
+    setEditing(null);
+    setName('');
+    setDescription('');
+    setColor(COLORS[0]);
+    setOpen(true);
+  };
+
+  const openEdit = (s: Subject) => {
+    setEditing(s);
+    setName(s.name);
+    setDescription(s.description ?? '');
+    setColor(s.color || COLORS[0]);
+    setOpen(true);
   };
 
   const load = useCallback(async () => {
@@ -96,11 +119,21 @@ export default function SubjectsPage() {
     if (!name.trim()) return;
     setSaving(true);
     try {
-      await subjectsFacade.create({ name, description, color });
+      if (editing) {
+        await subjectsFacade.update(editing.id, {
+          name,
+          description,
+          color,
+        });
+        toast.success('Grupo atualizado');
+      } else {
+        await subjectsFacade.create({ name, description, color });
+        toast.success('Grupo criado');
+      }
       setOpen(false);
+      setEditing(null);
       setName('');
       setDescription('');
-      toast.success('Grupo criado');
       await load();
     } catch (error) {
       toast.error(error);
@@ -142,7 +175,7 @@ export default function SubjectsPage() {
                   id: 'new',
                   label: 'Novo grupo',
                   icon: createOutline,
-                  onSelect: () => setOpen(true),
+                  onSelect: openCreate,
                 },
               ],
               'Grupos',
@@ -154,7 +187,7 @@ export default function SubjectsPage() {
             onQuery={setQuery}
             view={view}
             onView={setView}
-            onNew={() => setOpen(true)}
+            onNew={openCreate}
             newLabel="Novo grupo"
           />
 
@@ -180,7 +213,7 @@ export default function SubjectsPage() {
               <DriveFolderItem
                 name="Novo grupo"
                 dashed
-                onClick={() => setOpen(true)}
+                onClick={openCreate}
               />
             </MotionStagger>
           ) : (
@@ -225,16 +258,25 @@ export default function SubjectsPage() {
         </MotionShell>
       </IonContent>
 
-      <IonModal isOpen={open} onDidDismiss={() => setOpen(false)}>
+      <IonModal
+        isOpen={open}
+        onDidDismiss={() => {
+          setOpen(false);
+          setEditing(null);
+        }}
+      >
         <IonHeader>
           <IonToolbar>
-            <IonTitle>Novo grupo</IonTitle>
+            <IonTitle>{editing ? 'Editar grupo' : 'Novo grupo'}</IonTitle>
             <IonButtons slot="end">
               <button
                 type="button"
                 className="sc-modal-x"
                 aria-label="Fechar"
-                onClick={() => setOpen(false)}
+                onClick={() => {
+                  setOpen(false);
+                  setEditing(null);
+                }}
               >
                 ×
               </button>
@@ -268,8 +310,17 @@ export default function SubjectsPage() {
               />
             ))}
           </div>
-          <button type="button" className="sc-btn primary" disabled={saving} onClick={() => void create()}>
-            {saving ? 'Salvando…' : 'Criar grupo'}
+          <button
+            type="button"
+            className="sc-btn primary"
+            disabled={saving || !name.trim()}
+            onClick={() => void create()}
+          >
+            {saving
+              ? 'Salvando…'
+              : editing
+                ? 'Salvar alterações'
+                : 'Criar grupo'}
           </button>
         </IonContent>
       </IonModal>

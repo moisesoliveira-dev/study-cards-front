@@ -217,8 +217,9 @@ function FlowCanvas({
         type: 'cardNode',
         position: n.position,
         parentId: n.parentId,
-        extent: n.extent === 'parent' ? ('parent' as const) : undefined,
-        expandParent: n.expandParent ?? Boolean(n.parentId),
+        // Free drag-out of subflows (no extent lock / expandParent)
+        extent: undefined,
+        expandParent: false,
         data: {
           ...cardToNodeData(card),
           handleOffsets,
@@ -670,11 +671,16 @@ function FlowCanvas({
         x: node.position.x,
         y: node.position.y,
       };
-      // Temporarily unlock extent so the node can leave / enter groups
-      if (node.parentId && node.extent === 'parent') {
+      // Clear any legacy extent/expandParent so the node can leave the subflow
+      if (
+        node.parentId &&
+        (node.extent === 'parent' || node.expandParent)
+      ) {
         setNodes((ns) =>
           ns.map((n) =>
-            n.id === node.id ? { ...n, extent: undefined } : n,
+            n.id === node.id
+              ? { ...n, extent: undefined, expandParent: false }
+              : n,
           ),
         );
       }
@@ -779,9 +785,10 @@ function FlowCanvas({
           if (n.className === 'sc-flow-node-settle') return n;
           return n.className ? { ...n, className: undefined } : n;
         });
+        // Never re-lock with expandParent — subflows must allow drag-out
         next = next.map((n) =>
-          n.parentId && n.type !== 'groupNode'
-            ? { ...n, extent: 'parent' as const, expandParent: true }
+          n.type !== 'groupNode' && (n.extent || n.expandParent)
+            ? { ...n, extent: undefined, expandParent: false }
             : n,
         );
         scheduleSave(next, edgesRef.current);
@@ -839,8 +846,8 @@ function FlowCanvas({
         return {
           ...n,
           parentId: groupId,
-          extent: 'parent' as const,
-          expandParent: true,
+          extent: undefined,
+          expandParent: false,
           position: {
             x: n.position.x - bounds.x,
             y: n.position.y - bounds.y,
@@ -928,12 +935,31 @@ function FlowCanvas({
   const handleEraser = useCallback(
     (nodeIds: string[], edgeIds: string[]) => {
       const removeNodes = new Set(nodeIds);
-      for (const n of nodes) {
-        if (n.parentId && removeNodes.has(n.parentId)) removeNodes.add(n.id);
-      }
-      const nextNodes = nodes.filter((n) => !removeNodes.has(n.id));
+      const removedGroups = nodes.filter(
+        (n) => removeNodes.has(n.id) && n.type === 'groupNode',
+      );
+      const removedGroupIds = new Set(removedGroups.map((g) => g.id));
+
+      const nextNodes = nodes
+        .filter((n) => !removeNodes.has(n.id))
+        .map((n) => {
+          if (!n.parentId || !removedGroupIds.has(n.parentId)) return n;
+          const parent = removedGroups.find((g) => g.id === n.parentId);
+          return {
+            ...n,
+            parentId: undefined,
+            extent: undefined,
+            expandParent: false,
+            position: {
+              x: n.position.x + (parent?.position.x ?? 0),
+              y: n.position.y + (parent?.position.y ?? 0),
+            },
+          };
+        });
+
+      const kept = new Set(nextNodes.map((n) => n.id));
       const nextEdges = edges.filter((e) => {
-        if (removeNodes.has(e.source) || removeNodes.has(e.target)) return false;
+        if (!kept.has(e.source) || !kept.has(e.target)) return false;
         if (edgeIds.includes(e.id) && !isSynthesisEdge(e)) return false;
         return true;
       });
@@ -1022,12 +1048,33 @@ function FlowCanvas({
     (nodeIds: string[]) => {
       if (!nodeIds.length) return;
       const idSet = new Set(nodeIds);
-      for (const n of nodes) {
-        if (n.parentId && idSet.has(n.parentId)) idSet.add(n.id);
-      }
-      const nextNodes = nodes.filter((n) => !idSet.has(n.id));
+      const removedGroups = nodes.filter(
+        (n) => idSet.has(n.id) && n.type === 'groupNode',
+      );
+      const removedGroupIds = new Set(removedGroups.map((g) => g.id));
+
+      // Subflows are independent: removing a group detaches children,
+      // it does not delete the cards inside.
+      const nextNodes = nodes
+        .filter((n) => !idSet.has(n.id))
+        .map((n) => {
+          if (!n.parentId || !removedGroupIds.has(n.parentId)) return n;
+          const parent = removedGroups.find((g) => g.id === n.parentId);
+          return {
+            ...n,
+            parentId: undefined,
+            extent: undefined,
+            expandParent: false,
+            position: {
+              x: n.position.x + (parent?.position.x ?? 0),
+              y: n.position.y + (parent?.position.y ?? 0),
+            },
+          };
+        });
+
+      const kept = new Set(nextNodes.map((n) => n.id));
       const nextEdges = edges.filter(
-        (e) => !idSet.has(e.source) && !idSet.has(e.target),
+        (e) => kept.has(e.source) && kept.has(e.target),
       );
       setNodes(nextNodes);
       setEdges(nextEdges);
@@ -1229,7 +1276,7 @@ function FlowCanvas({
           },
           {
             id: 'remove',
-            label: 'Remover grupo e cards',
+            label: 'Remover subfluxo (manter cards)',
             icon: trashOutline,
             danger: true,
             separator: true,
@@ -1497,8 +1544,8 @@ function FlowCanvas({
         node = {
           ...node,
           parentId: group.id,
-          extent: 'parent',
-          expandParent: true,
+          extent: undefined,
+          expandParent: false,
           position: {
             x: pos.x - groupAbs.x,
             y: pos.y - groupAbs.y,

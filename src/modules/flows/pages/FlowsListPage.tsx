@@ -301,25 +301,24 @@ export default function FlowsListPage() {
                 autoFocus
                 onEnter={() => void create()}
               />
-              <div className="sc-flow-subject-pick">
+              <label className="sc-field">
                 <span className="sc-field-label">Grupo de cartas</span>
-                <div className="sc-flow-subject-grid">
+                <select
+                  className="sc-field-input sc-field-select"
+                  value={subjectId}
+                  onChange={(e) => setSubjectId(e.target.value)}
+                  aria-label="Grupo de cartas"
+                >
+                  {!subjects.length ? (
+                    <option value="">Nenhum grupo disponível</option>
+                  ) : null}
                   {subjects.map((s) => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      className={`sc-flow-subject-chip${subjectId === s.id ? ' is-active' : ''}`}
-                      onClick={() => setSubjectId(s.id)}
-                    >
-                      <span
-                        className="sc-flow-subject-swatch"
-                        style={{ background: s.color }}
-                      />
+                    <option key={s.id} value={s.id}>
                       {s.name}
-                    </button>
+                    </option>
                   ))}
-                </div>
-              </div>
+                </select>
+              </label>
               <div className="sc-flow-composer-actions">
                 <button
                   type="button"
