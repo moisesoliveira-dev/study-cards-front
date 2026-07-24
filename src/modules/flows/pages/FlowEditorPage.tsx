@@ -175,30 +175,35 @@ function FlowCanvas({
   );
 
   const initialNodes: Node[] = useMemo(() => {
-    const mapped = board.nodes.map((n) => {
+    const mapped = board.nodes.flatMap((n) => {
       if (n.type === 'groupNode') {
-        return {
-          id: n.id,
-          type: 'groupNode',
-          position: n.position,
-          parentId: n.parentId,
-          extent: n.extent === 'parent' ? ('parent' as const) : undefined,
-          expandParent: n.expandParent,
-          style: n.style ?? {
-            width: n.width ?? 320,
-            height: n.height ?? 220,
-          },
-          width: n.width,
-          height: n.height,
-          data: {
-            label: String(n.data?.label ?? 'Subfluxo'),
-          },
-          zIndex: -1,
-        } satisfies Node;
+        return [
+          {
+            id: n.id,
+            type: 'groupNode',
+            position: n.position,
+            parentId: n.parentId,
+            extent: n.extent === 'parent' ? ('parent' as const) : undefined,
+            expandParent: n.expandParent,
+            style: n.style ?? {
+              width: n.width ?? 320,
+              height: n.height ?? 220,
+            },
+            width: n.width,
+            height: n.height,
+            data: {
+              label: String(n.data?.label ?? 'Subfluxo'),
+            },
+            zIndex: -1,
+          } satisfies Node,
+        ];
       }
 
       const cardId = String(n.data?.cardId ?? '');
       const card = cardMap.get(cardId);
+      // Drop nodes for cards that no longer exist (keep flow in sync)
+      if (!card) return [];
+
       const handleOffsets =
         (n.data?.handleOffsets as CardFlowNodeData['handleOffsets']) ??
         undefined;
@@ -206,35 +211,32 @@ function FlowCanvas({
       const blockedSourceIds = Array.isArray(n.data?.blockedSourceIds)
         ? (n.data.blockedSourceIds as string[])
         : undefined;
-      const baseData = card
-        ? cardToNodeData(card)
-        : {
-            cardId,
-            front: String(n.data?.front ?? 'Card removido'),
-            back: String(n.data?.back ?? ''),
-            tag: String(n.data?.tag ?? '—'),
-            icon: (n.data?.icon as string | null) ?? null,
-            status: 'NEW' as const,
-            linkCount: 0,
-          };
-      return {
-        id: n.id,
-        type: 'cardNode',
-        position: n.position,
-        parentId: n.parentId,
-        extent: n.extent === 'parent' ? ('parent' as const) : undefined,
-        expandParent: n.expandParent ?? Boolean(n.parentId),
-        data: {
-          ...baseData,
-          handleOffsets,
-          blockIncoming,
-          blockedSourceIds,
-        },
-      } satisfies Node;
+      return [
+        {
+          id: n.id,
+          type: 'cardNode',
+          position: n.position,
+          parentId: n.parentId,
+          extent: n.extent === 'parent' ? ('parent' as const) : undefined,
+          expandParent: n.expandParent ?? Boolean(n.parentId),
+          data: {
+            ...cardToNodeData(card),
+            handleOffsets,
+            blockIncoming,
+            blockedSourceIds,
+          },
+        } satisfies Node,
+      ];
     });
 
+    const keptIds = new Set(mapped.map((n) => n.id));
+    // Drop group children whose parent was removed, and empty parent links
+    const withoutDangling = mapped
+      .filter((n) => !n.parentId || keptIds.has(n.parentId))
+      .map((n) => n);
+
     // Parents must come before children for React Flow subflows
-    return mapped.sort((a, b) => {
+    return withoutDangling.sort((a, b) => {
       const aGroup = a.type === 'groupNode' ? 0 : 1;
       const bGroup = b.type === 'groupNode' ? 0 : 1;
       if (aGroup !== bGroup) return aGroup - bGroup;
@@ -244,9 +246,11 @@ function FlowCanvas({
     });
   }, [board.nodes, cardMap]);
 
-  const initialEdges: Edge[] = useMemo(
-    () =>
-      board.edges.map((e) =>
+  const initialEdges: Edge[] = useMemo(() => {
+    const nodeIds = new Set(initialNodes.map((n) => n.id));
+    return board.edges
+      .filter((e) => nodeIds.has(e.source) && nodeIds.has(e.target))
+      .map((e) =>
         withEdgeFlags({
           id: e.id,
           source: e.source,
@@ -258,9 +262,8 @@ function FlowCanvas({
           data: e.data,
           animated: false,
         }),
-      ),
-    [board.edges],
-  );
+      );
+  }, [board.edges, initialNodes]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges);
@@ -291,6 +294,8 @@ function FlowCanvas({
   );
   nodesRef.current = nodes;
   edgesRef.current = edges;
+  const cardsRef = useRef(cards);
+  cardsRef.current = cards;
   const { menu: ctxMenu, open: openCtx, close: closeCtx } = useContextMenu();
 
   const selectedNodes = useMemo(
@@ -343,8 +348,35 @@ function FlowCanvas({
     async (nextNodes: Node[], nextEdges: Edge[]) => {
       setSaving(true);
       try {
+        const knownCards = new Set(cardsRef.current.map((c) => c.id));
+        const removeIds = new Set<string>();
+        for (const n of nextNodes) {
+          if (n.type === 'groupNode') continue;
+          const cardId = (n.data as CardFlowNodeData | undefined)?.cardId;
+          if (!cardId || !knownCards.has(cardId)) removeIds.add(n.id);
+        }
+        let expanded = true;
+        while (expanded) {
+          expanded = false;
+          for (const n of nextNodes) {
+            if (
+              n.parentId &&
+              removeIds.has(n.parentId) &&
+              !removeIds.has(n.id)
+            ) {
+              removeIds.add(n.id);
+              expanded = true;
+            }
+          }
+        }
+        const cleanNodes = nextNodes.filter((n) => !removeIds.has(n.id));
+        const kept = new Set(cleanNodes.map((n) => n.id));
+        const cleanEdges = nextEdges.filter(
+          (e) => kept.has(e.source) && kept.has(e.target),
+        );
+
         const updated = await flowsFacade.update(board.id, {
-          nodes: nextNodes.map((n) => {
+          nodes: cleanNodes.map((n) => {
             if (n.type === 'groupNode') {
               return {
                 id: n.id,
@@ -386,7 +418,7 @@ function FlowCanvas({
               },
             };
           }),
-          edges: nextEdges.map((e) => ({
+          edges: cleanEdges.map((e) => ({
             id: e.id,
             source: e.source,
             target: e.target,
@@ -416,6 +448,84 @@ function FlowCanvas({
     },
     [persist],
   );
+
+  /** Drop canvas nodes when their cards disappear; refresh labels from live cards. */
+  const syncGraphWithCards = useCallback(() => {
+    const known = new Map(cardsRef.current.map((c) => [c.id, c]));
+    const ns = nodesRef.current;
+    const eds = edgesRef.current;
+    const removeIds = new Set<string>();
+    for (const n of ns) {
+      if (n.type === 'groupNode') continue;
+      const cardId = (n.data as CardFlowNodeData | undefined)?.cardId;
+      if (!cardId || !known.has(cardId)) removeIds.add(n.id);
+    }
+    let expanded = true;
+    while (expanded) {
+      expanded = false;
+      for (const n of ns) {
+        if (n.parentId && removeIds.has(n.parentId) && !removeIds.has(n.id)) {
+          removeIds.add(n.id);
+          expanded = true;
+        }
+      }
+    }
+
+    let changed = removeIds.size > 0;
+    const nextNodes = ns
+      .filter((n) => !removeIds.has(n.id))
+      .map((n) => {
+        if (n.type === 'groupNode') return n;
+        const data = n.data as CardFlowNodeData;
+        const card = known.get(data.cardId);
+        if (!card) return n;
+        if (
+          data.front === card.front &&
+          data.tag === card.tag &&
+          data.icon === card.icon &&
+          data.status === card.status &&
+          data.linkCount === card.linkCount
+        ) {
+          return n;
+        }
+        changed = true;
+        return {
+          ...n,
+          data: {
+            ...cardToNodeData(card),
+            handleOffsets: data.handleOffsets,
+            blockIncoming: data.blockIncoming,
+            blockedSourceIds: data.blockedSourceIds,
+          },
+        };
+      });
+
+    if (!changed) return;
+
+    const kept = new Set(nextNodes.map((n) => n.id));
+    const nextEdges = eds.filter(
+      (e) => kept.has(e.source) && kept.has(e.target),
+    );
+    setNodes(nextNodes);
+    setEdges(nextEdges);
+    if (removeIds.size) scheduleSave(nextNodes, nextEdges);
+  }, [scheduleSave, setEdges, setNodes]);
+
+  useEffect(() => {
+    syncGraphWithCards();
+  }, [cards, syncGraphWithCards]);
+
+  // Persist once if the loaded board still had deleted-card leftovers
+  useEffect(() => {
+    const hadOrphans = board.nodes.some((n) => {
+      if (n.type === 'groupNode') return false;
+      const cardId = String(n.data?.cardId ?? '');
+      return Boolean(cardId) && !cardMap.has(cardId);
+    });
+    if (!hadOrphans) return;
+    scheduleSave(initialNodes, initialEdges);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [board.id]);
 
   useEffect(() => {
     const onDirty = () => {

@@ -2,15 +2,24 @@ import { useEffect, useState } from 'react';
 import {
   IonContent,
   IonHeader,
+  IonIcon,
   IonPage,
   IonSpinner,
   IonTitle,
   IonToolbar,
 } from '@ionic/react';
+import {
+  colorPaletteOutline,
+  keyOutline,
+  logOutOutline,
+  personOutline,
+} from 'ionicons/icons';
 import { motion, useReducedMotion } from 'framer-motion';
+import { useHistory } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Field } from '../../../shared/components/Field';
 import { useAppToast } from '../../../shared/hooks/useAppToast';
+import { useTheme, type ThemeMode } from '../../../shared/theme/ThemeContext';
 import {
   MotionShell,
   fadeUp,
@@ -21,10 +30,53 @@ import {
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,24}$/;
 
+type SettingsSection = 'account' | 'security' | 'appearance' | 'session';
+
+const SECTIONS: {
+  id: SettingsSection;
+  label: string;
+  hint: string;
+  icon: string;
+}[] = [
+  {
+    id: 'account',
+    label: 'Conta',
+    hint: 'Usuário, e-mail e nome',
+    icon: personOutline,
+  },
+  {
+    id: 'security',
+    label: 'Segurança',
+    hint: 'Senha de acesso',
+    icon: keyOutline,
+  },
+  {
+    id: 'appearance',
+    label: 'Aparência',
+    hint: 'Tema da interface',
+    icon: colorPaletteOutline,
+  },
+  {
+    id: 'session',
+    label: 'Sessão',
+    hint: 'Encerrar acesso',
+    icon: logOutOutline,
+  },
+];
+
+const THEME_OPTIONS: { id: ThemeMode; label: string; hint: string }[] = [
+  { id: 'light', label: 'Claro', hint: 'Fundo claro' },
+  { id: 'dark', label: 'Escuro', hint: 'Fundo escuro' },
+  { id: 'system', label: 'Sistema', hint: 'Segue o dispositivo' },
+];
+
 export default function ProfilePage() {
-  const { user, updateProfile, changePassword } = useAuth();
+  const { user, updateProfile, changePassword, logout } = useAuth();
+  const { mode, setMode } = useTheme();
   const toast = useAppToast();
+  const history = useHistory();
   const reduce = useReducedMotion();
+  const [section, setSection] = useState<SettingsSection>('account');
 
   const [username, setUsername] = useState(user?.username ?? '');
   const [email, setEmail] = useState(user?.email ?? '');
@@ -46,6 +98,8 @@ export default function ProfilePage() {
     .trim()
     .slice(0, 2)
     .toUpperCase();
+
+  const displayName = user?.name?.trim() || `@${user?.username || 'usuario'}`;
 
   const saveProfile = async () => {
     if (!USERNAME_RE.test(username.trim())) {
@@ -100,135 +154,241 @@ export default function ProfilePage() {
     }
   };
 
+  const signOut = () => {
+    logout();
+    history.replace('/login');
+  };
+
+  const activeMeta = SECTIONS.find((s) => s.id === section)!;
+
   return (
     <IonPage>
       <IonHeader>
         <IonToolbar>
-          <IonTitle>Perfil</IonTitle>
+          <IonTitle>Configurações</IonTitle>
         </IonToolbar>
       </IonHeader>
       <IonContent>
-        <MotionShell className="sc-shell sc-profile">
-          <motion.section
-            className="sc-profile-hero"
+        <MotionShell className="sc-shell sc-settings">
+          <motion.header
+            className="sc-settings-head"
             variants={reduce ? undefined : fadeUp}
             initial={reduce ? false : 'hidden'}
             animate="show"
           >
-            <div className="sc-profile-avatar" aria-hidden>
-              {initials}
+            <div>
+              <p className="sc-settings-kicker">Conta</p>
+              <h1 className="sc-settings-title">Configurações</h1>
+              <p className="sc-settings-subtitle">
+                Gerencie identidade, segurança e preferências do Study Cards.
+              </p>
             </div>
-            <div className="sc-profile-hero-copy">
-              <p className="sc-profile-kicker">Conta</p>
-              <h1 className="sc-profile-title">
-                @{user?.username || 'usuario'}
-              </h1>
-              <p className="sc-profile-email">{user?.email}</p>
+            <div className="sc-settings-identity" aria-hidden>
+              <div className="sc-settings-avatar">{initials}</div>
+              <div className="sc-settings-identity-copy">
+                <strong>{displayName}</strong>
+                <span>@{user?.username || 'usuario'}</span>
+              </div>
             </div>
-          </motion.section>
+          </motion.header>
 
-          <motion.section
-            className="sc-profile-card"
-            variants={reduce ? undefined : staggerContainer}
-            initial={reduce ? false : 'hidden'}
-            animate="show"
-          >
-            <motion.h2 className="sc-profile-section-title" variants={staggerItem}>
-              Dados da conta
-            </motion.h2>
-            <motion.p className="sc-profile-section-lead" variants={staggerItem}>
-              O usuário serve para login e aparece no menu.
-            </motion.p>
-            <motion.div className="sc-auth-fields" variants={staggerItem}>
-              <Field
-                label="Usuário"
-                value={username}
-                onChange={setUsername}
-                placeholder="seu_usuario"
-                autoComplete="username"
-              />
-              <Field
-                label="E-mail"
-                type="email"
-                value={email}
-                onChange={setEmail}
-                placeholder="voce@email.com"
-                autoComplete="email"
-              />
-              <Field
-                label="Nome (opcional)"
-                value={name}
-                onChange={setName}
-                placeholder="Nome completo"
-                autoComplete="name"
-              />
-            </motion.div>
-            <motion.button
-              type="button"
-              className="sc-btn primary sc-profile-submit"
-              disabled={savingProfile}
-              onClick={() => void saveProfile()}
-              variants={staggerItem}
-              whileTap={reduce ? undefined : tapScale}
-            >
-              {savingProfile ? <IonSpinner name="crescent" /> : 'Salvar perfil'}
-            </motion.button>
-          </motion.section>
+          <div className="sc-settings-layout">
+            <nav className="sc-settings-nav" aria-label="Seções">
+              {SECTIONS.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`sc-settings-nav-item${section === item.id ? ' is-active' : ''}`}
+                  onClick={() => setSection(item.id)}
+                  aria-current={section === item.id ? 'page' : undefined}
+                >
+                  <IonIcon icon={item.icon} />
+                  <span className="sc-settings-nav-text">
+                    <strong>{item.label}</strong>
+                    <small>{item.hint}</small>
+                  </span>
+                </button>
+              ))}
+            </nav>
 
-          <motion.section
-            className="sc-profile-card"
-            variants={reduce ? undefined : staggerContainer}
-            initial={reduce ? false : 'hidden'}
-            animate="show"
-          >
-            <motion.h2 className="sc-profile-section-title" variants={staggerItem}>
-              Senha
-            </motion.h2>
-            <motion.p className="sc-profile-section-lead" variants={staggerItem}>
-              Troque a senha com a atual e uma nova com pelo menos 6 caracteres.
-            </motion.p>
-            <motion.div className="sc-auth-fields" variants={staggerItem}>
-              <Field
-                label="Senha atual"
-                type="password"
-                value={currentPassword}
-                onChange={setCurrentPassword}
-                placeholder="••••••••"
-                autoComplete="current-password"
-              />
-              <Field
-                label="Nova senha"
-                type="password"
-                value={newPassword}
-                onChange={setNewPassword}
-                placeholder="••••••••"
-                autoComplete="new-password"
-              />
-              <Field
-                label="Confirmar nova senha"
-                type="password"
-                value={confirmPassword}
-                onChange={setConfirmPassword}
-                placeholder="••••••••"
-                autoComplete="new-password"
-                onEnter={() => void savePassword()}
-              />
-            </motion.div>
-            <motion.button
-              type="button"
-              className="sc-btn primary sc-profile-submit"
-              disabled={savingPassword}
-              onClick={() => void savePassword()}
-              variants={staggerItem}
-              whileTap={reduce ? undefined : tapScale}
+            <motion.section
+              key={section}
+              className="sc-settings-panel"
+              variants={reduce ? undefined : staggerContainer}
+              initial={reduce ? false : 'hidden'}
+              animate="show"
             >
-              {savingPassword ? (
-                <IonSpinner name="crescent" />
-              ) : (
-                'Alterar senha'
-              )}
-            </motion.button>
-          </motion.section>
+              <motion.div className="sc-settings-panel-head" variants={staggerItem}>
+                <IonIcon icon={activeMeta.icon} />
+                <div>
+                  <h2>{activeMeta.label}</h2>
+                  <p>{activeMeta.hint}</p>
+                </div>
+              </motion.div>
+
+              {section === 'account' ? (
+                <>
+                  <motion.div
+                    className="sc-settings-profile-strip"
+                    variants={staggerItem}
+                  >
+                    <div className="sc-settings-avatar is-lg" aria-hidden>
+                      {initials}
+                    </div>
+                    <div>
+                      <strong>{displayName}</strong>
+                      <p>{user?.email}</p>
+                    </div>
+                  </motion.div>
+
+                  <motion.div className="sc-settings-fields" variants={staggerItem}>
+                    <Field
+                      label="Usuário"
+                      value={username}
+                      onChange={setUsername}
+                      placeholder="seu_usuario"
+                      autoComplete="username"
+                    />
+                    <Field
+                      label="E-mail"
+                      type="email"
+                      value={email}
+                      onChange={setEmail}
+                      placeholder="voce@email.com"
+                      autoComplete="email"
+                    />
+                    <Field
+                      label="Nome (opcional)"
+                      value={name}
+                      onChange={setName}
+                      placeholder="Nome completo"
+                      autoComplete="name"
+                    />
+                  </motion.div>
+
+                  <motion.div className="sc-settings-actions" variants={staggerItem}>
+                    <motion.button
+                      type="button"
+                      className="sc-btn primary"
+                      disabled={savingProfile}
+                      onClick={() => void saveProfile()}
+                      whileTap={reduce ? undefined : tapScale}
+                    >
+                      {savingProfile ? (
+                        <IonSpinner name="crescent" />
+                      ) : (
+                        'Salvar alterações'
+                      )}
+                    </motion.button>
+                  </motion.div>
+                </>
+              ) : null}
+
+              {section === 'security' ? (
+                <>
+                  <motion.p className="sc-settings-lead" variants={staggerItem}>
+                    Use a senha atual e escolha uma nova com pelo menos 6
+                    caracteres.
+                  </motion.p>
+                  <motion.div className="sc-settings-fields" variants={staggerItem}>
+                    <Field
+                      label="Senha atual"
+                      type="password"
+                      value={currentPassword}
+                      onChange={setCurrentPassword}
+                      placeholder="••••••••"
+                      autoComplete="current-password"
+                    />
+                    <Field
+                      label="Nova senha"
+                      type="password"
+                      value={newPassword}
+                      onChange={setNewPassword}
+                      placeholder="••••••••"
+                      autoComplete="new-password"
+                    />
+                    <Field
+                      label="Confirmar nova senha"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={setConfirmPassword}
+                      placeholder="••••••••"
+                      autoComplete="new-password"
+                      onEnter={() => void savePassword()}
+                    />
+                  </motion.div>
+                  <motion.div className="sc-settings-actions" variants={staggerItem}>
+                    <motion.button
+                      type="button"
+                      className="sc-btn primary"
+                      disabled={savingPassword}
+                      onClick={() => void savePassword()}
+                      whileTap={reduce ? undefined : tapScale}
+                    >
+                      {savingPassword ? (
+                        <IonSpinner name="crescent" />
+                      ) : (
+                        'Atualizar senha'
+                      )}
+                    </motion.button>
+                  </motion.div>
+                </>
+              ) : null}
+
+              {section === 'appearance' ? (
+                <>
+                  <motion.p className="sc-settings-lead" variants={staggerItem}>
+                    Escolha como o Study Cards aparece neste dispositivo.
+                  </motion.p>
+                  <motion.div
+                    className="sc-settings-theme-grid"
+                    variants={staggerItem}
+                    role="radiogroup"
+                    aria-label="Tema"
+                  >
+                    {THEME_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={mode === opt.id}
+                        className={`sc-settings-theme-card${mode === opt.id ? ' is-active' : ''}`}
+                        onClick={() => setMode(opt.id)}
+                      >
+                        <span
+                          className={`sc-settings-theme-preview is-${opt.id}`}
+                          aria-hidden
+                        />
+                        <strong>{opt.label}</strong>
+                        <small>{opt.hint}</small>
+                      </button>
+                    ))}
+                  </motion.div>
+                </>
+              ) : null}
+
+              {section === 'session' ? (
+                <motion.div className="sc-settings-danger" variants={staggerItem}>
+                  <div>
+                    <h3>Sair da conta</h3>
+                    <p>
+                      Encerra a sessão neste dispositivo. Seus cards e
+                      fluxogramas continuam salvos.
+                    </p>
+                  </div>
+                  <motion.button
+                    type="button"
+                    className="sc-btn sc-settings-logout"
+                    onClick={signOut}
+                    whileTap={reduce ? undefined : tapScale}
+                  >
+                    <IonIcon icon={logOutOutline} />
+                    Sair
+                  </motion.button>
+                </motion.div>
+              ) : null}
+            </motion.section>
+          </div>
         </MotionShell>
       </IonContent>
     </IonPage>
