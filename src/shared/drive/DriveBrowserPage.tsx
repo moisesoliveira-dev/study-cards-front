@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
 import {
   IonBackButton,
   IonButton,
@@ -27,9 +27,20 @@ import { CardDocumentSheet } from '../components/CardDocumentSheet';
 import { documentToPlainText } from '../components/DocumentEditor';
 import { DragItem, DropZone, useDriveDrop } from '../dnd/DragDrop';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import {
+  ContextMenu,
+  useContextMenu,
+  type ContextMenuItem,
+} from '../components/ContextMenu';
 import { useAppToast } from '../hooks/useAppToast';
 import { MotionShell, MotionStagger, tapScale } from '../motion';
 import { motion, useReducedMotion } from 'framer-motion';
+import {
+  createOutline,
+  documentTextOutline,
+  folderOutline,
+  trashOutline,
+} from 'ionicons/icons';
 
 const DOUBLE_TAP_MS = 340;
 
@@ -116,6 +127,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   const [detail, setDetail] = useState<Card | null>(null);
   const [deleteFolder, setDeleteFolder] = useState<TopicTreeNode | null>(null);
   const [deletingFolder, setDeletingFolder] = useState(false);
+  const { menu: ctxMenu, open: openCtx, close: closeCtx } = useContextMenu();
 
   const isRoot = !topicId;
 
@@ -408,6 +420,115 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     })();
   };
 
+  const setCardStatus = useCallback(
+    async (card: Card, status: Card['status']) => {
+      try {
+        await cardsFacade.update(card.id, { status });
+        toast.success('Status atualizado');
+        await load();
+      } catch (error) {
+        toast.error(error);
+      }
+    },
+    [load, toast],
+  );
+
+  const openCardContextMenu = useCallback(
+    (e: MouseEvent, card: Card) => {
+      const items: ContextMenuItem[] = [
+        {
+          id: 'open',
+          label: 'Abrir carta',
+          icon: documentTextOutline,
+          onSelect: () => setDetail(card),
+        },
+        {
+          id: 'merge',
+          label: mergePickIds.includes(card.id)
+            ? 'Tirar da síntese'
+            : 'Marcar para síntese',
+          onSelect: () => toggleMergePick(card),
+        },
+        {
+          id: 'known',
+          label: 'Marcar como Sabido',
+          separator: true,
+          onSelect: () => void setCardStatus(card, 'KNOWN'),
+        },
+        {
+          id: 'review',
+          label: 'Marcar como Revisar',
+          onSelect: () => void setCardStatus(card, 'REVIEW'),
+        },
+        {
+          id: 'new',
+          label: 'Marcar como Novo',
+          onSelect: () => void setCardStatus(card, 'NEW'),
+        },
+        {
+          id: 'delete',
+          label: 'Excluir carta',
+          icon: trashOutline,
+          danger: true,
+          separator: true,
+          onSelect: () => removeCard(card.id),
+        },
+      ];
+      openCtx(e, items, card.front);
+    },
+    [mergePickIds, openCtx, setCardStatus, toggleMergePick],
+  );
+
+  const openFolderContextMenu = useCallback(
+    (e: MouseEvent, node: TopicTreeNode) => {
+      openCtx(
+        e,
+        [
+          {
+            id: 'open',
+            label: 'Abrir pasta',
+            icon: folderOutline,
+            onSelect: () => openFolder(node.id),
+          },
+          {
+            id: 'delete',
+            label: 'Excluir pasta',
+            icon: trashOutline,
+            danger: true,
+            separator: true,
+            onSelect: () => setDeleteFolder(node),
+          },
+        ],
+        node.name,
+      );
+    },
+    [openCtx],
+  );
+
+  const openBlankContextMenu = useCallback(
+    (e: MouseEvent) => {
+      openCtx(
+        e,
+        [
+          {
+            id: 'card',
+            label: 'Nova carta',
+            icon: createOutline,
+            onSelect: () => setCardOpen(true),
+          },
+          {
+            id: 'folder',
+            label: 'Nova pasta',
+            icon: folderOutline,
+            onSelect: () => setFolderOpen(true),
+          },
+        ],
+        folderName,
+      );
+    },
+    [folderName, openCtx],
+  );
+
   const confirmDeleteFolder = async () => {
     if (!deleteFolder) return;
     setDeletingFolder(true);
@@ -448,7 +569,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         </IonToolbar>
       </IonHeader>
       <IonContent>
-        <MotionShell className="sc-shell">
+        <MotionShell className="sc-shell" onContextMenu={openBlankContextMenu}>
           <div className="sc-crumb">
             <button type="button" onClick={() => history.push('/home')}>
               Study Cards
@@ -525,6 +646,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                       onLongPress={
                         touchUi ? () => setDetail(card) : undefined
                       }
+                      onContextMenu={(e) => openCardContextMenu(e, card)}
                     >
                       <FaceCard
                         card={card}
@@ -580,6 +702,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                       onLongPress={
                         touchUi ? () => setDetail(card) : undefined
                       }
+                      onContextMenu={(e) => openCardContextMenu(e, card)}
                     >
                       <DriveCardItem
                         card={card}
@@ -647,6 +770,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                     label: node.name,
                   }}
                   onClick={() => openFolder(node.id)}
+                  onContextMenu={(e) => openFolderContextMenu(e, node)}
                 >
                   <DriveFolderItem
                     name={node.name}
@@ -654,6 +778,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                     color={subject?.color}
                     onClick={() => openFolder(node.id)}
                     onDelete={() => setDeleteFolder(node)}
+                    onContextMenu={(e) => openFolderContextMenu(e, node)}
                   />
                 </DragItem>
               </DropZone>
@@ -783,6 +908,8 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         onCancel={() => setDeleteFolder(null)}
         onConfirm={() => void confirmDeleteFolder()}
       />
+
+      <ContextMenu menu={ctxMenu} onClose={closeCtx} />
     </IonPage>
   );
 }

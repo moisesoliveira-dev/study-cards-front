@@ -10,6 +10,8 @@ import {
   IonToolbar,
 } from '@ionic/react';
 import { IonIcon } from '@ionic/react';
+import { ContextMenu, useContextMenu } from '../../../shared/components/ContextMenu';
+import type { ContextMenuItem } from '../../../shared/components/ContextMenu';
 import {
   addOutline,
   arrowBackOutline,
@@ -17,6 +19,7 @@ import {
   createOutline,
   documentTextOutline,
   expandOutline,
+  gridOutline,
   trashOutline,
 } from 'ionicons/icons';
 import { useHistory, useParams } from 'react-router-dom';
@@ -216,6 +219,7 @@ function FlowCanvas({
   const edgesRef = useRef(edges);
   nodesRef.current = nodes;
   edgesRef.current = edges;
+  const { menu: ctxMenu, open: openCtx, close: closeCtx } = useContextMenu();
 
   const selectedNodes = useMemo(
     () => nodes.filter((n) => selectedNodeIds.includes(n.id)),
@@ -568,6 +572,167 @@ function FlowCanvas({
     [openCardEditor],
   );
 
+  const onNodeContextMenu = useCallback(
+    (event: React.MouseEvent, node: Node) => {
+      const data = node.data as CardFlowNodeData;
+      const items: ContextMenuItem[] = [
+        {
+          id: 'edit',
+          label: 'Editar carta / documento',
+          icon: documentTextOutline,
+          onSelect: () => openCardEditor(data.cardId),
+        },
+        {
+          id: 'focus',
+          label: 'Enquadrar nó',
+          icon: expandOutline,
+          onSelect: () =>
+            fitView({
+              nodes: [{ id: node.id }],
+              padding: 0.4,
+              duration: 280,
+            }),
+        },
+        {
+          id: 'remove',
+          label: 'Remover do fluxograma',
+          icon: trashOutline,
+          danger: true,
+          separator: true,
+          onSelect: () => deleteNodesByIds([node.id]),
+        },
+      ];
+      setSelectedNodeIds([node.id]);
+      setSelectedEdgeIds([]);
+      openCtx(event, items, data.front || 'Nó');
+    },
+    [deleteNodesByIds, fitView, openCardEditor, openCtx],
+  );
+
+  const onEdgeContextMenu = useCallback(
+    (event: React.MouseEvent, edge: Edge) => {
+      const data = getEdgeData(edge);
+      const synthesis = isSynthesisEdge(edge);
+      const items: ContextMenuItem[] = [
+        {
+          id: 'animate',
+          label: data.svgAnimate === false ? 'Ativar Animating SVG' : 'Desativar Animating SVG',
+          onSelect: () =>
+            updateEdge(edge.id, {
+              data: { ...data, svgAnimate: !(data.svgAnimate ?? true) },
+            }),
+        },
+        {
+          id: 'dash',
+          label: data.dashed ? 'Linha contínua' : 'Linha tracejada',
+          onSelect: () =>
+            updateEdge(edge.id, {
+              data: { ...data, dashed: !data.dashed },
+            }),
+        },
+        {
+          id: 'smooth',
+          label: 'Formato: suave',
+          separator: true,
+          onSelect: () =>
+            updateEdge(edge.id, {
+              data: { ...data, pathType: 'smoothstep' },
+            }),
+        },
+        {
+          id: 'bezier',
+          label: 'Formato: curva',
+          onSelect: () =>
+            updateEdge(edge.id, {
+              data: { ...data, pathType: 'bezier' },
+            }),
+        },
+        {
+          id: 'step',
+          label: 'Formato: degrau',
+          onSelect: () =>
+            updateEdge(edge.id, {
+              data: { ...data, pathType: 'step' },
+            }),
+        },
+        {
+          id: 'straight',
+          label: 'Formato: reta',
+          onSelect: () =>
+            updateEdge(edge.id, {
+              data: { ...data, pathType: 'straight' },
+            }),
+        },
+      ];
+      if (!synthesis) {
+        items.push({
+          id: 'delete',
+          label: 'Remover conexão',
+          icon: trashOutline,
+          danger: true,
+          separator: true,
+          onSelect: () => deleteEdgeById(edge.id),
+        });
+      }
+      setSelectedEdgeIds([edge.id]);
+      setSelectedNodeIds([]);
+      openCtx(event, items, synthesis ? 'Conexão · síntese' : 'Conexão');
+    },
+    [deleteEdgeById, openCtx, updateEdge],
+  );
+
+  const onPaneContextMenu = useCallback(
+    (event: React.MouseEvent | MouseEvent) => {
+      const items: ContextMenuItem[] = [
+        {
+          id: 'new-card',
+          label: 'Nova carta',
+          icon: createOutline,
+          onSelect: openComposer,
+        },
+        {
+          id: 'palette',
+          label: compact ? 'Abrir cards' : 'Focar lista de cards',
+          icon: addOutline,
+          onSelect: () => {
+            if (compact) setPaletteOpen(true);
+            else setInspectorOpen(true);
+          },
+        },
+        {
+          id: 'fit',
+          label: 'Enquadrar tudo',
+          icon: expandOutline,
+          separator: true,
+          onSelect: () => fitView({ padding: compact ? 0.15 : 0.2 }),
+        },
+        {
+          id: 'grid',
+          label: settings.showGrid ? 'Ocultar grade' : 'Mostrar grade',
+          icon: gridOutline,
+          onSelect: () =>
+            setSettings((s) => ({ ...s, showGrid: !s.showGrid })),
+        },
+        {
+          id: 'snap',
+          label: settings.snapToGrid
+            ? 'Desligar encaixe na grade'
+            : 'Encaixar na grade',
+          onSelect: () =>
+            setSettings((s) => ({ ...s, snapToGrid: !s.snapToGrid })),
+        },
+        {
+          id: 'format',
+          label: 'Abrir painel Formatar',
+          separator: true,
+          onSelect: () => setInspectorOpen(true),
+        },
+      ];
+      openCtx(event, items, 'Fluxograma');
+    },
+    [compact, fitView, openComposer, openCtx, settings.showGrid, settings.snapToGrid],
+  );
+
   const addCard = useCallback(
     (card: Card, position?: { x: number; y: number }) => {
       if (usedIds.has(card.id)) {
@@ -773,7 +938,30 @@ function FlowCanvas({
       />
       <div className="sc-flow-palette-list">
         {available.map((card) => (
-          <div key={card.id} className="sc-flow-palette-row">
+          <div
+            key={card.id}
+            className="sc-flow-palette-row"
+            onContextMenu={(e) =>
+              openCtx(
+                e,
+                [
+                  {
+                    id: 'add',
+                    label: 'Adicionar ao mapa',
+                    icon: addOutline,
+                    onSelect: () => addCard(card),
+                  },
+                  {
+                    id: 'edit',
+                    label: 'Editar carta',
+                    icon: documentTextOutline,
+                    onSelect: () => openCardEditor(card.id),
+                  },
+                ],
+                card.front,
+              )
+            }
+          >
             <button
               type="button"
               className="sc-flow-palette-item"
@@ -902,7 +1090,12 @@ function FlowCanvas({
           onBeforeDelete={onBeforeDelete}
           onNodeDragStop={onNodeDragStop}
           onNodeDoubleClick={onNodeDoubleClick}
+          onNodeContextMenu={onNodeContextMenu}
+          onEdgeContextMenu={onEdgeContextMenu}
+          onPaneContextMenu={onPaneContextMenu}
           onSelectionChange={onSelectionChange}
+          onMoveStart={closeCtx}
+          onPaneClick={closeCtx}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           defaultEdgeOptions={{
@@ -992,6 +1185,8 @@ function FlowCanvas({
           setDetail(linked);
         }}
       />
+
+      <ContextMenu menu={ctxMenu} onClose={closeCtx} />
     </div>
   );
 }

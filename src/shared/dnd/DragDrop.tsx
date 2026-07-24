@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import {
   endDriveDrag,
   moveDriveDrag,
@@ -19,6 +19,7 @@ type DragItemProps = {
   children: ReactNode;
   onClick?: () => void;
   onLongPress?: () => void;
+  onContextMenu?: (e: MouseEvent) => void;
 };
 
 export function DragItem({
@@ -28,6 +29,7 @@ export function DragItem({
   children,
   onClick,
   onLongPress,
+  onContextMenu,
 }: DragItemProps) {
   const [dragging, setDragging] = useState(false);
   const pointerId = useRef<number | null>(null);
@@ -64,6 +66,7 @@ export function DragItem({
       className={`sc-drag-item${dragging ? ' is-dragging' : ''}${className ? ` ${className}` : ''}`}
       data-drag-kind={payload.kind}
       data-drag-id={payload.id}
+      onContextMenu={onContextMenu}
       onPointerDown={(e) => {
         if (disabled || e.button !== 0) return;
         pointerId.current = e.pointerId;

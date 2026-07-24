@@ -17,8 +17,15 @@ import { DriveTopBar } from '../../../shared/components/DriveTopBar';
 import { DriveFolderItem } from '../../../shared/components/DriveFolderItem';
 import { Field, TextArea } from '../../../shared/components/Field';
 import { ConfirmDialog } from '../../../shared/components/ConfirmDialog';
+import {
+  ContextMenu,
+  useContextMenu,
+  type ContextMenuItem,
+} from '../../../shared/components/ContextMenu';
 import { useAppToast } from '../../../shared/hooks/useAppToast';
 import { MotionShell, MotionStagger, tapScale } from '../../../shared/motion';
+import { createOutline, openOutline, trashOutline } from 'ionicons/icons';
+import type { MouseEvent } from 'react';
 
 const COLORS = ['#BA7517', '#378ADD', '#1D9E75', '#7F77DD', '#D4537E', '#888780'];
 
@@ -37,6 +44,27 @@ export default function SubjectsPage() {
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Subject | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const { menu: ctxMenu, open: openCtx, close: closeCtx } = useContextMenu();
+
+  const openSubjectMenu = (e: MouseEvent, s: Subject) => {
+    const items: ContextMenuItem[] = [
+      {
+        id: 'open',
+        label: 'Abrir grupo',
+        icon: openOutline,
+        onSelect: () => history.push(`/subjects/${s.id}`),
+      },
+      {
+        id: 'delete',
+        label: 'Excluir grupo',
+        icon: trashOutline,
+        danger: true,
+        separator: true,
+        onSelect: () => setDeleteTarget(s),
+      },
+    ];
+    openCtx(e, items, s.name);
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -104,7 +132,23 @@ export default function SubjectsPage() {
         </IonToolbar>
       </IonHeader>
       <IonContent>
-        <MotionShell className="sc-shell">
+        <MotionShell
+          className="sc-shell"
+          onContextMenu={(e) =>
+            openCtx(
+              e,
+              [
+                {
+                  id: 'new',
+                  label: 'Novo grupo',
+                  icon: createOutline,
+                  onSelect: () => setOpen(true),
+                },
+              ],
+              'Grupos',
+            )
+          }
+        >
           <DriveTopBar
             query={query}
             onQuery={setQuery}
@@ -130,6 +174,7 @@ export default function SubjectsPage() {
                   color={s.color}
                   onClick={() => history.push(`/subjects/${s.id}`)}
                   onDelete={() => setDeleteTarget(s)}
+                  onContextMenu={(e) => openSubjectMenu(e, s)}
                 />
               ))}
               <DriveFolderItem
@@ -141,7 +186,11 @@ export default function SubjectsPage() {
           ) : (
             <MotionStagger className="sc-list-view" key={`list-${filtered.length}`}>
               {filtered.map((s, i) => (
-                <div key={s.id} className="sc-list-row-wrap">
+                <div
+                  key={s.id}
+                  className="sc-list-row-wrap"
+                  onContextMenu={(e) => openSubjectMenu(e, s)}
+                >
                   <motion.button
                     type="button"
                     className="sc-list-row"
@@ -236,6 +285,7 @@ export default function SubjectsPage() {
         onCancel={() => setDeleteTarget(null)}
         onConfirm={() => void confirmDeleteSubject()}
       />
+      <ContextMenu menu={ctxMenu} onClose={closeCtx} />
     </IonPage>
   );
 }

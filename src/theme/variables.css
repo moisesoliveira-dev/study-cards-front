@@ -4488,3 +4488,108 @@ ion-toast.sc-toast--info::part(container) {
     width: 100%;
   }
 }
+
+/* Context menu */
+.sc-ctx-root {
+  position: fixed;
+  inset: 0;
+  z-index: 20000;
+  pointer-events: none;
+}
+
+.sc-ctx-backdrop {
+  position: absolute;
+  inset: 0;
+  border: none;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  pointer-events: all;
+  cursor: default;
+}
+
+.sc-ctx-menu {
+  position: fixed;
+  min-width: 200px;
+  max-width: min(280px, calc(100vw - 16px));
+  padding: 6px;
+  border-radius: 12px;
+  border: 0.5px solid var(--border);
+  background: color-mix(in srgb, var(--surface-1) 94%, transparent);
+  box-shadow:
+    0 12px 40px color-mix(in srgb, var(--text-primary) 18%, transparent),
+    0 0 0 0.5px color-mix(in srgb, var(--border) 80%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  pointer-events: all;
+  z-index: 20001;
+}
+
+.sc-ctx-title {
+  padding: 6px 10px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sc-ctx-sep {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--border);
+}
+
+.sc-ctx-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sc-ctx-item ion-icon {
+  font-size: 16px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.sc-ctx-item:hover:not(:disabled),
+.sc-ctx-item:focus-visible:not(:disabled) {
+  background: var(--bg-accent);
+  outline: none;
+}
+
+.sc-ctx-item:hover:not(:disabled) ion-icon,
+.sc-ctx-item:focus-visible:not(:disabled) ion-icon {
+  color: var(--text-accent);
+}
+
+.sc-ctx-item:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.sc-ctx-item.is-danger {
+  color: var(--danger, #c0392b);
+}
+
+.sc-ctx-item.is-danger ion-icon {
+  color: var(--danger, #c0392b);
+}
+
+.sc-ctx-item.is-danger:hover:not(:disabled),
+.sc-ctx-item.is-danger:focus-visible:not(:disabled) {
+  background: color-mix(in srgb, var(--danger, #c0392b) 12%, var(--surface-1));
+}

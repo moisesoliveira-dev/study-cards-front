@@ -15,7 +15,9 @@ import {
 import { IonIcon } from '@ionic/react';
 import {
   addOutline,
+  createOutline,
   gitNetworkOutline,
+  openOutline,
   trashOutline,
 } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
@@ -25,6 +27,11 @@ import { subjectsFacade } from '../../subjects/facades/subjects.facade';
 import type { FlowBoard } from '../types/flow.types';
 import type { Subject } from '../../subjects/types/subject.types';
 import { Field } from '../../../shared/components/Field';
+import {
+  ContextMenu,
+  useContextMenu,
+  type ContextMenuItem,
+} from '../../../shared/components/ContextMenu';
 import { useAppToast } from '../../../shared/hooks/useAppToast';
 import {
   MotionShell,
@@ -48,6 +55,7 @@ export default function FlowsListPage() {
   const [filterSubjectId, setFilterSubjectId] = useState<string>('all');
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const { menu: ctxMenu, open: openCtx, close: closeCtx } = useContextMenu();
 
   const subjectMap = useMemo(
     () => new Map(subjects.map((s) => [s.id, s])),
@@ -145,8 +153,8 @@ export default function FlowsListPage() {
     }
   };
 
-  const remove = (id: string, e: MouseEvent) => {
-    e.stopPropagation();
+  const remove = (id: string, e?: MouseEvent) => {
+    e?.stopPropagation();
     presentAlert({
       header: 'Excluir fluxograma?',
       message: 'Essa ação não pode ser desfeita.',
@@ -171,10 +179,46 @@ export default function FlowsListPage() {
     });
   };
 
+  const openFlowMenu = (e: MouseEvent, flow: FlowBoard) => {
+    const items: ContextMenuItem[] = [
+      {
+        id: 'open',
+        label: 'Abrir',
+        icon: openOutline,
+        onSelect: () => history.push(`/flows/${flow.id}`),
+      },
+      {
+        id: 'delete',
+        label: 'Excluir',
+        icon: trashOutline,
+        danger: true,
+        separator: true,
+        onSelect: () => remove(flow.id),
+      },
+    ];
+    openCtx(e, items, flow.name);
+  };
+
   return (
     <IonPage>
       <IonContent>
-        <MotionShell className="sc-flow-hub">
+        <MotionShell
+          className="sc-flow-hub"
+          onContextMenu={(e) =>
+            openCtx(
+              e,
+              [
+                {
+                  id: 'new',
+                  label: 'Novo fluxograma',
+                  icon: createOutline,
+                  onSelect: () => void openComposer(),
+                },
+              ],
+              'Fluxogramas',
+            )
+          }
+        >
           <section className="sc-flow-stage" aria-hidden={false}>
             <div className="sc-flow-stage-glow" aria-hidden />
             <svg
@@ -362,6 +406,7 @@ export default function FlowsListPage() {
                     className="sc-flow-tile"
                     variants={reduce ? undefined : staggerItem}
                     whileHover={reduce ? undefined : { y: -4 }}
+                    onContextMenu={(e) => openFlowMenu(e, flow)}
                     style={
                       {
                         '--flow-accent': subject?.color ?? 'var(--rev)',
@@ -458,6 +503,7 @@ export default function FlowsListPage() {
           )}
         </MotionShell>
       </IonContent>
+      <ContextMenu menu={ctxMenu} onClose={closeCtx} />
     </IonPage>
   );
 }

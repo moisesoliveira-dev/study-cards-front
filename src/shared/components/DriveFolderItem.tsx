@@ -1,3 +1,4 @@
+import type { MouseEvent } from 'react';
 import { IonIcon } from '@ionic/react';
 import { folderOutline, folderOpenOutline } from 'ionicons/icons';
 import { motion, useReducedMotion } from 'framer-motion';
@@ -10,6 +11,7 @@ type Props = {
   dashed?: boolean;
   onClick?: () => void;
   onDelete?: () => void;
+  onContextMenu?: (e: MouseEvent) => void;
 };
 
 export function DriveFolderItem({
@@ -19,6 +21,7 @@ export function DriveFolderItem({
   dashed,
   onClick,
   onDelete,
+  onContextMenu,
 }: Props) {
   const reduce = useReducedMotion();
 
@@ -28,6 +31,7 @@ export function DriveFolderItem({
       tabIndex={onClick ? 0 : undefined}
       className={`sc-item folder${dashed ? ' dashed' : ''}${onDelete ? ' has-delete' : ''}`}
       onClick={onClick}
+      onContextMenu={onContextMenu}
       onKeyDown={
         onClick
           ? (e) => {
