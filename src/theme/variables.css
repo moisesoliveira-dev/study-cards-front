@@ -22,7 +22,8 @@
   --rev-fg: #854F0B;
   --new-bg: #E6F1FB;
   --new-fg: #185FA5;
-  --modal-scrim: rgba(26, 25, 23, 0.35);
+  --modal-scrim: rgba(10, 10, 9, 0.62);
+  --backdrop-dim: rgba(8, 8, 7, 0.58);
   --shadow-soft: 0 24px 80px rgba(26, 25, 23, 0.28);
   --code-bg: #1a1917;
   --code-fg: #f4f1ea;
@@ -65,7 +66,8 @@
   --rev-fg: #f0c27a;
   --new-bg: #1a2e42;
   --new-fg: #9cc9f0;
-  --modal-scrim: rgba(0, 0, 0, 0.55);
+  --modal-scrim: rgba(0, 0, 0, 0.72);
+  --backdrop-dim: rgba(0, 0, 0, 0.68);
   --shadow-soft: 0 24px 80px rgba(0, 0, 0, 0.55);
   --code-bg: #0d0c0b;
   --code-fg: #f4f1ea;
@@ -866,10 +868,9 @@ body.sc-card-modal-open {
   align-items: center;
   justify-content: center;
   padding: 20px 16px;
-  background:
-    radial-gradient(ellipse 70% 45% at 50% 35%, color-mix(in srgb, var(--ok-bg) 55%, transparent) 0%, transparent 60%),
-    var(--modal-scrim);
-  backdrop-filter: blur(6px);
+  background: var(--modal-scrim);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   animation: sc-card-backdrop 0.25s ease-out;
 }
 
@@ -889,6 +890,12 @@ ion-toast {
 
 ion-modal {
   --z-index: 15000;
+  --backdrop-opacity: 0.68;
+}
+
+ion-modal::part(backdrop) {
+  background: #000;
+  opacity: var(--backdrop-opacity, 0.68);
 }
 
 ion-popover {
@@ -1587,9 +1594,9 @@ ion-popover {
   align-items: flex-end;
   justify-content: center;
   padding: 16px;
-  background: color-mix(in srgb, var(--text-primary) 42%, transparent);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: var(--backdrop-dim, rgba(8, 8, 7, 0.58));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .sc-icon-sheet {
@@ -2921,7 +2928,7 @@ ion-toast.sc-toast--info::part(container) {
     border: none;
     padding: 0;
     margin: 0;
-    background: color-mix(in srgb, var(--text-primary) 38%, transparent);
+    background: var(--backdrop-dim, rgba(8, 8, 7, 0.58));
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s ease;
@@ -3827,13 +3834,42 @@ ion-toast.sc-toast--info::part(container) {
 }
 
 .sc-flow-save {
-  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
   color: var(--text-muted);
   background: color-mix(in srgb, var(--surface-1) 92%, transparent);
   border: 0.5px solid var(--border);
-  border-radius: 999px;
-  padding: 6px 10px;
   backdrop-filter: blur(8px);
+}
+
+.sc-flow-save ion-icon {
+  font-size: 18px;
+}
+
+.sc-flow-save.is-saving {
+  color: var(--text-accent);
+  border-color: color-mix(in srgb, var(--text-accent) 35%, var(--border));
+  background: var(--bg-accent);
+}
+
+.sc-flow-save.is-saving ion-icon {
+  animation: sc-flow-cloud-pulse 1s ease-in-out infinite;
+}
+
+@keyframes sc-flow-cloud-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-1px);
+  }
 }
 
 .sc-flow-card-node {
@@ -4306,7 +4342,7 @@ ion-toast.sc-toast--info::part(container) {
     border: none;
     margin: 0;
     padding: 0;
-    background: color-mix(in srgb, var(--text-primary) 35%, transparent);
+    background: var(--backdrop-dim, rgba(8, 8, 7, 0.58));
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s ease;
@@ -4382,7 +4418,7 @@ ion-toast.sc-toast--info::part(container) {
     border: none;
     margin: 0;
     padding: 0;
-    background: color-mix(in srgb, var(--text-primary) 35%, transparent);
+    background: var(--backdrop-dim, rgba(8, 8, 7, 0.58));
     opacity: 1;
     pointer-events: auto;
     z-index: 20;

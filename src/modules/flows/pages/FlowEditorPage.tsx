@@ -17,6 +17,8 @@ import {
   addOutline,
   arrowBackOutline,
   brushOutline,
+  cloudDoneOutline,
+  cloudUploadOutline,
   closeOutline,
   createOutline,
   documentTextOutline,
@@ -88,6 +90,7 @@ import {
   moveNodesByDelta,
   nodesAbsoluteBounds,
   pushApartCollisions,
+  resolveAllCollisions,
   resolveSubflowParenting,
   sortNodesForSubflow,
 } from '../../../shared/flow/flow-tools.utils';
@@ -111,7 +114,6 @@ const DEFAULT_SETTINGS: FlowCanvasSettings = {
   showMiniMap: true,
   showGrid: true,
   defaultSvgAnimate: true,
-  dragTree: false,
   nodeCollisions: false,
 };
 
@@ -155,6 +157,35 @@ function cardToNodeData(card: Card): CardFlowNodeData {
   };
 }
 
+function nodeWantsDragTree(node: Node): boolean {
+  return Boolean((node.data as { dragTree?: boolean } | undefined)?.dragTree);
+}
+
+function nodeWantsCollisions(node: Node, global: boolean): boolean {
+  if (global) return true;
+  return Boolean(
+    (node.data as { nodeCollisions?: boolean } | undefined)?.nodeCollisions,
+  );
+}
+
+function collectDragTreeTargets(
+  node: Node,
+  allNodes: Node[],
+  edges: Edge[],
+): Set<string> {
+  if (!nodeWantsDragTree(node)) return new Set();
+  if (node.type === 'groupNode') {
+    const ids = new Set<string>();
+    const children = allNodes.filter((n) => n.parentId === node.id);
+    for (const child of children) {
+      for (const id of getTreeDescendantIds(child.id, edges)) ids.add(id);
+    }
+    for (const id of getTreeDescendantIds(node.id, edges)) ids.add(id);
+    return ids;
+  }
+  return getTreeDescendantIds(node.id, edges);
+}
+
 function FlowCanvas({
   board,
   cards,
@@ -194,6 +225,8 @@ function FlowCanvas({
           height: n.height,
           data: {
             label: String(n.data?.label ?? 'Subfluxo'),
+            dragTree: Boolean(n.data?.dragTree),
+            nodeCollisions: Boolean(n.data?.nodeCollisions),
           },
           zIndex: -1,
         });
@@ -225,6 +258,8 @@ function FlowCanvas({
           handleOffsets,
           blockIncoming,
           blockedSourceIds,
+          dragTree: Boolean(n.data?.dragTree),
+          nodeCollisions: Boolean(n.data?.nodeCollisions),
         },
       });
     }
@@ -292,6 +327,8 @@ function FlowCanvas({
   const lastDragPosRef = useRef<{ id: string; x: number; y: number } | null>(
     null,
   );
+  /** Edge ids that had svgAnimate when environment SVG was last turned off. */
+  const svgAnimateSnapshotRef = useRef<Record<string, boolean>>({});
   nodesRef.current = nodes;
   edgesRef.current = edges;
   const cardsRef = useRef(cards);
@@ -410,7 +447,18 @@ function FlowCanvas({
                     ? n.style.height
                     : undefined),
                 style: (n.style as Record<string, unknown>) ?? undefined,
-                data: n.data as Record<string, unknown>,
+                data: {
+                  ...(n.data as Record<string, unknown>),
+                  label: String(
+                    (n.data as { label?: string })?.label ?? 'Subfluxo',
+                  ),
+                  dragTree: Boolean(
+                    (n.data as { dragTree?: boolean })?.dragTree,
+                  ),
+                  nodeCollisions: Boolean(
+                    (n.data as { nodeCollisions?: boolean })?.nodeCollisions,
+                  ),
+                },
               };
             }
             const data = n.data as CardFlowNodeData;
@@ -429,6 +477,8 @@ function FlowCanvas({
                 handleOffsets: data.handleOffsets,
                 blockIncoming: data.blockIncoming,
                 blockedSourceIds: data.blockedSourceIds,
+                dragTree: Boolean(data.dragTree),
+                nodeCollisions: Boolean(data.nodeCollisions),
               },
             };
           }),
@@ -516,6 +566,8 @@ function FlowCanvas({
             handleOffsets: data.handleOffsets,
             blockIncoming: data.blockIncoming,
             blockedSourceIds: data.blockedSourceIds,
+            dragTree: data.dragTree,
+            nodeCollisions: data.nodeCollisions,
           },
         };
       });
@@ -690,14 +742,14 @@ function FlowCanvas({
 
   const onNodeDrag = useCallback(
     (_: MouseEvent | TouchEvent, node: Node) => {
-      if (settings.dragTree) {
+      if (nodeWantsDragTree(node)) {
         const last = lastDragPosRef.current;
         if (last && last.id === node.id) {
           const delta = {
             x: node.position.x - last.x,
             y: node.position.y - last.y,
           };
-          const descendants = getTreeDescendantIds(node.id, edges);
+          const descendants = collectDragTreeTargets(node, nodes, edges);
           if (descendants.size && (delta.x || delta.y)) {
             setNodes((ns) => moveNodesByDelta(ns, descendants, delta));
           }
@@ -726,7 +778,7 @@ function FlowCanvas({
         const hoverId = hoverGroup?.id;
 
         let collideIds = new Set<string>();
-        if (settings.nodeCollisions) {
+        if (nodeWantsCollisions(live, settings.nodeCollisions)) {
           const mw = size.width;
           const mh = size.height;
           const mx = live.position.x;
@@ -761,7 +813,7 @@ function FlowCanvas({
         });
       });
     },
-    [edges, setNodes, settings.dragTree, settings.nodeCollisions],
+    [edges, nodes, setNodes, settings.nodeCollisions],
   );
 
   const onNodeDragStop = useCallback(
@@ -776,7 +828,8 @@ function FlowCanvas({
             ...node,
             position: node.position,
           });
-          if (settings.nodeCollisions) {
+          const live = next.find((n) => n.id === node.id) ?? node;
+          if (nodeWantsCollisions(live, settings.nodeCollisions)) {
             next = pushApartCollisions(next, node.id).nodes;
           }
         }
@@ -1149,6 +1202,8 @@ function FlowCanvas({
               handleOffsets: data.handleOffsets,
               blockIncoming: data.blockIncoming,
               blockedSourceIds: data.blockedSourceIds,
+              dragTree: data.dragTree,
+              nodeCollisions: data.nodeCollisions,
             },
           };
         });
@@ -1157,6 +1212,59 @@ function FlowCanvas({
       });
     },
     [scheduleSave, setNodes],
+  );
+
+  const handleSettingsChange = useCallback(
+    (next: FlowCanvasSettings) => {
+      if (next.defaultSvgAnimate !== settings.defaultSvgAnimate) {
+        if (!next.defaultSvgAnimate) {
+          const snap: Record<string, boolean> = {};
+          for (const e of edgesRef.current) {
+            if (getEdgeData(e).svgAnimate !== false) snap[e.id] = true;
+          }
+          svgAnimateSnapshotRef.current = snap;
+          setEdges((eds) => {
+            const updated = eds.map((e) =>
+              withEdgeFlags({
+                ...e,
+                data: { ...getEdgeData(e), svgAnimate: false },
+              }),
+            );
+            scheduleSave(nodesRef.current, updated);
+            return updated;
+          });
+        } else {
+          const snap = svgAnimateSnapshotRef.current;
+          setEdges((eds) => {
+            const updated = eds.map((e) =>
+              withEdgeFlags({
+                ...e,
+                data: {
+                  ...getEdgeData(e),
+                  svgAnimate: Boolean(snap[e.id]),
+                },
+              }),
+            );
+            scheduleSave(nodesRef.current, updated);
+            return updated;
+          });
+        }
+      }
+
+      if (next.nodeCollisions && !settings.nodeCollisions) {
+        setNodes((ns) => {
+          const resolved = resolveAllCollisions(ns);
+          scheduleSave(resolved, edgesRef.current);
+          window.setTimeout(() => {
+            setNodes((cur) => clearNodeMotionClasses(cur));
+          }, 220);
+          return resolved;
+        });
+      }
+
+      setSettings(next);
+    },
+    [scheduleSave, setEdges, setNodes, settings.defaultSvgAnimate, settings.nodeCollisions],
   );
 
   const openCardEditor = useCallback(
@@ -1831,8 +1939,12 @@ function FlowCanvas({
         onDrop={onDrop}
       >
         <div className="sc-flow-toolbar">
-          <span className="sc-flow-save">
-            {saving ? 'Salvando…' : 'Salvo'}
+          <span
+            className={`sc-flow-save${saving ? ' is-saving' : ''}`}
+            title={saving ? 'Salvando…' : 'Salvo na nuvem'}
+            aria-label={saving ? 'Salvando' : 'Salvo'}
+          >
+            <IonIcon icon={saving ? cloudUploadOutline : cloudDoneOutline} />
           </span>
           <div className="sc-flow-toolbar-actions">
             <button
@@ -1997,7 +2109,7 @@ function FlowCanvas({
         selectedEdges={selectedEdges}
         allNodes={nodes}
         settings={settings}
-        onSettingsChange={setSettings}
+        onSettingsChange={handleSettingsChange}
         onUpdateEdge={updateEdge}
         onDeleteEdge={deleteEdgeById}
         onDeleteNodes={deleteNodesByIds}

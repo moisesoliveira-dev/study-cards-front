@@ -13,8 +13,9 @@ export type FlowCanvasSettings = {
   snapToGrid: boolean;
   showMiniMap: boolean;
   showGrid: boolean;
+  /** Master + default for new edges. Snapshot/restore on toggle. */
   defaultSvgAnimate: boolean;
-  dragTree: boolean;
+  /** Environment-wide collisions */
   nodeCollisions: boolean;
 };
 
@@ -105,6 +106,11 @@ export function FlowInspector({
     : '';
   const nodeData =
     node && !isGroup ? (node.data as CardFlowNodeData) : null;
+  const isEnvironment = !edge && !node && !multiNodes;
+
+  const nodeFlags = node
+    ? (node.data as { dragTree?: boolean; nodeCollisions?: boolean })
+    : null;
 
   const body = (
     <>
@@ -196,8 +202,8 @@ export function FlowInspector({
             </div>
 
             <Toggle
-              label="Animating SVG"
-              hint="Partícula percorrendo a linha"
+              label="SVG animado"
+              hint="Partícula percorrendo esta linha"
               checked={edgeData.svgAnimate ?? true}
               onChange={(v) =>
                 onUpdateEdge(edge.id, {
@@ -263,9 +269,23 @@ export function FlowInspector({
                 }
               />
             </label>
+            <Toggle
+              label="Drag Tree"
+              hint="Ao arrastar este subfluxo, move descendentes ligados dos cards internos"
+              checked={Boolean(nodeFlags?.dragTree)}
+              onChange={(v) => onUpdateNodeData?.(node.id, { dragTree: v })}
+            />
+            <Toggle
+              label="Node Collisions"
+              hint="Só este subfluxo / seus cards afastam sobreposição ao arrastar"
+              checked={Boolean(nodeFlags?.nodeCollisions)}
+              onChange={(v) =>
+                onUpdateNodeData?.(node.id, { nodeCollisions: v })
+              }
+            />
             <p className="sc-flow-inspector-note">
-              Duplo clique no título do subfluxo também renomeia. Arraste cards
-              para fora para removê-los do grupo — o subfluxo continua existindo.
+              Duplo clique no título também renomeia. Arraste cards para fora
+              para removê-los — o subfluxo continua existindo.
             </p>
             <button
               type="button"
@@ -294,6 +314,21 @@ export function FlowInspector({
                 Editar carta / documento
               </button>
             ) : null}
+
+            <Toggle
+              label="Drag Tree"
+              hint="Ao arrastar este nó, move os descendentes ligados (inclui cartas novas)"
+              checked={Boolean(nodeData.dragTree)}
+              onChange={(v) => onUpdateNodeData?.(node.id, { dragTree: v })}
+            />
+            <Toggle
+              label="Node Collisions"
+              hint="Só este nó afasta / é afastado em sobreposição"
+              checked={Boolean(nodeData.nodeCollisions)}
+              onChange={(v) =>
+                onUpdateNodeData?.(node.id, { nodeCollisions: v })
+              }
+            />
 
             {onUpdateNodeData ? (
               <>
@@ -432,12 +467,12 @@ export function FlowInspector({
           </section>
         ) : null}
 
-        {!edge && !node && !multiNodes ? (
+        {isEnvironment ? (
           <section className="sc-flow-inspector-section">
-            <h3>Diagrama</h3>
+            <h3>Ambiente</h3>
             <p className="sc-flow-inspector-note">
-              Selecione um nó, um subfluxo ou uma conexão para editar — ou crie
-              uma carta nova para o grupo.
+              Opções do canvas. Selecione um nó, subfluxo ou linha para opções
+              específicas.
             </p>
             {onCreateCard ? (
               <button
@@ -448,55 +483,43 @@ export function FlowInspector({
                 Nova carta
               </button>
             ) : null}
-          </section>
-        ) : null}
-
-        <section className="sc-flow-inspector-section">
-          <h3>Canvas</h3>
-          <Toggle
-            label="Grade"
-            checked={settings.showGrid}
-            onChange={(v) => onSettingsChange({ ...settings, showGrid: v })}
-          />
-          <Toggle
-            label="Encaixar na grade"
-            checked={settings.snapToGrid}
-            onChange={(v) => onSettingsChange({ ...settings, snapToGrid: v })}
-          />
-          {!compact ? (
             <Toggle
-              label="Mini mapa"
-              checked={settings.showMiniMap}
+              label="Grade"
+              checked={settings.showGrid}
+              onChange={(v) => onSettingsChange({ ...settings, showGrid: v })}
+            />
+            <Toggle
+              label="Encaixar na grade"
+              checked={settings.snapToGrid}
+              onChange={(v) => onSettingsChange({ ...settings, snapToGrid: v })}
+            />
+            {!compact ? (
+              <Toggle
+                label="Mini mapa"
+                checked={settings.showMiniMap}
+                onChange={(v) =>
+                  onSettingsChange({ ...settings, showMiniMap: v })
+                }
+              />
+            ) : null}
+            <Toggle
+              label="SVG animado"
+              hint="Liga/desliga animação nas linhas (restaura as que estavam ativas)"
+              checked={settings.defaultSvgAnimate}
               onChange={(v) =>
-                onSettingsChange({ ...settings, showMiniMap: v })
+                onSettingsChange({ ...settings, defaultSvgAnimate: v })
               }
             />
-          ) : null}
-          <Toggle
-            label="SVG animado (novas linhas)"
-            hint="Padrão ao criar conexões"
-            checked={settings.defaultSvgAnimate}
-            onChange={(v) =>
-              onSettingsChange({ ...settings, defaultSvgAnimate: v })
-            }
-          />
-          <Toggle
-            label="Drag Tree"
-            hint="Ao arrastar um nó, move os descendentes ligados"
-            checked={settings.dragTree}
-            onChange={(v) =>
-              onSettingsChange({ ...settings, dragTree: v })
-            }
-          />
-          <Toggle
-            label="Node Collisions"
-            hint="Afasta nós sobrepostos com animação suave"
-            checked={settings.nodeCollisions}
-            onChange={(v) =>
-              onSettingsChange({ ...settings, nodeCollisions: v })
-            }
-          />
-        </section>
+            <Toggle
+              label="Node Collisions"
+              hint="Afasta todos os nós sobrepostos (inclui os já empilhados)"
+              checked={settings.nodeCollisions}
+              onChange={(v) =>
+                onSettingsChange({ ...settings, nodeCollisions: v })
+              }
+            />
+          </section>
+        ) : null}
       </div>
     </>
   );

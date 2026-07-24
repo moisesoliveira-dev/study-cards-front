@@ -30,6 +30,10 @@ export type CardFlowNodeData = {
   blockIncoming?: boolean;
   /** Source node ids that cannot connect into this node */
   blockedSourceIds?: string[];
+  /** Move edge-descendants when this node is dragged */
+  dragTree?: boolean;
+  /** This node participates in collision push-apart */
+  nodeCollisions?: boolean;
 };
 
 const SIDES = ['top', 'right', 'bottom', 'left'] as const;

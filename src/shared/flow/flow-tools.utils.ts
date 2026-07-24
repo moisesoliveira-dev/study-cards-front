@@ -267,6 +267,29 @@ export function pushApartCollisions(
   };
 }
 
+/** Resolve overlaps across all card nodes (environment collisions on). */
+export function resolveAllCollisions(
+  nodes: Node[],
+  gap = COLLISION_GAP,
+): Node[] {
+  let next = nodes;
+  const cards = nodes.filter((n) => n.type !== 'groupNode');
+  for (let round = 0; round < 4; round++) {
+    let any = false;
+    for (const card of cards) {
+      const result = pushApartCollisions(next, card.id, gap);
+      if (result.moved) {
+        next = result.nodes;
+        any = true;
+      }
+    }
+    if (!any) break;
+  }
+  return clearNodeMotionClasses(next).map((n) =>
+    n.type !== 'groupNode' ? { ...n, className: 'sc-flow-node-settle' } : n,
+  );
+}
+
 export function clearNodeMotionClasses(nodes: Node[]): Node[] {
   return nodes.map((n) =>
     n.className ? { ...n, className: undefined } : n,
