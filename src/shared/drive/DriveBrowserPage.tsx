@@ -110,6 +110,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   const [back, setBack] = useState('');
   const [docJson, setDocJson] = useState('');
   const [hint, setHint] = useState('');
+  const [icon, setIcon] = useState<string | null>(null);
   const [tag, setTag] = useState('Conceito');
   const [saving, setSaving] = useState(false);
   const [detail, setDetail] = useState<Card | null>(null);
@@ -335,6 +336,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         back: nextBack,
         document: docJson || null,
         hint,
+        icon,
         tag,
       });
       setCardOpen(false);
@@ -342,6 +344,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
       setBack('');
       setDocJson('');
       setHint('');
+      setIcon(null);
       setTag('Conceito');
       toast.success('Card criado');
       await load();
@@ -367,6 +370,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         back: nextBack,
         document: docJson || null,
         hint,
+        icon,
         tag: tag || 'Síntese',
       });
       setMergeOpen(false);
@@ -377,6 +381,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
       setBack('');
       setDocJson('');
       setHint('');
+      setIcon(null);
       setTag('Conceito');
       toast.success('Cards unidos');
       await load();
@@ -720,12 +725,14 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         docJson={docJson}
         tag={tag}
         hint={hint}
+        icon={icon}
         saving={saving}
         onFront={setFront}
         onBack={setBack}
         onDocJson={setDocJson}
         onTag={setTag}
         onHint={setHint}
+        onIcon={setIcon}
         onClose={() => setCardOpen(false)}
         onSubmit={() => void createCard()}
       />
@@ -740,12 +747,14 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         docJson={docJson}
         tag={tag || 'Síntese'}
         hint={hint}
+        icon={icon}
         saving={saving}
         onFront={setFront}
         onBack={setBack}
         onDocJson={setDocJson}
         onTag={setTag}
         onHint={setHint}
+        onIcon={setIcon}
         onClose={() => {
           setMergeOpen(false);
           setMergeSources([]);

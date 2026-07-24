@@ -7,6 +7,7 @@ import {
   DocumentEditor,
   documentToPlainText,
 } from './DocumentEditor';
+import { CardFaceIcon, CardIconPicker } from './CardIcon';
 import { docExpand, fadeIn, scaleIn, tapScale } from '../motion';
 
 export function suitColor(tag: string) {
@@ -25,6 +26,7 @@ type Props = {
   docJson: string;
   tag: string;
   hint: string;
+  icon: string | null;
   saving?: boolean;
   title?: string;
   submitLabel?: string;
@@ -34,6 +36,7 @@ type Props = {
   onDocJson: (value: string) => void;
   onTag: (value: string) => void;
   onHint: (value: string) => void;
+  onIcon: (value: string | null) => void;
   onClose: () => void;
   onSubmit: () => void;
   style?: CSSProperties;
@@ -46,6 +49,7 @@ export function FaceCardComposer({
   docJson,
   tag,
   hint,
+  icon,
   saving = false,
   title = 'Nova carta',
   submitLabel = 'Colocar na mesa',
@@ -55,6 +59,7 @@ export function FaceCardComposer({
   onDocJson,
   onTag,
   onHint,
+  onIcon,
   onClose,
   onSubmit,
   style,
@@ -63,6 +68,7 @@ export function FaceCardComposer({
   const [mode, setMode] = useState<'card' | 'document'>('card');
   const initials = cardInitials(front.trim() || 'Novo');
   const suit = tag.trim() || 'Conceito';
+  const accent = suitColor(suit);
   const canSubmit =
     Boolean(front.trim() && (back.trim() || documentToPlainText(docJson))) &&
     !saving;
@@ -128,7 +134,7 @@ export function FaceCardComposer({
             {mode === 'card' ? (
               <motion.div
                 key="compose-card"
-                className="sc-face-card sc-face-compose"
+                className={`sc-face-card sc-face-compose${icon ? ' has-icon' : ''}`}
                 style={style}
                 variants={reduce ? undefined : scaleIn}
                 initial={reduce ? false : 'hidden'}
@@ -154,10 +160,19 @@ export function FaceCardComposer({
                     value={tag}
                     onChange={(e) => onTag(e.target.value)}
                     placeholder="Tag"
-                    style={{ color: suitColor(suit) }}
+                    style={{ color: accent }}
                     autoComplete="off"
                   />
                 </label>
+
+                <div className="card-compose-icon-block">
+                  <CardFaceIcon icon={icon} color={accent} />
+                  <CardIconPicker
+                    value={icon}
+                    onChange={onIcon}
+                    accent={accent}
+                  />
+                </div>
 
                 <label className="card-compose-field title">
                   <span className="sr-only">Conceito</span>
@@ -268,7 +283,7 @@ export function FaceCardComposer({
                       value={tag}
                       onChange={(e) => onTag(e.target.value)}
                       placeholder="Tag"
-                      style={{ color: suitColor(suit) }}
+                      style={{ color: accent }}
                     />
                   </div>
                   <motion.button

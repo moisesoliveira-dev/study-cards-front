@@ -34,6 +34,7 @@ export class CardsFacade {
       back: input.back.trim(),
       document: input.document?.trim() || undefined,
       hint: input.hint?.trim() || undefined,
+      icon: input.icon?.trim() || null,
       tag: input.tag?.trim() || undefined,
     });
   }
@@ -45,6 +46,7 @@ export class CardsFacade {
       back: input.back.trim(),
       document: input.document?.trim() || undefined,
       hint: input.hint?.trim() || undefined,
+      icon: input.icon?.trim() || null,
       tag: input.tag?.trim() || 'Síntese',
     });
   }

@@ -8,6 +8,7 @@ import { statusClass, statusLabel } from '../../modules/cards/types/card.types';
 import { cardsFacade } from '../../modules/cards/facades/cards.facade';
 import { DocumentEditor, documentToPlainText } from './DocumentEditor';
 import { suitColor } from './FaceCardComposer';
+import { CardFaceIcon, CardIconPicker } from './CardIcon';
 import { useAppToast } from '../hooks/useAppToast';
 import { docExpand, fadeIn, scaleIn } from '../motion';
 
@@ -48,6 +49,7 @@ export function CardDocumentSheet({
   const [docJson, setDocJson] = useState('');
   const [tag, setTag] = useState('Conceito');
   const [hint, setHint] = useState('');
+  const [icon, setIcon] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [linked, setLinked] = useState<Card[]>([]);
   const [loadingLinks, setLoadingLinks] = useState(false);
@@ -58,6 +60,7 @@ export function CardDocumentSheet({
     setBack(next.back);
     setTag(next.tag);
     setHint(next.hint ?? '');
+    setIcon(next.icon ?? null);
     setDocJson(seedDocument(next));
   };
 
@@ -141,6 +144,7 @@ export function CardDocumentSheet({
         document: docJson.trim() || null,
         tag: tag.trim() || 'Conceito',
         hint: hint.trim() || null,
+        icon,
       });
       onChanged(updated);
       hydrate(updated);
@@ -393,7 +397,7 @@ export function CardDocumentSheet({
       ) : (
         <motion.div
           key="card"
-          className={`sc-face-card sc-face-compose is-preview${editing ? ' is-editing' : ''}`}
+          className={`sc-face-card sc-face-compose is-preview${editing ? ' is-editing' : ''}${icon ? ' has-icon' : ''}`}
           variants={reduce ? undefined : scaleIn}
           initial={reduce ? false : 'hidden'}
           animate="show"
@@ -431,6 +435,14 @@ export function CardDocumentSheet({
                   autoComplete="off"
                 />
               </label>
+              <div className="card-compose-icon-block">
+                <CardFaceIcon icon={icon} color={suitColor(tag)} />
+                <CardIconPicker
+                  value={icon}
+                  onChange={setIcon}
+                  accent={suitColor(tag)}
+                />
+              </div>
               <label className="card-compose-field title">
                 <span className="sr-only">Conceito</span>
                 <textarea
@@ -478,8 +490,9 @@ export function CardDocumentSheet({
               <div className="card-suit" style={{ color: suitColor(tag) }}>
                 {tag}
               </div>
+              <CardFaceIcon icon={icon} color={suitColor(tag)} />
               <div className="card-title">{front}</div>
-              <div className="card-body">{back}</div>
+              {!icon ? <div className="card-body">{back}</div> : null}
               {hint ? <div className="card-hint-view">{hint}</div> : null}
               <span className={`card-status ${statusClass(card.status)}`}>
                 {statusLabel(card.status)}

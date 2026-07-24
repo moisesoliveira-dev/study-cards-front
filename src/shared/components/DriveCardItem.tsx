@@ -8,6 +8,7 @@ import {
   type Card,
 } from '../../modules/cards/types/card.types';
 import { suitColor } from './FaceCardComposer';
+import { CardFaceIcon } from './CardIcon';
 import { staggerItem, tapScale } from '../motion';
 
 type Props = {
@@ -30,7 +31,13 @@ export function DriveCardItem({ card, selected, onClick, view = 'grid' }: Props)
         variants={reduce ? undefined : staggerItem}
         whileTap={reduce ? undefined : tapScale}
       >
-        <span className="list-icon">◇</span>
+        <span className="list-icon">
+          {card.icon ? (
+            <CardFaceIcon icon={card.icon} className="list-face-icon" />
+          ) : (
+            '◇'
+          )}
+        </span>
         <span className="list-name">{card.front}</span>
         <span className="list-tag">{card.tag}</span>
         <span className={`list-status ${statusClass(card.status)}`}>
@@ -52,7 +59,15 @@ export function DriveCardItem({ card, selected, onClick, view = 'grid' }: Props)
     >
       <div className="thumb">
         <div className="thumb-tag">{card.tag}</div>
-        <div className="thumb-title">{card.front}</div>
+        {card.icon ? (
+          <CardFaceIcon
+            icon={card.icon}
+            className="thumb-face-icon"
+            color={suitColor(card.tag)}
+          />
+        ) : (
+          <div className="thumb-title">{card.front}</div>
+        )}
       </div>
       <div className="item-meta">
         <div className="item-name">{card.front}</div>
@@ -76,12 +91,14 @@ type FaceProps = {
 export function FaceCard({ card, selected, onClick, style, index = 0 }: FaceProps) {
   const initials = cardInitials(card.front);
   const reduce = useReducedMotion();
+  const accent = suitColor(card.tag);
+  const hasIcon = Boolean(card.icon);
 
   return (
     <motion.div
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
-      className={`sc-face-card${selected ? ' selected' : ''}`}
+      className={`sc-face-card${selected ? ' selected' : ''}${hasIcon ? ' has-icon' : ''}`}
       onClick={onClick}
       style={style}
       initial={reduce ? false : 'hidden'}
@@ -110,11 +127,12 @@ export function FaceCard({ card, selected, onClick, style, index = 0 }: FaceProp
     >
       <span className="card-corner tl">{initials}</span>
       <span className="card-corner br">{initials}</span>
-      <div className="card-suit" style={{ color: suitColor(card.tag) }}>
+      <div className="card-suit" style={{ color: accent }}>
         {card.tag}
       </div>
+      <CardFaceIcon icon={card.icon} color={accent} />
       <div className="card-title">{card.front}</div>
-      <div className="card-body">{card.back}</div>
+      {!hasIcon ? <div className="card-body">{card.back}</div> : null}
       <span className={`card-status ${statusClass(card.status)}`}>
         {statusLabel(card.status)}
       </span>

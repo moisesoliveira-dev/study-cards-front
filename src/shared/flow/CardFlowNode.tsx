@@ -2,12 +2,14 @@ import { memo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { statusClass, statusLabel } from '../../modules/cards/types/card.types';
 import { suitColor } from '../components/FaceCardComposer';
+import { CardFaceIcon } from '../components/CardIcon';
 
 export type CardFlowNodeData = {
   cardId: string;
   front: string;
   back: string;
   tag: string;
+  icon: string | null;
   status: 'NEW' | 'REVIEW' | 'KNOWN';
   linkCount: number;
 };
@@ -20,6 +22,13 @@ function CardFlowNodeComponent({ data, selected }: NodeProps) {
       <div className="sc-flow-card-tag" style={{ color: suitColor(d.tag) }}>
         {d.tag}
       </div>
+      {d.icon ? (
+        <CardFaceIcon
+          icon={d.icon}
+          className="sc-flow-card-icon"
+          color={suitColor(d.tag)}
+        />
+      ) : null}
       <div className="sc-flow-card-title">{d.front}</div>
       <div className="sc-flow-card-body">{d.back}</div>
       <div className="sc-flow-card-meta">

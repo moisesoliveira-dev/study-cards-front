@@ -8,6 +8,7 @@ export type Card = {
   back: string;
   document: string | null;
   hint: string | null;
+  icon: string | null;
   tag: string;
   status: CardStatus;
   position: number;
@@ -24,6 +25,7 @@ export type CreateCardInput = {
   back: string;
   document?: string | null;
   hint?: string;
+  icon?: string | null;
   tag?: string;
 };
 
@@ -32,6 +34,7 @@ export type UpdateCardInput = {
   back?: string;
   document?: string | null;
   hint?: string | null;
+  icon?: string | null;
   tag?: string;
   status?: CardStatus;
   position?: number;
@@ -45,6 +48,7 @@ export type MergeCardsInput = {
   back: string;
   document?: string | null;
   hint?: string;
+  icon?: string | null;
   tag?: string;
 };
 

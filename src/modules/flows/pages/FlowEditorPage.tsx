@@ -72,6 +72,7 @@ function cardToNodeData(card: Card): CardFlowNodeData {
     front: card.front,
     back: card.back,
     tag: card.tag,
+    icon: card.icon,
     status: card.status,
     linkCount: card.linkCount,
   };
@@ -111,6 +112,7 @@ function FlowCanvas({
                 front: String(n.data?.front ?? 'Card removido'),
                 back: String(n.data?.back ?? ''),
                 tag: String(n.data?.tag ?? '—'),
+                icon: (n.data?.icon as string | null) ?? null,
                 status: 'NEW',
                 linkCount: 0,
               },
@@ -185,6 +187,7 @@ function FlowCanvas({
                 cardId: data.cardId,
                 front: data.front,
                 tag: data.tag,
+                icon: data.icon,
               },
             };
           }),
