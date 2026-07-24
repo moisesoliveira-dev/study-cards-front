@@ -33,12 +33,6 @@ const NAV = [
     icon: gitNetworkOutline,
     match: (path: string) => path.startsWith('/flows'),
   },
-  {
-    to: '/profile',
-    label: 'Perfil',
-    icon: personOutline,
-    match: (path: string) => path.startsWith('/profile'),
-  },
 ];
 
 export function AppShell({ children }: Props) {
@@ -85,6 +79,9 @@ export function AppShell({ children }: Props) {
           <IonIcon icon={menuOpen ? closeOutline : menuOutline} />
         </button>
         <div className="sc-app-mobile-brand">Study Cards</div>
+        <div className="sc-app-mobile-actions">
+          <ThemeToggle compact />
+        </div>
       </header>
 
       <button
@@ -128,15 +125,15 @@ export function AppShell({ children }: Props) {
           ))}
         </nav>
         <div className="sc-sidebar-foot">
-          <ThemeToggle />
           <NavLink
             to="/profile"
             className="sc-sidebar-user-link"
             isActive={(_, loc) => loc.pathname.startsWith('/profile')}
             activeClassName="is-active"
             onClick={closeMenu}
-            title={user?.email}
+            title={user?.email || 'Perfil'}
           >
+            <IonIcon icon={personOutline} />
             <span className="sc-sidebar-user">
               {user?.name || user?.email}
             </span>
@@ -158,7 +155,12 @@ export function AppShell({ children }: Props) {
         </div>
       </aside>
 
-      <div className="sc-app-main">{children}</div>
+      <div className="sc-app-main">
+        <div className="sc-app-theme-float">
+          <ThemeToggle compact />
+        </div>
+        {children}
+      </div>
     </div>
   );
 }

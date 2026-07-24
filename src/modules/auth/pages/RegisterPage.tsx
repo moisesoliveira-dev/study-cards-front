@@ -49,7 +49,7 @@ export default function RegisterPage() {
       <IonContent fullscreen>
         <div className="sc-auth-shell">
           <div className="sc-auth-theme">
-            <ThemeToggle />
+            <ThemeToggle compact />
           </div>
           <motion.div
             className="sc-auth-card"
