@@ -27,6 +27,8 @@ type Props = {
   onUpdateEdge: (edgeId: string, patch: Partial<Edge> & { data?: FlowEdgeData }) => void;
   onDeleteEdge: (edgeId: string) => void;
   onDeleteNodes: (nodeIds: string[]) => void;
+  onEditCard?: (cardId: string) => void;
+  onCreateCard?: () => void;
 };
 
 const PATH_OPTIONS: { value: FlowEdgePathType; label: string }[] = [
@@ -83,6 +85,8 @@ export function FlowInspector({
   onUpdateEdge,
   onDeleteEdge,
   onDeleteNodes,
+  onEditCard,
+  onCreateCard,
 }: Props) {
   const edge = selectedEdges.length === 1 ? selectedEdges[0] : null;
   const node = selectedNodes.length === 1 ? selectedNodes[0] : null;
@@ -235,16 +239,25 @@ export function FlowInspector({
               <strong>{nodeData.front}</strong>
               <p>{nodeData.back}</p>
             </div>
+            {onEditCard ? (
+              <button
+                type="button"
+                className="sc-btn primary"
+                onClick={() => onEditCard(nodeData.cardId)}
+              >
+                Editar carta / documento
+              </button>
+            ) : null}
             <p className="sc-flow-inspector-note">
-              Alt+arrastar um ponto de conexão para mover no corpo do nó. Arraste
-              a ponta da linha para outro handle.
+              Duplo clique no nó também abre a carta. Alt+arrastar um ponto de
+              conexão para mover no corpo do nó.
             </p>
             <button
               type="button"
               className="sc-btn sc-flow-inspector-danger"
               onClick={() => onDeleteNodes([node.id])}
             >
-              Remover nó
+              Remover do fluxograma
             </button>
           </section>
         ) : null}
@@ -269,9 +282,18 @@ export function FlowInspector({
           <section className="sc-flow-inspector-section">
             <h3>Diagrama</h3>
             <p className="sc-flow-inspector-note">
-              Selecione um nó ou uma conexão para editar o estilo — ou ajuste o
-              canvas abaixo.
+              Selecione um nó ou uma conexão para editar — ou crie uma carta
+              nova para o grupo.
             </p>
+            {onCreateCard ? (
+              <button
+                type="button"
+                className="sc-btn primary"
+                onClick={onCreateCard}
+              >
+                Nova carta
+              </button>
+            ) : null}
           </section>
         ) : null}
 

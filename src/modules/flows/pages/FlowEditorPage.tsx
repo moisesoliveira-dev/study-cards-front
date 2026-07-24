@@ -14,6 +14,8 @@ import {
   addOutline,
   arrowBackOutline,
   closeOutline,
+  createOutline,
+  documentTextOutline,
   expandOutline,
   trashOutline,
 } from 'ionicons/icons';
@@ -60,6 +62,9 @@ import {
   withEdgeFlags,
   type FlowEdgeData,
 } from '../../../shared/flow/flow-edge.utils';
+import { FaceCardComposer } from '../../../shared/components/FaceCardComposer';
+import { CardDocumentSheet } from '../../../shared/components/CardDocumentSheet';
+import { documentToPlainText } from '../../../shared/components/DocumentEditor';
 import { useAppToast } from '../../../shared/hooks/useAppToast';
 import { useTheme } from '../../../shared/theme/ThemeContext';
 
@@ -120,10 +125,12 @@ function FlowCanvas({
   board,
   cards,
   onBoardChange,
+  onCardsChange,
 }: {
   board: FlowBoard;
   cards: Card[];
   onBoardChange: (board: FlowBoard) => void;
+  onCardsChange: (cards: Card[]) => void;
 }) {
   const toast = useAppToast();
   const { resolved } = useTheme();
@@ -195,6 +202,15 @@ function FlowCanvas({
   const [settings, setSettings] = useState<FlowCanvasSettings>(() =>
     loadSettings(board.id),
   );
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [composerSaving, setComposerSaving] = useState(false);
+  const [front, setFront] = useState('');
+  const [back, setBack] = useState('');
+  const [docJson, setDocJson] = useState('');
+  const [tag, setTag] = useState('Conceito');
+  const [hint, setHint] = useState('');
+  const [icon, setIcon] = useState<string | null>(null);
+  const [detail, setDetail] = useState<Card | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const nodesRef = useRef(nodes);
   const edgesRef = useRef(edges);
@@ -466,6 +482,92 @@ function FlowCanvas({
     [edges, nodes, scheduleSave, setEdges, setNodes],
   );
 
+  const syncCardIntoGraph = useCallback(
+    (card: Card) => {
+      setNodes((ns) => {
+        const next = ns.map((n) => {
+          const data = n.data as CardFlowNodeData;
+          if (data.cardId !== card.id) return n;
+          return {
+            ...n,
+            data: {
+              ...cardToNodeData(card),
+              handleOffsets: data.handleOffsets,
+            },
+          };
+        });
+        scheduleSave(next, edgesRef.current);
+        return next;
+      });
+    },
+    [scheduleSave, setNodes],
+  );
+
+  const openCardEditor = useCallback(
+    (cardId: string) => {
+      const card = cardMap.get(cardId);
+      if (!card) {
+        void cardsFacade
+          .get(cardId)
+          .then((fetched) => {
+            onCardsChange([...cards.filter((c) => c.id !== fetched.id), fetched]);
+            setDetail(fetched);
+          })
+          .catch((error) => toast.error(error));
+        return;
+      }
+      setDetail(card);
+      if (compact) setInspectorOpen(false);
+    },
+    [cardMap, cards, compact, onCardsChange, toast],
+  );
+
+  const openComposer = useCallback(() => {
+    setFront('');
+    setBack('');
+    setDocJson('');
+    setTag('Conceito');
+    setHint('');
+    setIcon(null);
+    setComposerOpen(true);
+    if (compact) {
+      setPaletteOpen(false);
+      setInspectorOpen(false);
+    }
+  }, [compact]);
+
+  const handleCardChanged = useCallback(
+    (updated: Card) => {
+      setDetail(updated);
+      onCardsChange(cards.map((c) => (c.id === updated.id ? updated : c)));
+      syncCardIntoGraph(updated);
+    },
+    [cards, onCardsChange, syncCardIntoGraph],
+  );
+
+  const handleCardDelete = useCallback(
+    async (id: string) => {
+      try {
+        await cardsFacade.remove(id);
+        onCardsChange(cards.filter((c) => c.id !== id));
+        deleteNodesByIds([`card-${id}`]);
+        setDetail(null);
+        toast.success('Carta excluída');
+      } catch (error) {
+        toast.error(error);
+      }
+    },
+    [cards, deleteNodesByIds, onCardsChange, toast],
+  );
+
+  const onNodeDoubleClick = useCallback(
+    (_: React.MouseEvent, node: Node) => {
+      const cardId = (node.data as CardFlowNodeData | undefined)?.cardId;
+      if (cardId) openCardEditor(cardId);
+    },
+    [openCardEditor],
+  );
+
   const addCard = useCallback(
     (card: Card, position?: { x: number; y: number }) => {
       if (usedIds.has(card.id)) {
@@ -530,6 +632,52 @@ function FlowCanvas({
       settings.defaultSvgAnimate,
     ],
   );
+
+  const createCard = useCallback(async () => {
+    if (!front.trim()) return;
+    const plain = documentToPlainText(docJson);
+    const nextBack = back.trim() || plain.slice(0, 280);
+    if (!nextBack) return;
+    setComposerSaving(true);
+    try {
+      const created = await cardsFacade.create({
+        subjectId: board.subjectId,
+        topicId: null,
+        front,
+        back: nextBack,
+        document: docJson || null,
+        hint,
+        icon,
+        tag,
+      });
+      onCardsChange([created, ...cards]);
+      setComposerOpen(false);
+      setFront('');
+      setBack('');
+      setDocJson('');
+      setHint('');
+      setIcon(null);
+      setTag('Conceito');
+      toast.success('Carta criada');
+      addCard(created);
+    } catch (error) {
+      toast.error(error);
+    } finally {
+      setComposerSaving(false);
+    }
+  }, [
+    addCard,
+    back,
+    board.subjectId,
+    cards,
+    docJson,
+    front,
+    hint,
+    icon,
+    onCardsChange,
+    tag,
+    toast,
+  ]);
 
   const removeSelected = useCallback(() => {
     if (selectedEdgeIds.length) {
@@ -608,6 +756,14 @@ function FlowCanvas({
           </button>
         ) : null}
       </div>
+      <button
+        type="button"
+        className="sc-btn primary sc-flow-palette-create"
+        onClick={openComposer}
+      >
+        <IonIcon icon={createOutline} />
+        <span>Nova carta</span>
+      </button>
       <input
         className="sc-search sc-flow-palette-search"
         value={query}
@@ -617,17 +773,27 @@ function FlowCanvas({
       />
       <div className="sc-flow-palette-list">
         {available.map((card) => (
-          <button
-            key={card.id}
-            type="button"
-            className="sc-flow-palette-item"
-            draggable={!compact}
-            onDragStart={(e) => onDragStart(e, card)}
-            onClick={() => addCard(card)}
-          >
-            <span className="sc-flow-palette-tag">{card.tag}</span>
-            <span className="sc-flow-palette-title">{card.front}</span>
-          </button>
+          <div key={card.id} className="sc-flow-palette-row">
+            <button
+              type="button"
+              className="sc-flow-palette-item"
+              draggable={!compact}
+              onDragStart={(e) => onDragStart(e, card)}
+              onClick={() => addCard(card)}
+            >
+              <span className="sc-flow-palette-tag">{card.tag}</span>
+              <span className="sc-flow-palette-title">{card.front}</span>
+            </button>
+            <button
+              type="button"
+              className="sc-flow-palette-edit"
+              aria-label={`Editar ${card.front}`}
+              title="Editar carta"
+              onClick={() => openCardEditor(card.id)}
+            >
+              <IonIcon icon={documentTextOutline} />
+            </button>
+          </div>
         ))}
         {!available.length ? (
           <p className="sc-flow-palette-empty">
@@ -695,6 +861,16 @@ function FlowCanvas({
             <button
               type="button"
               className="sc-btn sc-flow-tool-btn"
+              onClick={openComposer}
+              aria-label="Nova carta"
+              title="Nova carta"
+            >
+              <IonIcon icon={createOutline} />
+              {!compact ? <span>Nova carta</span> : null}
+            </button>
+            <button
+              type="button"
+              className="sc-btn sc-flow-tool-btn"
               onClick={() => fitView({ padding: compact ? 0.15 : 0.2 })}
               aria-label="Enquadrar"
               title="Enquadrar"
@@ -725,6 +901,7 @@ function FlowCanvas({
           onReconnect={onReconnect}
           onBeforeDelete={onBeforeDelete}
           onNodeDragStop={onNodeDragStop}
+          onNodeDoubleClick={onNodeDoubleClick}
           onSelectionChange={onSelectionChange}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
@@ -776,6 +953,44 @@ function FlowCanvas({
         onUpdateEdge={updateEdge}
         onDeleteEdge={deleteEdgeById}
         onDeleteNodes={deleteNodesByIds}
+        onEditCard={openCardEditor}
+        onCreateCard={openComposer}
+      />
+
+      <FaceCardComposer
+        open={composerOpen}
+        front={front}
+        back={back}
+        docJson={docJson}
+        tag={tag}
+        hint={hint}
+        icon={icon}
+        saving={composerSaving}
+        title="Nova carta no fluxo"
+        submitLabel="Criar e colocar no mapa"
+        onFront={setFront}
+        onBack={setBack}
+        onDocJson={setDocJson}
+        onTag={setTag}
+        onHint={setHint}
+        onIcon={setIcon}
+        onClose={() => setComposerOpen(false)}
+        onSubmit={() => void createCard()}
+      />
+
+      <CardDocumentSheet
+        card={detail}
+        onClose={() => setDetail(null)}
+        onChanged={handleCardChanged}
+        onDelete={(id) => void handleCardDelete(id)}
+        onOpenLinked={(linked) => {
+          onCardsChange(
+            cards.some((c) => c.id === linked.id)
+              ? cards.map((c) => (c.id === linked.id ? linked : c))
+              : [linked, ...cards],
+          );
+          setDetail(linked);
+        }}
       />
     </div>
   );
@@ -859,6 +1074,7 @@ export default function FlowEditorPage() {
               board={board}
               cards={cards}
               onBoardChange={setBoard}
+              onCardsChange={setCards}
             />
           </ReactFlowProvider>
         )}

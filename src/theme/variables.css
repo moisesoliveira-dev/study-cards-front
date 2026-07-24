@@ -3660,6 +3660,45 @@ ion-toast.sc-toast--info::part(container) {
   flex-shrink: 0;
 }
 
+.sc-flow-palette-create {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.sc-flow-palette-row {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.sc-flow-palette-row .sc-flow-palette-item {
+  flex: 1;
+  min-width: 0;
+}
+
+.sc-flow-palette-edit {
+  width: 36px;
+  flex-shrink: 0;
+  border: 0.5px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.sc-flow-palette-edit:hover {
+  color: var(--text-accent);
+  background: var(--bg-accent);
+}
+
 .sc-flow-palette-list {
   flex: 1;
   overflow: auto;
