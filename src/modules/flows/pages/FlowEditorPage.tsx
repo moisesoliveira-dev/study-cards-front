@@ -65,6 +65,10 @@ import {
   withEdgeFlags,
   type FlowEdgeData,
 } from '../../../shared/flow/flow-edge.utils';
+import {
+  isValidFlowConnection,
+  withBlockedSource,
+} from '../../../shared/flow/flow-connection.utils';
 import { FaceCardComposer } from '../../../shared/components/FaceCardComposer';
 import { CardDocumentSheet } from '../../../shared/components/CardDocumentSheet';
 import { documentToPlainText } from '../../../shared/components/DocumentEditor';
@@ -152,6 +156,10 @@ function FlowCanvas({
         const handleOffsets =
           (n.data?.handleOffsets as CardFlowNodeData['handleOffsets']) ??
           undefined;
+        const blockIncoming = Boolean(n.data?.blockIncoming);
+        const blockedSourceIds = Array.isArray(n.data?.blockedSourceIds)
+          ? (n.data.blockedSourceIds as string[])
+          : undefined;
         const baseData = card
           ? cardToNodeData(card)
           : {
@@ -170,6 +178,8 @@ function FlowCanvas({
           data: {
             ...baseData,
             handleOffsets,
+            blockIncoming,
+            blockedSourceIds,
           },
         };
       }),
@@ -284,6 +294,8 @@ function FlowCanvas({
                 tag: data.tag,
                 icon: data.icon,
                 handleOffsets: data.handleOffsets,
+                blockIncoming: data.blockIncoming,
+                blockedSourceIds: data.blockedSourceIds,
               },
             };
           }),
@@ -364,6 +376,10 @@ function FlowCanvas({
 
   const onConnect = useCallback(
     (connection: Connection) => {
+      if (!isValidFlowConnection(nodes, connection)) {
+        toast.error(new Error('Conexão bloqueada pela validação deste nó'));
+        return;
+      }
       setEdges((eds) => {
         const next = addEdge(
           {
@@ -384,7 +400,7 @@ function FlowCanvas({
         return next;
       });
     },
-    [nodes, scheduleSave, setEdges, settings.defaultSvgAnimate],
+    [nodes, scheduleSave, setEdges, settings.defaultSvgAnimate, toast],
   );
 
   const onReconnect = useCallback(
@@ -396,6 +412,10 @@ function FlowCanvas({
         ) {
           return;
         }
+      }
+      if (!isValidFlowConnection(nodes, newConnection)) {
+        toast.error(new Error('Conexão bloqueada pela validação deste nó'));
+        return;
       }
       setEdges((eds) => {
         const next = reconnectEdge(oldEdge, newConnection, eds).map((e) =>
@@ -411,7 +431,12 @@ function FlowCanvas({
         return next;
       });
     },
-    [nodes, scheduleSave, setEdges],
+    [nodes, scheduleSave, setEdges, toast],
+  );
+
+  const isValidConnection = useCallback(
+    (connection: Connection | Edge) => isValidFlowConnection(nodes, connection),
+    [nodes],
   );
 
   const onBeforeDelete = useCallback(
@@ -457,6 +482,26 @@ function FlowCanvas({
     [nodes, scheduleSave, setEdges],
   );
 
+  const updateNodeData = useCallback(
+    (nodeId: string, patch: Partial<CardFlowNodeData>) => {
+      setNodes((ns) => {
+        const next = ns.map((n) => {
+          if (n.id !== nodeId) return n;
+          return {
+            ...n,
+            data: {
+              ...(n.data as CardFlowNodeData),
+              ...patch,
+            },
+          };
+        });
+        scheduleSave(next, edgesRef.current);
+        return next;
+      });
+    },
+    [scheduleSave, setNodes],
+  );
+
   const deleteEdgeById = useCallback(
     (edgeId: string) => {
       const edge = edges.find((e) => e.id === edgeId);
@@ -497,6 +542,8 @@ function FlowCanvas({
             data: {
               ...cardToNodeData(card),
               handleOffsets: data.handleOffsets,
+              blockIncoming: data.blockIncoming,
+              blockedSourceIds: data.blockedSourceIds,
             },
           };
         });
@@ -575,6 +622,7 @@ function FlowCanvas({
   const onNodeContextMenu = useCallback(
     (event: React.MouseEvent, node: Node) => {
       const data = node.data as CardFlowNodeData;
+      const otherSelected = selectedNodeIds.filter((id) => id !== node.id);
       const items: ContextMenuItem[] = [
         {
           id: 'edit',
@@ -594,19 +642,57 @@ function FlowCanvas({
             }),
         },
         {
-          id: 'remove',
-          label: 'Remover do fluxograma',
-          icon: trashOutline,
-          danger: true,
+          id: 'block-in',
+          label: data.blockIncoming
+            ? 'Permitir entradas'
+            : 'Bloquear entradas',
           separator: true,
-          onSelect: () => deleteNodesByIds([node.id]),
+          onSelect: () =>
+            updateNodeData(node.id, { blockIncoming: !data.blockIncoming }),
         },
       ];
-      setSelectedNodeIds([node.id]);
+
+      if (otherSelected.length === 1) {
+        const sourceId = otherSelected[0];
+        const source = nodes.find((n) => n.id === sourceId);
+        const sourceName =
+          (source?.data as CardFlowNodeData | undefined)?.front ?? 'nó selecionado';
+        const alreadyBlocked = data.blockedSourceIds?.includes(sourceId);
+        items.push({
+          id: 'block-from-selected',
+          label: alreadyBlocked
+            ? `Desbloquear receber de “${sourceName}”`
+            : `Bloquear receber de “${sourceName}”`,
+          onSelect: () =>
+            updateNodeData(
+              node.id,
+              withBlockedSource(data, sourceId, !alreadyBlocked),
+            ),
+        });
+      }
+
+      items.push({
+        id: 'remove',
+        label: 'Remover do fluxograma',
+        icon: trashOutline,
+        danger: true,
+        separator: true,
+        onSelect: () => deleteNodesByIds([node.id]),
+      });
+
+      setSelectedNodeIds([node.id, ...otherSelected]);
       setSelectedEdgeIds([]);
       openCtx(event, items, data.front || 'Nó');
     },
-    [deleteNodesByIds, fitView, openCardEditor, openCtx],
+    [
+      deleteNodesByIds,
+      fitView,
+      nodes,
+      openCardEditor,
+      openCtx,
+      selectedNodeIds,
+      updateNodeData,
+    ],
   );
 
   const onEdgeContextMenu = useCallback(
@@ -1087,6 +1173,7 @@ function FlowCanvas({
           onEdgesChange={onEdgesChangeHandler}
           onConnect={onConnect}
           onReconnect={onReconnect}
+          isValidConnection={isValidConnection}
           onBeforeDelete={onBeforeDelete}
           onNodeDragStop={onNodeDragStop}
           onNodeDoubleClick={onNodeDoubleClick}
@@ -1141,11 +1228,13 @@ function FlowCanvas({
         compact={compact}
         selectedNodes={selectedNodes}
         selectedEdges={selectedEdges}
+        allNodes={nodes}
         settings={settings}
         onSettingsChange={setSettings}
         onUpdateEdge={updateEdge}
         onDeleteEdge={deleteEdgeById}
         onDeleteNodes={deleteNodesByIds}
+        onUpdateNodeData={updateNodeData}
         onEditCard={openCardEditor}
         onCreateCard={openComposer}
       />

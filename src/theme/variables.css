@@ -3829,6 +3829,55 @@ ion-toast.sc-toast--info::part(container) {
     linear-gradient(160deg, var(--surface-1) 0%, var(--surface-2) 100%);
   box-shadow: 0 8px 24px color-mix(in srgb, var(--text-primary) 12%, transparent);
   font-size: 12px;
+  position: relative;
+}
+
+.sc-flow-card-node.is-locked-in {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--danger, #c0392b) 45%, var(--border-strong));
+}
+
+.sc-flow-node-lock {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  font-size: 12px;
+  line-height: 1;
+  z-index: 2;
+  filter: grayscale(0.15);
+}
+
+.sc-flow-handle.is-blocked {
+  background: var(--text-muted) !important;
+  opacity: 0.35 !important;
+  cursor: not-allowed !important;
+}
+
+.sc-flow-inspector-blocked {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sc-flow-inspector-blocked-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 0.5px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.sc-flow-inspector-blocked-item:hover {
+  border-color: color-mix(in srgb, var(--danger, #c0392b) 40%, var(--border));
+  color: var(--danger, #c0392b);
 }
 
 .sc-flow-card-node.is-selected {

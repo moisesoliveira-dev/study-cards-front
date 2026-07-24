@@ -22,11 +22,13 @@ type Props = {
   compact?: boolean;
   selectedNodes: Node[];
   selectedEdges: Edge[];
+  allNodes?: Node[];
   settings: FlowCanvasSettings;
   onSettingsChange: (next: FlowCanvasSettings) => void;
   onUpdateEdge: (edgeId: string, patch: Partial<Edge> & { data?: FlowEdgeData }) => void;
   onDeleteEdge: (edgeId: string) => void;
   onDeleteNodes: (nodeIds: string[]) => void;
+  onUpdateNodeData?: (nodeId: string, patch: Partial<CardFlowNodeData>) => void;
   onEditCard?: (cardId: string) => void;
   onCreateCard?: () => void;
 };
@@ -80,11 +82,13 @@ export function FlowInspector({
   compact,
   selectedNodes,
   selectedEdges,
+  allNodes = [],
   settings,
   onSettingsChange,
   onUpdateEdge,
   onDeleteEdge,
   onDeleteNodes,
+  onUpdateNodeData,
   onEditCard,
   onCreateCard,
 }: Props) {
@@ -248,6 +252,57 @@ export function FlowInspector({
                 Editar carta / documento
               </button>
             ) : null}
+
+            {onUpdateNodeData ? (
+              <>
+                <h3>Validação</h3>
+                <Toggle
+                  label="Bloquear entradas"
+                  hint="Nenhum nó pode conectar neste"
+                  checked={Boolean(nodeData.blockIncoming)}
+                  onChange={(v) =>
+                    onUpdateNodeData(node.id, { blockIncoming: v })
+                  }
+                />
+                {(nodeData.blockedSourceIds?.length ?? 0) > 0 ? (
+                  <div className="sc-flow-inspector-blocked">
+                    <span className="sc-flow-inspector-field">
+                      Fontes bloqueadas
+                    </span>
+                    {nodeData.blockedSourceIds!.map((sourceId) => {
+                      const source = allNodes.find((n) => n.id === sourceId);
+                      const label =
+                        (source?.data as CardFlowNodeData | undefined)?.front ??
+                        sourceId;
+                      return (
+                        <button
+                          key={sourceId}
+                          type="button"
+                          className="sc-flow-inspector-blocked-item"
+                          onClick={() =>
+                            onUpdateNodeData(node.id, {
+                              blockedSourceIds: (
+                                nodeData.blockedSourceIds ?? []
+                              ).filter((id) => id !== sourceId),
+                            })
+                          }
+                          title="Desbloquear"
+                        >
+                          <span>{label}</span>
+                          <span aria-hidden>×</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="sc-flow-inspector-note">
+                    Selecione outro nó e use o menu do botão direito → “Bloquear
+                    receber de…” — ou selecione 2 nós.
+                  </p>
+                )}
+              </>
+            ) : null}
+
             <p className="sc-flow-inspector-note">
               Duplo clique no nó também abre a carta. Alt+arrastar um ponto de
               conexão para mover no corpo do nó.
@@ -262,7 +317,62 @@ export function FlowInspector({
           </section>
         ) : null}
 
-        {multiNodes ? (
+        {multiNodes && onUpdateNodeData ? (
+          <section className="sc-flow-inspector-section">
+            <h3>Seleção · validação</h3>
+            <p className="sc-flow-inspector-note">
+              {selectedNodes.length} nós selecionados. Escolha quem bloqueia
+              quem:
+            </p>
+            {selectedNodes.length === 2 ? (
+              <>
+                <button
+                  type="button"
+                  className="sc-btn"
+                  onClick={() => {
+                    const [a, b] = selectedNodes;
+                    const data = b.data as CardFlowNodeData;
+                    const set = new Set(data.blockedSourceIds ?? []);
+                    set.add(a.id);
+                    onUpdateNodeData(b.id, { blockedSourceIds: [...set] });
+                  }}
+                >
+                  Bloquear “{(selectedNodes[1].data as CardFlowNodeData).front}”
+                  de receber “
+                  {(selectedNodes[0].data as CardFlowNodeData).front}”
+                </button>
+                <button
+                  type="button"
+                  className="sc-btn"
+                  onClick={() => {
+                    const [a, b] = selectedNodes;
+                    const data = a.data as CardFlowNodeData;
+                    const set = new Set(data.blockedSourceIds ?? []);
+                    set.add(b.id);
+                    onUpdateNodeData(a.id, { blockedSourceIds: [...set] });
+                  }}
+                >
+                  Bloquear “{(selectedNodes[0].data as CardFlowNodeData).front}”
+                  de receber “
+                  {(selectedNodes[1].data as CardFlowNodeData).front}”
+                </button>
+              </>
+            ) : (
+              <p className="sc-flow-inspector-note">
+                Selecione exatamente 2 nós para bloquear um de receber o outro.
+              </p>
+            )}
+            <button
+              type="button"
+              className="sc-btn sc-flow-inspector-danger"
+              onClick={() => onDeleteNodes(selectedNodes.map((n) => n.id))}
+            >
+              Remover seleção
+            </button>
+          </section>
+        ) : null}
+
+        {multiNodes && !onUpdateNodeData ? (
           <section className="sc-flow-inspector-section">
             <h3>Seleção</h3>
             <p className="sc-flow-inspector-note">

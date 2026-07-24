@@ -26,6 +26,10 @@ export type CardFlowNodeData = {
   linkCount: number;
   /** Offset 0–1 along each handle side, keyed by handle id */
   handleOffsets?: Record<string, number>;
+  /** Reject every incoming connection */
+  blockIncoming?: boolean;
+  /** Source node ids that cannot connect into this node */
+  blockedSourceIds?: string[];
 };
 
 const SIDES = ['top', 'right', 'bottom', 'left'] as const;
@@ -112,8 +116,21 @@ function CardFlowNodeComponent({ id, data, selected }: NodeProps) {
   return (
     <div
       ref={nodeRef}
-      className={`sc-flow-card-node${selected ? ' is-selected' : ''}`}
+      className={`sc-flow-card-node${selected ? ' is-selected' : ''}${d.blockIncoming ? ' is-locked-in' : ''}${(d.blockedSourceIds?.length ?? 0) > 0 ? ' has-blocked-sources' : ''}`}
     >
+      {d.blockIncoming ? (
+        <span className="sc-flow-node-lock" title="Entradas bloqueadas">
+          🔒
+        </span>
+      ) : (d.blockedSourceIds?.length ?? 0) > 0 ? (
+        <span
+          className="sc-flow-node-lock is-partial"
+          title={`${d.blockedSourceIds!.length} fonte(s) bloqueada(s)`}
+        >
+          🚫
+        </span>
+      ) : null}
+
       {SIDES.map((side) =>
         Array.from({ length: SLOT_COUNT }, (_, slot) => {
           const tId = handleId('target', side, slot);
@@ -135,9 +152,14 @@ function CardFlowNodeComponent({ id, data, selected }: NodeProps) {
                 type="target"
                 id={tId}
                 position={sidePosition(side)}
-                className="sc-flow-handle"
+                className={`sc-flow-handle${d.blockIncoming ? ' is-blocked' : ''}`}
                 style={tStyle}
-                title="Alt+arrastar para reposicionar"
+                isConnectable={!d.blockIncoming}
+                title={
+                  d.blockIncoming
+                    ? 'Entradas bloqueadas'
+                    : 'Alt+arrastar para reposicionar'
+                }
                 onPointerDown={(e) => onHandlePointerDown(e, side, tId)}
               />
               <Handle
