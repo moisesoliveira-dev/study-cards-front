@@ -1,5 +1,18 @@
-import { memo } from 'react';
-import { Handle, Position, type NodeProps } from '@xyflow/react';
+import {
+  memo,
+  useCallback,
+  useMemo,
+  useRef,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
+import {
+  Handle,
+  NodeResizer,
+  Position,
+  useReactFlow,
+  type Node,
+  type NodeProps,
+} from '@xyflow/react';
 import { statusClass, statusLabel } from '../../modules/cards/types/card.types';
 import { suitColor } from '../components/FaceCardComposer';
 import { CardFaceIcon } from '../components/CardIcon';
@@ -12,13 +25,150 @@ export type CardFlowNodeData = {
   icon: string | null;
   status: 'NEW' | 'REVIEW' | 'KNOWN';
   linkCount: number;
+  /** Offset 0–1 along each handle side, keyed by handle id */
+  handleOffsets?: Record<string, number>;
 };
 
-function CardFlowNodeComponent({ data, selected }: NodeProps) {
+const SIDES = ['top', 'right', 'bottom', 'left'] as const;
+type Side = (typeof SIDES)[number];
+const SLOT_COUNT = 3;
+
+function sidePosition(side: Side): Position {
+  if (side === 'top') return Position.Top;
+  if (side === 'right') return Position.Right;
+  if (side === 'bottom') return Position.Bottom;
+  return Position.Left;
+}
+
+function defaultOffset(slot: number) {
+  return (slot + 1) / (SLOT_COUNT + 1);
+}
+
+function handleId(type: 'source' | 'target', side: Side, slot: number) {
+  return `${type === 'source' ? 's' : 't'}-${side}-${slot}`;
+}
+
+function CardFlowNodeComponent({ id, data, selected }: NodeProps) {
   const d = data as CardFlowNodeData;
+  const { setNodes } = useReactFlow();
+  const nodeRef = useRef<HTMLDivElement>(null);
+
+  const offsets = useMemo(
+    () => d.handleOffsets ?? {},
+    [d.handleOffsets],
+  );
+
+  const setHandleOffset = useCallback(
+    (handleKey: string, offset: number) => {
+      const next = Math.min(0.92, Math.max(0.08, offset));
+      setNodes((nodes: Node[]) =>
+        nodes.map((n) => {
+          if (n.id !== id) return n;
+          const prev = (n.data as CardFlowNodeData).handleOffsets ?? {};
+          return {
+            ...n,
+            data: {
+              ...n.data,
+              handleOffsets: { ...prev, [handleKey]: next },
+            },
+          };
+        }),
+      );
+    },
+    [id, setNodes],
+  );
+
+  const onHandlePointerDown = useCallback(
+    (e: ReactPointerEvent, side: Side, handleKey: string) => {
+      // Alt+arrastar reposiciona o ponto no corpo do nó
+      if (!e.altKey) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      const el = nodeRef.current;
+      if (!el) return;
+      const pointerId = e.pointerId;
+      (e.target as HTMLElement).setPointerCapture?.(pointerId);
+
+      const move = (ev: PointerEvent) => {
+        const rect = el.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return;
+        let next = 0.5;
+        if (side === 'left' || side === 'right') {
+          next = (ev.clientY - rect.top) / rect.height;
+        } else {
+          next = (ev.clientX - rect.left) / rect.width;
+        }
+        setHandleOffset(handleKey, next);
+      };
+
+      const up = () => {
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', up);
+        window.dispatchEvent(new CustomEvent('sc-flow-graph-dirty'));
+      };
+
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up);
+    },
+    [setHandleOffset],
+  );
+
   return (
-    <div className={`sc-flow-card-node${selected ? ' is-selected' : ''}`}>
-      <Handle type="target" position={Position.Left} className="sc-flow-handle" />
+    <div
+      ref={nodeRef}
+      className={`sc-flow-card-node${selected ? ' is-selected' : ''}`}
+    >
+      <NodeResizer
+        isVisible={selected}
+        minWidth={140}
+        minHeight={96}
+        maxWidth={420}
+        maxHeight={360}
+        lineClassName="sc-flow-resize-line"
+        handleClassName="sc-flow-resize-handle"
+      />
+
+      {SIDES.map((side) =>
+        Array.from({ length: SLOT_COUNT }, (_, slot) => {
+          const tId = handleId('target', side, slot);
+          const sId = handleId('source', side, slot);
+          const tOff = offsets[tId] ?? defaultOffset(slot);
+          const sOff = offsets[sId] ?? defaultOffset(slot);
+          const tStyle =
+            side === 'left' || side === 'right'
+              ? { top: `${tOff * 100}%` }
+              : { left: `${tOff * 100}%` };
+          const sStyle =
+            side === 'left' || side === 'right'
+              ? { top: `${sOff * 100}%` }
+              : { left: `${sOff * 100}%` };
+
+          return (
+            <span key={side + slot}>
+              <Handle
+                type="target"
+                id={tId}
+                position={sidePosition(side)}
+                className="sc-flow-handle"
+                style={tStyle}
+                title="Alt+arrastar para reposicionar"
+                onPointerDown={(e) => onHandlePointerDown(e, side, tId)}
+              />
+              <Handle
+                type="source"
+                id={sId}
+                position={sidePosition(side)}
+                className="sc-flow-handle"
+                style={sStyle}
+                title="Alt+arrastar para reposicionar"
+                onPointerDown={(e) => onHandlePointerDown(e, side, sId)}
+              />
+            </span>
+          );
+        }),
+      )}
+
       <div className="sc-flow-card-tag" style={{ color: suitColor(d.tag) }}>
         {d.tag}
       </div>
@@ -39,7 +189,6 @@ function CardFlowNodeComponent({ data, selected }: NodeProps) {
           <span className="sc-flow-card-links">→ {d.linkCount}</span>
         ) : null}
       </div>
-      <Handle type="source" position={Position.Right} className="sc-flow-handle" />
     </div>
   );
 }

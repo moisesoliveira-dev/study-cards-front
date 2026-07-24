@@ -24,13 +24,18 @@ import {
   Controls,
   MiniMap,
   addEdge,
+  applyEdgeChanges,
+  applyNodeChanges,
+  reconnectEdge,
   useEdgesState,
   useNodesState,
   useReactFlow,
   ReactFlowProvider,
   type Connection,
   type Edge,
+  type EdgeChange,
   type Node,
+  type NodeChange,
   type OnSelectionChangeParams,
   BackgroundVariant,
 } from '@xyflow/react';
@@ -44,10 +49,21 @@ import {
   CardFlowNode,
   type CardFlowNodeData,
 } from '../../../shared/flow/CardFlowNode';
+import { CardFlowEdge } from '../../../shared/flow/CardFlowEdge';
+import {
+  isSynthesisEdge,
+  withEdgeFlags,
+} from '../../../shared/flow/flow-edge.utils';
 import { useAppToast } from '../../../shared/hooks/useAppToast';
 import { useTheme } from '../../../shared/theme/ThemeContext';
 
 const nodeTypes = { cardNode: CardFlowNode };
+const edgeTypes = { smoothstep: CardFlowEdge };
+
+const DEFAULT_NODE_WIDTH = 180;
+const DEFAULT_NODE_HEIGHT = 140;
+const DEFAULT_SOURCE_HANDLE = 's-right-1';
+const DEFAULT_TARGET_HANDLE = 't-left-1';
 
 function useIsCompactFlow() {
   const [compact, setCompact] = useState(
@@ -102,21 +118,33 @@ function FlowCanvas({
       board.nodes.map((n) => {
         const cardId = String(n.data?.cardId ?? '');
         const card = cardMap.get(cardId);
+        const width = n.width ?? DEFAULT_NODE_WIDTH;
+        const height = n.height ?? DEFAULT_NODE_HEIGHT;
+        const handleOffsets =
+          (n.data?.handleOffsets as CardFlowNodeData['handleOffsets']) ??
+          undefined;
+        const baseData = card
+          ? cardToNodeData(card)
+          : {
+              cardId,
+              front: String(n.data?.front ?? 'Card removido'),
+              back: String(n.data?.back ?? ''),
+              tag: String(n.data?.tag ?? '—'),
+              icon: (n.data?.icon as string | null) ?? null,
+              status: 'NEW' as const,
+              linkCount: 0,
+            };
         return {
           id: n.id,
           type: 'cardNode',
           position: n.position,
-          data: card
-            ? cardToNodeData(card)
-            : {
-                cardId,
-                front: String(n.data?.front ?? 'Card removido'),
-                back: String(n.data?.back ?? ''),
-                tag: String(n.data?.tag ?? '—'),
-                icon: (n.data?.icon as string | null) ?? null,
-                status: 'NEW',
-                linkCount: 0,
-              },
+          width,
+          height,
+          style: { width, height },
+          data: {
+            ...baseData,
+            handleOffsets,
+          },
         };
       }),
     [board.nodes, cardMap],
@@ -124,15 +152,19 @@ function FlowCanvas({
 
   const initialEdges: Edge[] = useMemo(
     () =>
-      board.edges.map((e) => ({
-        id: e.id,
-        source: e.source,
-        target: e.target,
-        sourceHandle: e.sourceHandle ?? undefined,
-        targetHandle: e.targetHandle ?? undefined,
-        type: e.type ?? 'smoothstep',
-        animated: true,
-      })),
+      board.edges.map((e) =>
+        withEdgeFlags({
+          id: e.id,
+          source: e.source,
+          target: e.target,
+          sourceHandle: e.sourceHandle ?? DEFAULT_SOURCE_HANDLE,
+          targetHandle: e.targetHandle ?? DEFAULT_TARGET_HANDLE,
+          type: e.type ?? 'smoothstep',
+          label: e.label,
+          data: e.data,
+          animated: true,
+        }),
+      ),
     [board.edges],
   );
 
@@ -143,6 +175,10 @@ function FlowCanvas({
   const [selected, setSelected] = useState<string[]>([]);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const nodesRef = useRef(nodes);
+  const edgesRef = useRef(edges);
+  nodesRef.current = nodes;
+  edgesRef.current = edges;
 
   const usedIds = useMemo(() => {
     const ids = new Set<string>();
@@ -180,15 +216,28 @@ function FlowCanvas({
         const updated = await flowsFacade.update(board.id, {
           nodes: nextNodes.map((n) => {
             const data = n.data as CardFlowNodeData;
+            const width =
+              n.width ??
+              (typeof n.style?.width === 'number' ? n.style.width : undefined) ??
+              DEFAULT_NODE_WIDTH;
+            const height =
+              n.height ??
+              (typeof n.style?.height === 'number'
+                ? n.style.height
+                : undefined) ??
+              DEFAULT_NODE_HEIGHT;
             return {
               id: n.id,
               type: n.type,
               position: n.position,
+              width,
+              height,
               data: {
                 cardId: data.cardId,
                 front: data.front,
                 tag: data.tag,
                 icon: data.icon,
+                handleOffsets: data.handleOffsets,
               },
             };
           }),
@@ -199,6 +248,8 @@ function FlowCanvas({
             sourceHandle: e.sourceHandle,
             targetHandle: e.targetHandle,
             type: e.type,
+            label: typeof e.label === 'string' ? e.label : undefined,
+            data: e.data as Record<string, unknown> | undefined,
           })),
         });
         onBoardChange(updated);
@@ -221,18 +272,106 @@ function FlowCanvas({
     [persist],
   );
 
+  useEffect(() => {
+    const onDirty = () => {
+      window.setTimeout(() => {
+        scheduleSave(nodesRef.current, edgesRef.current);
+      }, 120);
+    };
+    window.addEventListener('sc-flow-graph-dirty', onDirty);
+    return () => window.removeEventListener('sc-flow-graph-dirty', onDirty);
+  }, [scheduleSave]);
+
+  const onNodesChangeHandler = useCallback(
+    (changes: NodeChange[]) => {
+      onNodesChange(changes);
+      const shouldSave = changes.some(
+        (c) =>
+          (c.type === 'dimensions' && c.resizing === false) ||
+          (c.type === 'position' && c.dragging === false) ||
+          c.type === 'remove',
+      );
+      if (shouldSave) {
+        const next = applyNodeChanges(changes, nodes);
+        scheduleSave(next, edges);
+      }
+    },
+    [edges, nodes, onNodesChange, scheduleSave],
+  );
+
+  const onEdgesChangeHandler = useCallback(
+    (changes: EdgeChange[]) => {
+      const filtered = changes.filter((change) => {
+        if (change.type !== 'remove') return true;
+        const edge = edges.find((e) => e.id === change.id);
+        return !isSynthesisEdge(edge);
+      });
+      if (!filtered.length) return;
+      onEdgesChange(filtered);
+      if (
+        filtered.some(
+          (c) => c.type === 'remove' || c.type === 'add' || c.type === 'replace',
+        )
+      ) {
+        scheduleSave(nodes, applyEdgeChanges(filtered, edges));
+      }
+    },
+    [edges, nodes, onEdgesChange, scheduleSave],
+  );
+
   const onConnect = useCallback(
     (connection: Connection) => {
       setEdges((eds) => {
         const next = addEdge(
-          { ...connection, type: 'smoothstep', animated: true },
+          {
+            ...connection,
+            type: 'smoothstep',
+            animated: true,
+            sourceHandle: connection.sourceHandle ?? DEFAULT_SOURCE_HANDLE,
+            targetHandle: connection.targetHandle ?? DEFAULT_TARGET_HANDLE,
+          },
           eds,
+        ).map((e) => withEdgeFlags(e));
+        scheduleSave(nodes, next);
+        return next;
+      });
+    },
+    [nodes, scheduleSave, setEdges],
+  );
+
+  const onReconnect = useCallback(
+    (oldEdge: Edge, newConnection: Connection) => {
+      if (isSynthesisEdge(oldEdge)) {
+        if (
+          newConnection.source !== oldEdge.source ||
+          newConnection.target !== oldEdge.target
+        ) {
+          return;
+        }
+      }
+      setEdges((eds) => {
+        const next = reconnectEdge(oldEdge, newConnection, eds).map((e) =>
+          e.id === oldEdge.id
+            ? withEdgeFlags({
+                ...e,
+                label: oldEdge.label,
+                data: oldEdge.data,
+              })
+            : e,
         );
         scheduleSave(nodes, next);
         return next;
       });
     },
     [nodes, scheduleSave, setEdges],
+  );
+
+  const onBeforeDelete = useCallback(
+    async ({ nodes: n, edges: e }: { nodes: Node[]; edges: Edge[] }) => ({
+      nodes: n,
+      edges: e.filter((edge) => !isSynthesisEdge(edge)),
+    }),
+    [],
   );
 
   const onNodeDragStop = useCallback(() => {
@@ -260,6 +399,9 @@ function FlowCanvas({
         id,
         type: 'cardNode',
         position: pos,
+        width: DEFAULT_NODE_WIDTH,
+        height: DEFAULT_NODE_HEIGHT,
+        style: { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT },
         data: cardToNodeData(card),
       };
 
@@ -267,14 +409,19 @@ function FlowCanvas({
       for (const sourceId of card.sourceIds) {
         const sourceNodeId = `card-${sourceId}`;
         if (nodes.some((n) => n.id === sourceNodeId)) {
-          linkEdges.push({
-            id: `link-${sourceId}-${card.id}`,
-            source: sourceNodeId,
-            target: id,
-            type: 'smoothstep',
-            animated: true,
-            label: 'síntese',
-          });
+          linkEdges.push(
+            withEdgeFlags({
+              id: `link-${sourceId}-${card.id}`,
+              source: sourceNodeId,
+              target: id,
+              sourceHandle: DEFAULT_SOURCE_HANDLE,
+              targetHandle: DEFAULT_TARGET_HANDLE,
+              type: 'smoothstep',
+              animated: true,
+              label: 'síntese',
+              data: { kind: 'synthesis' },
+            }),
+          );
         }
       }
 
@@ -470,15 +617,20 @@ function FlowCanvas({
         <ReactFlow
           nodes={nodes}
           edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
+          onNodesChange={onNodesChangeHandler}
+          onEdgesChange={onEdgesChangeHandler}
           onConnect={onConnect}
+          onReconnect={onReconnect}
+          onBeforeDelete={onBeforeDelete}
           onNodeDragStop={onNodeDragStop}
           onSelectionChange={onSelectionChange}
           nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          defaultEdgeOptions={{ type: 'smoothstep', animated: true }}
           fitView
           colorMode={resolved}
           deleteKeyCode={compact ? null : ['Backspace', 'Delete']}
+          edgesReconnectable
           panOnScroll={!compact}
           zoomOnPinch
           panOnDrag

@@ -3780,8 +3780,11 @@ ion-toast.sc-toast--info::part(container) {
 }
 
 .sc-flow-card-node {
-  width: 180px;
-  min-height: 110px;
+  width: 100%;
+  height: 100%;
+  min-width: 140px;
+  min-height: 96px;
+  box-sizing: border-box;
   padding: 10px 12px 12px;
   border-radius: 12px;
   border: 0.5px solid var(--border-strong);
@@ -3789,6 +3792,7 @@ ion-toast.sc-toast--info::part(container) {
     linear-gradient(160deg, var(--surface-1) 0%, var(--surface-2) 100%);
   box-shadow: 0 8px 24px color-mix(in srgb, var(--text-primary) 12%, transparent);
   font-size: 12px;
+  overflow: hidden;
 }
 
 .sc-flow-card-node.is-selected {
@@ -3862,10 +3866,79 @@ ion-toast.sc-toast--info::part(container) {
   height: 10px !important;
   background: var(--text-accent) !important;
   border: 2px solid var(--surface-1) !important;
+  opacity: 0;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.sc-flow-card-node:hover .sc-flow-handle,
+.sc-flow-card-node.is-selected .sc-flow-handle,
+.react-flow__node:focus-within .sc-flow-handle {
+  opacity: 1;
+}
+
+.sc-flow-handle:hover {
+  transform: scale(1.25);
+}
+
+.sc-flow-resize-line {
+  border-color: color-mix(in srgb, var(--text-accent) 55%, transparent) !important;
+}
+
+.sc-flow-resize-handle {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 2px !important;
+  background: var(--text-accent) !important;
+  border: 1px solid var(--surface-1) !important;
+}
+
+.sc-flow-edge-label {
+  position: absolute;
+  pointer-events: all;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sc-flow-edge-badge {
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: var(--text-accent);
+  background: color-mix(in srgb, var(--surface-1) 88%, var(--text-accent));
+  border: 0.5px solid color-mix(in srgb, var(--text-accent) 35%, var(--border));
+  border-radius: 999px;
+  padding: 2px 7px;
+}
+
+.sc-flow-edge-delete {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: 0.5px solid var(--border);
+  background: var(--surface-1);
+  color: var(--danger, #c0392b);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--text-primary) 12%, transparent);
+}
+
+.sc-flow-edge-delete:hover {
+  background: color-mix(in srgb, var(--danger, #c0392b) 12%, var(--surface-1));
 }
 
 .react-flow__edge-path {
   stroke: var(--border-accent) !important;
+}
+
+.react-flow__edge.selected .react-flow__edge-path,
+.react-flow__edge:focus .react-flow__edge-path {
+  stroke: var(--text-accent) !important;
+  stroke-width: 2.5px !important;
 }
 
 .react-flow__controls,
@@ -3973,7 +4046,6 @@ ion-toast.sc-toast--info::part(container) {
   }
 
   .sc-flow-workspace.is-compact .sc-flow-card-node {
-    width: 150px;
     min-height: 92px;
     padding: 8px 10px 10px;
   }
