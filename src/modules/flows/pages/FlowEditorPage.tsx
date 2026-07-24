@@ -8,6 +8,7 @@ import {
   IonSpinner,
   IonTitle,
   IonToolbar,
+  useIonViewWillEnter,
 } from '@ionic/react';
 import { IonIcon } from '@ionic/react';
 import { ContextMenu, useContextMenu } from '../../../shared/components/ContextMenu';
@@ -2003,48 +2004,63 @@ export default function FlowEditorPage() {
   const { flowId } = useParams<{ flowId: string }>();
   const history = useHistory();
   const toast = useAppToast();
+  const toastRef = useRef(toast);
+  toastRef.current = toast;
   const [board, setBoard] = useState<FlowBoard | null>(null);
   const [cards, setCards] = useState<Card[]>([]);
   const [subjectName, setSubjectName] = useState('');
   const [loading, setLoading] = useState(true);
+  /** Remount canvas after each fresh fetch so nodes/edges match the server. */
+  const [sessionKey, setSessionKey] = useState(0);
+  const loadGen = useRef(0);
 
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      setLoading(true);
-      try {
-        const b = await flowsFacade.get(flowId);
-        if (cancelled) return;
-        setBoard(b);
+  const loadFlow = useCallback(async () => {
+    if (!flowId) return;
+    const gen = ++loadGen.current;
+    setLoading(true);
+    try {
+      const b = await flowsFacade.get(flowId);
+      if (gen !== loadGen.current) return;
+      setBoard(b);
 
-        const [cardResult, subjectResult] = await Promise.allSettled([
-          cardsFacade.listAllBySubject(b.subjectId),
-          subjectsFacade.get(b.subjectId),
-        ]);
-        if (cancelled) return;
+      const [cardResult, subjectResult] = await Promise.allSettled([
+        cardsFacade.listAllBySubject(b.subjectId),
+        subjectsFacade.get(b.subjectId),
+      ]);
+      if (gen !== loadGen.current) return;
 
-        if (cardResult.status === 'fulfilled') {
-          setCards(cardResult.value);
-        } else {
-          setCards([]);
-          toast.error(cardResult.reason);
-        }
-
-        if (subjectResult.status === 'fulfilled') {
-          setSubjectName(subjectResult.value.name);
-        }
-      } catch (error) {
-        toast.error(error);
-        history.replace('/flows');
-      } finally {
-        if (!cancelled) setLoading(false);
+      if (cardResult.status === 'fulfilled') {
+        setCards(cardResult.value);
+      } else {
+        setCards([]);
+        toastRef.current.error(cardResult.reason);
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [flowId]);
+
+      if (subjectResult.status === 'fulfilled') {
+        setSubjectName(subjectResult.value.name);
+      } else {
+        setSubjectName('');
+      }
+
+      setSessionKey((k) => k + 1);
+    } catch (error) {
+      if (gen !== loadGen.current) return;
+      toastRef.current.error(error);
+      history.replace('/flows');
+    } finally {
+      if (gen === loadGen.current) setLoading(false);
+    }
+  }, [flowId, history]);
+
+  // Fresh board + cards every time you open / return to this screen
+  useIonViewWillEnter(() => {
+    void loadFlow();
+  });
+
+  // Reload when switching between different flow ids in the stack
+  useEffect(() => {
+    void loadFlow();
+  }, [flowId, loadFlow]);
 
   return (
     <IonPage>
@@ -2072,7 +2088,7 @@ export default function FlowEditorPage() {
             <IonSpinner name="crescent" />
           </div>
         ) : (
-          <ReactFlowProvider>
+          <ReactFlowProvider key={`${board.id}-${sessionKey}`}>
             <FlowCanvas
               board={board}
               cards={cards}
