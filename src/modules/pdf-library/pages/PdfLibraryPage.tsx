@@ -21,7 +21,7 @@ import {
   gridOutline,
   libraryOutline,
   listOutline,
-  openOutline,
+  bookOutline,
   pencilOutline,
   searchOutline,
   star,
@@ -30,6 +30,7 @@ import {
 } from 'ionicons/icons';
 import { motion, useReducedMotion } from 'framer-motion';
 import { pdfLibraryFacade } from '../facades/pdf-library.facade';
+import { PdfReaderSheet } from '../components/PdfReaderSheet';
 import type {
   PdfDocument,
   PdfGroup,
@@ -90,6 +91,7 @@ export default function PdfLibraryPage() {
   const [editing, setEditing] = useState<PdfDocument | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editGroupId, setEditGroupId] = useState('');
+  const [reading, setReading] = useState<PdfDocument | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -472,11 +474,7 @@ export default function PdfLibraryPage() {
                         <button
                           type="button"
                           className="sc-pdf-cover"
-                          onClick={() =>
-                            void pdfLibraryFacade
-                              .open(document.id)
-                              .catch(toast.error)
-                          }
+                          onClick={() => setReading(document)}
                         >
                           <span className="sc-pdf-spine" />
                           <span className="sc-pdf-file-type">PDF</span>
@@ -522,15 +520,11 @@ export default function PdfLibraryPage() {
                             </button>
                             <button
                               type="button"
-                              aria-label="Abrir PDF"
-                              title="Abrir"
-                              onClick={() =>
-                                void pdfLibraryFacade
-                                  .open(document.id)
-                                  .catch(toast.error)
-                              }
+                              aria-label="Ler PDF"
+                              title="Ler"
+                              onClick={() => setReading(document)}
                             >
-                              <IonIcon icon={openOutline} />
+                              <IonIcon icon={bookOutline} />
                             </button>
                             <button
                               type="button"
@@ -736,6 +730,16 @@ export default function PdfLibraryPage() {
           </section>
         </div>
       ) : null}
+
+      <PdfReaderSheet
+        pdf={reading}
+        groupName={
+          reading?.groupId
+            ? groupMap.get(reading.groupId)?.name
+            : null
+        }
+        onClose={() => setReading(null)}
+      />
     </IonPage>
   );
 }
