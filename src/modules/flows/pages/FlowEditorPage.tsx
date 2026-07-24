@@ -12,6 +12,7 @@ import {
 import { IonIcon } from '@ionic/react';
 import {
   addOutline,
+  arrowBackOutline,
   closeOutline,
   expandOutline,
   trashOutline,
@@ -554,8 +555,11 @@ export default function FlowEditorPage() {
       <IonHeader>
         <IonToolbar>
           <IonButtons slot="start">
-            <IonButton onClick={() => history.push('/flows')}>
-              ← Fluxos
+            <IonButton
+              aria-label="Voltar aos fluxos"
+              onClick={() => history.push('/flows')}
+            >
+              <IonIcon slot="icon-only" icon={arrowBackOutline} />
             </IonButton>
           </IonButtons>
           <IonTitle>

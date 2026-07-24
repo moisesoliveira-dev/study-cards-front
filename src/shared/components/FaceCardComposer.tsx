@@ -1,7 +1,8 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { IonSpinner } from '@ionic/react';
+import { IonIcon, IonSpinner } from '@ionic/react';
+import { arrowBackOutline } from 'ionicons/icons';
 import { cardInitials } from '../../modules/cards/types/card.types';
 import {
   DocumentEditor,
@@ -262,13 +263,14 @@ export function FaceCardComposer({
                 <header className="sc-doc-header">
                   <button
                     type="button"
-                    className="sc-btn"
+                    className="sc-btn sc-btn-icon sc-doc-back"
+                    aria-label="Voltar à carta"
                     onClick={() => {
                       syncBackFromDocument();
                       setMode('card');
                     }}
                   >
-                    ← Voltar à carta
+                    <IonIcon icon={arrowBackOutline} />
                   </button>
                   <div className="sc-doc-header-title">
                     <input

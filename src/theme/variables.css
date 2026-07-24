@@ -1171,6 +1171,21 @@ ion-popover {
   flex-shrink: 0;
 }
 
+.sc-doc-back {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+}
+
+.sc-doc-back ion-icon {
+  font-size: 20px;
+}
+
 .sc-doc-header-title {
   flex: 1;
   min-width: 0;

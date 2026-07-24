@@ -2,7 +2,12 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { IonIcon, IonSpinner } from '@ionic/react';
-import { createOutline, saveOutline, trashOutline } from 'ionicons/icons';
+import {
+  arrowBackOutline,
+  createOutline,
+  saveOutline,
+  trashOutline,
+} from 'ionicons/icons';
 import type { Card } from '../../modules/cards/types/card.types';
 import { statusClass, statusLabel } from '../../modules/cards/types/card.types';
 import { cardsFacade } from '../../modules/cards/facades/cards.facade';
@@ -271,13 +276,14 @@ export function CardDocumentSheet({
           <header className="sc-doc-header">
             <button
               type="button"
-              className="sc-btn"
+              className="sc-btn sc-btn-icon sc-doc-back"
+              aria-label="Voltar à carta"
               onClick={() => {
                 if (editing) cancelEdit();
                 setMode('card');
               }}
             >
-              ← Carta
+              <IonIcon icon={arrowBackOutline} />
             </button>
             <div className="sc-doc-header-title">
               {editing ? (
