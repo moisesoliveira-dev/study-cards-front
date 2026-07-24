@@ -448,7 +448,7 @@ export function FlowInspector({
           />
           <Toggle
             label="Node Collisions"
-            hint="Impede nós de ficarem sobrepostos"
+            hint="Afasta nós sobrepostos com animação suave"
             checked={settings.nodeCollisions}
             onChange={(v) =>
               onSettingsChange({ ...settings, nodeCollisions: v })

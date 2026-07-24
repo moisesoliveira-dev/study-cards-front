@@ -1,5 +1,8 @@
 import type { Edge, Node, XYPosition } from '@xyflow/react';
 
+/** Gap between nodes after collision resolve (px). Keep small. */
+export const COLLISION_GAP = 8;
+
 /** Outgoing descendants in the edge graph (drag tree). */
 export function getTreeDescendantIds(
   rootId: string,
@@ -38,6 +41,235 @@ export function moveNodesByDelta(
       },
     };
   });
+}
+
+export function getNodeSize(node: Node): { width: number; height: number } {
+  const styleW =
+    typeof node.style?.width === 'number' ? node.style.width : undefined;
+  const styleH =
+    typeof node.style?.height === 'number' ? node.style.height : undefined;
+  return {
+    width: node.measured?.width ?? node.width ?? styleW ?? 180,
+    height: node.measured?.height ?? node.height ?? styleH ?? 120,
+  };
+}
+
+export function buildNodeMap(nodes: Node[]): Map<string, Node> {
+  return new Map(nodes.map((n) => [n.id, n]));
+}
+
+/** Absolute (flow) position walking up parentId chain. */
+export function getAbsolutePosition(
+  node: Node,
+  nodeMap: Map<string, Node>,
+): XYPosition {
+  let x = node.position.x;
+  let y = node.position.y;
+  let current: Node | undefined = node;
+  while (current?.parentId) {
+    const parent = nodeMap.get(current.parentId);
+    if (!parent) break;
+    x += parent.position.x;
+    y += parent.position.y;
+    current = parent;
+  }
+  return { x, y };
+}
+
+export function sortNodesForSubflow(nodes: Node[]): Node[] {
+  return [...nodes].sort((a, b) => {
+    const aGroup = a.type === 'groupNode' ? 0 : 1;
+    const bGroup = b.type === 'groupNode' ? 0 : 1;
+    if (aGroup !== bGroup) return aGroup - bGroup;
+    if (a.parentId && !b.parentId) return 1;
+    if (!a.parentId && b.parentId) return -1;
+    return 0;
+  });
+}
+
+/** Smallest group that contains the point (flow coords). */
+export function findGroupAtPoint(
+  nodes: Node[],
+  point: XYPosition,
+  excludeId?: string,
+): Node | null {
+  const nodeMap = buildNodeMap(nodes);
+  let best: Node | null = null;
+  let bestArea = Infinity;
+  for (const n of nodes) {
+    if (n.type !== 'groupNode' || n.id === excludeId) continue;
+    const { width, height } = getNodeSize(n);
+    const abs = getAbsolutePosition(n, nodeMap);
+    if (
+      point.x >= abs.x &&
+      point.x <= abs.x + width &&
+      point.y >= abs.y &&
+      point.y <= abs.y + height
+    ) {
+      const area = width * height;
+      if (area < bestArea) {
+        bestArea = area;
+        best = n;
+      }
+    }
+  }
+  return best;
+}
+
+export function attachNodeToGroup(
+  nodes: Node[],
+  nodeId: string,
+  groupId: string,
+): Node[] {
+  const nodeMap = buildNodeMap(nodes);
+  const node = nodeMap.get(nodeId);
+  const group = nodeMap.get(groupId);
+  if (!node || !group || node.type === 'groupNode' || node.id === groupId) {
+    return nodes;
+  }
+  if (node.parentId === groupId) return nodes;
+
+  const abs = getAbsolutePosition(node, nodeMap);
+  const groupAbs = getAbsolutePosition(group, nodeMap);
+  const next = nodes.map((n) => {
+    if (n.id !== nodeId) return n;
+    return {
+      ...n,
+      parentId: groupId,
+      extent: 'parent' as const,
+      expandParent: true,
+      position: {
+        x: abs.x - groupAbs.x,
+        y: abs.y - groupAbs.y,
+      },
+    };
+  });
+  return sortNodesForSubflow(next);
+}
+
+export function detachNodeFromParent(nodes: Node[], nodeId: string): Node[] {
+  const nodeMap = buildNodeMap(nodes);
+  const node = nodeMap.get(nodeId);
+  if (!node?.parentId) return nodes;
+  const abs = getAbsolutePosition(node, nodeMap);
+  return nodes.map((n) => {
+    if (n.id !== nodeId) return n;
+    return {
+      ...n,
+      parentId: undefined,
+      extent: undefined,
+      expandParent: undefined,
+      position: abs,
+    };
+  });
+}
+
+/**
+ * On drag stop: nest into a group under the node center, or leave parent
+ * if dropped outside (when not using extent parent lock).
+ */
+export function resolveSubflowParenting(
+  nodes: Node[],
+  dragged: Node,
+): Node[] {
+  if (dragged.type === 'groupNode') return nodes;
+
+  const nodeMap = buildNodeMap(nodes);
+  const current = nodeMap.get(dragged.id) ?? dragged;
+  const { width, height } = getNodeSize(current);
+  const abs = getAbsolutePosition(current, nodeMap);
+  const center = {
+    x: abs.x + width / 2,
+    y: abs.y + height / 2,
+  };
+
+  const group = findGroupAtPoint(nodes, center, current.id);
+  if (group) {
+    if (current.parentId === group.id) return nodes;
+    return attachNodeToGroup(nodes, current.id, group.id);
+  }
+
+  if (current.parentId) {
+    // Dropped outside any group — detach
+    return detachNodeFromParent(nodes, current.id);
+  }
+  return nodes;
+}
+
+/**
+ * Push overlapping sibling nodes away from `movingId` with a small gap.
+ * The moving node stays put; others settle with CSS transition.
+ */
+export function pushApartCollisions(
+  nodes: Node[],
+  movingId: string,
+  gap = COLLISION_GAP,
+): { nodes: Node[]; moved: boolean } {
+  const moving = nodes.find((n) => n.id === movingId);
+  if (!moving || moving.type === 'groupNode') {
+    return { nodes, moved: false };
+  }
+
+  const mw = getNodeSize(moving).width;
+  const mh = getNodeSize(moving).height;
+  const mx = moving.position.x;
+  const my = moving.position.y;
+  const mcx = mx + mw / 2;
+  const mcy = my + mh / 2;
+
+  const updates = new Map<string, XYPosition>();
+
+  const siblings = nodes.filter(
+    (n) =>
+      n.id !== movingId &&
+      n.type !== 'groupNode' &&
+      (n.parentId ?? null) === (moving.parentId ?? null),
+  );
+
+  // Iterate a few times so chain-pushes settle
+  for (let pass = 0; pass < 3; pass++) {
+    for (const other of siblings) {
+      const ow = getNodeSize(other).width;
+      const oh = getNodeSize(other).height;
+      const ox = updates.get(other.id)?.x ?? other.position.x;
+      const oy = updates.get(other.id)?.y ?? other.position.y;
+      const ocx = ox + ow / 2;
+      const ocy = oy + oh / 2;
+
+      const overlapX = (mw + ow) / 2 + gap - Math.abs(mcx - ocx);
+      const overlapY = (mh + oh) / 2 + gap - Math.abs(mcy - ocy);
+      if (overlapX <= 0 || overlapY <= 0) continue;
+
+      if (overlapX < overlapY) {
+        const dir = ocx >= mcx ? 1 : -1;
+        updates.set(other.id, { x: ox + dir * overlapX, y: oy });
+      } else {
+        const dir = ocy >= mcy ? 1 : -1;
+        updates.set(other.id, { x: ox, y: oy + dir * overlapY });
+      }
+    }
+  }
+
+  if (!updates.size) return { nodes, moved: false };
+
+  return {
+    moved: true,
+    nodes: nodes.map((n) => {
+      const pos = updates.get(n.id);
+      if (!pos) return { ...n, className: undefined };
+      return {
+        ...n,
+        position: pos,
+        className: 'sc-flow-node-settle',
+      };
+    }),
+  };
+}
+
+export function clearNodeMotionClasses(nodes: Node[]): Node[] {
+  return nodes.map((n) =>
+    n.className ? { ...n, className: undefined } : n,
+  );
 }
 
 export function nodesAbsoluteBounds(nodes: Node[]) {

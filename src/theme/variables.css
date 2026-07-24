@@ -3800,12 +3800,16 @@ ion-toast.sc-toast--info::part(container) {
 .sc-flow-tool-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  gap: 0;
+  width: 36px;
+  min-width: 36px;
   min-height: 36px;
+  padding: 0;
 }
 
 .sc-flow-tool-btn ion-icon {
-  font-size: 16px;
+  font-size: 17px;
 }
 
 .sc-flow-save {
@@ -4270,7 +4274,9 @@ ion-toast.sc-toast--info::part(container) {
   }
 
   .sc-flow-workspace.is-compact .sc-flow-tool-btn {
-    padding: 0 10px;
+    width: 36px;
+    min-width: 36px;
+    padding: 0;
   }
 
   .sc-flow-workspace.is-compact .react-flow__controls {
@@ -4661,6 +4667,13 @@ ion-toast.sc-toast--info::part(container) {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-accent) 28%, transparent);
 }
 
+.react-flow__node.sc-flow-group-drop-target .sc-flow-group-node {
+  border-style: solid;
+  border-color: var(--text-accent);
+  background: color-mix(in srgb, var(--bg-accent) 78%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-accent) 35%, transparent);
+}
+
 .sc-flow-group-label {
   font-size: 12px;
   font-weight: 700;
@@ -4686,6 +4699,15 @@ ion-toast.sc-toast--info::part(container) {
 .react-flow__node.sc-flow-node-collide {
   outline: 2px solid var(--danger, #c0392b);
   outline-offset: 2px;
+}
+
+.react-flow__node.sc-flow-node-settle {
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.react-flow__node.dragging,
+.react-flow__node.dragging.sc-flow-node-settle {
+  transition: none !important;
 }
 
 .sc-flow-tool-btn.is-active {

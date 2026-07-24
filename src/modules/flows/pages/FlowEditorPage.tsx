@@ -77,10 +77,18 @@ import {
   withBlockedSource,
 } from '../../../shared/flow/flow-connection.utils';
 import {
+  buildNodeMap,
+  clearNodeMotionClasses,
   downloadFlowImage,
+  findGroupAtPoint,
+  getAbsolutePosition,
+  getNodeSize,
   getTreeDescendantIds,
   moveNodesByDelta,
   nodesAbsoluteBounds,
+  pushApartCollisions,
+  resolveSubflowParenting,
+  sortNodesForSubflow,
 } from '../../../shared/flow/flow-tools.utils';
 import { FaceCardComposer } from '../../../shared/components/FaceCardComposer';
 import { CardDocumentSheet } from '../../../shared/components/CardDocumentSheet';
@@ -160,7 +168,7 @@ function FlowCanvas({
   const toast = useAppToast();
   const { resolved } = useTheme();
   const compact = useIsCompactFlow();
-  const { screenToFlowPosition, fitView, getIntersectingNodes } = useReactFlow();
+  const { screenToFlowPosition, fitView } = useReactFlow();
   const cardMap = useMemo(
     () => new Map(cards.map((c) => [c.id, c])),
     [cards],
@@ -278,7 +286,6 @@ function FlowCanvas({
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const nodesRef = useRef(nodes);
   const edgesRef = useRef(edges);
-  const dragOriginRef = useRef<Record<string, { x: number; y: number }>>({});
   const lastDragPosRef = useRef<{ id: string; x: number; y: number } | null>(
     null,
   );
@@ -529,21 +536,21 @@ function FlowCanvas({
 
   const onNodeDragStart = useCallback(
     (_: MouseEvent | TouchEvent, node: Node) => {
-      dragOriginRef.current[node.id] = { ...node.position };
       lastDragPosRef.current = {
         id: node.id,
         x: node.position.x,
         y: node.position.y,
       };
-      if (settings.dragTree) {
-        const descendants = getTreeDescendantIds(node.id, edges);
-        for (const id of descendants) {
-          const child = nodes.find((n) => n.id === id);
-          if (child) dragOriginRef.current[id] = { ...child.position };
-        }
+      // Temporarily unlock extent so the node can leave / enter groups
+      if (node.parentId && node.extent === 'parent') {
+        setNodes((ns) =>
+          ns.map((n) =>
+            n.id === node.id ? { ...n, extent: undefined } : n,
+          ),
+        );
       }
     },
-    [edges, nodes, settings.dragTree],
+    [setNodes],
   );
 
   const onNodeDrag = useCallback(
@@ -567,83 +574,126 @@ function FlowCanvas({
         }
       }
 
-      if (settings.nodeCollisions) {
-        const hits = getIntersectingNodes(node).filter(
-          (n) =>
-            n.id !== node.id &&
-            n.parentId !== node.id &&
-            node.parentId !== n.id &&
-            n.type !== 'groupNode',
+      if (node.type === 'groupNode') return;
+
+      setNodes((ns) => {
+        const withLive = ns.map((n) =>
+          n.id === node.id ? { ...n, position: node.position } : n,
         );
-        const hitIds = new Set(hits.map((h) => h.id));
-        setNodes((ns) =>
-          ns.map((n) => ({
-            ...n,
-            className: hitIds.has(n.id) ? 'sc-flow-node-collide' : undefined,
-          })),
-        );
-      }
+        const live = withLive.find((n) => n.id === node.id) ?? node;
+        const size = getNodeSize(live);
+        const abs = getAbsolutePosition(live, buildNodeMap(withLive));
+        const center = {
+          x: abs.x + size.width / 2,
+          y: abs.y + size.height / 2,
+        };
+        const hoverGroup = findGroupAtPoint(withLive, center, node.id);
+        const hoverId = hoverGroup?.id;
+
+        let collideIds = new Set<string>();
+        if (settings.nodeCollisions) {
+          const mw = size.width;
+          const mh = size.height;
+          const mx = live.position.x;
+          const my = live.position.y;
+          for (const other of withLive) {
+            if (
+              other.id === node.id ||
+              other.type === 'groupNode' ||
+              (other.parentId ?? null) !== (live.parentId ?? null)
+            ) {
+              continue;
+            }
+            const ow = getNodeSize(other).width;
+            const oh = getNodeSize(other).height;
+            const overlapX =
+              (mw + ow) / 2 + 8 - Math.abs(mx + mw / 2 - (other.position.x + ow / 2));
+            const overlapY =
+              (mh + oh) / 2 + 8 - Math.abs(my + mh / 2 - (other.position.y + oh / 2));
+            if (overlapX > 0 && overlapY > 0) collideIds.add(other.id);
+          }
+          if (collideIds.size) collideIds.add(node.id);
+        }
+
+        return withLive.map((n) => {
+          if (n.type === 'groupNode') {
+            const cls =
+              n.id === hoverId ? 'sc-flow-group-drop-target' : undefined;
+            return n.className === cls ? n : { ...n, className: cls };
+          }
+          const cls = collideIds.has(n.id) ? 'sc-flow-node-collide' : undefined;
+          return n.className === cls ? n : { ...n, className: cls };
+        });
+      });
     },
-    [
-      edges,
-      getIntersectingNodes,
-      setNodes,
-      settings.dragTree,
-      settings.nodeCollisions,
-    ],
+    [edges, setNodes, settings.dragTree, settings.nodeCollisions],
   );
 
   const onNodeDragStop = useCallback(
     (_: MouseEvent | TouchEvent, node: Node) => {
-      if (settings.nodeCollisions && node.type !== 'groupNode') {
-        const hits = getIntersectingNodes(node).filter(
-          (n) =>
-            n.id !== node.id &&
-            n.parentId !== node.id &&
-            node.parentId !== n.id &&
-            n.type !== 'groupNode',
+      setNodes((ns) => {
+        let next = ns.map((n) =>
+          n.id === node.id ? { ...n, position: node.position } : n,
         );
-        if (hits.length) {
-          const origin = dragOriginRef.current[node.id];
-          if (origin) {
-            setNodes((ns) => {
-              const next = ns.map((n) => {
-                const orig = dragOriginRef.current[n.id];
-                if (orig) {
-                  return { ...n, position: orig, className: undefined };
-                }
-                return { ...n, className: undefined };
-              });
-              scheduleSave(next, edgesRef.current);
-              return next;
-            });
-            toast.error(new Error('Colisão: posição revertida'));
-            lastDragPosRef.current = null;
-            return;
+
+        if (node.type !== 'groupNode') {
+          next = resolveSubflowParenting(next, {
+            ...node,
+            position: node.position,
+          });
+          if (settings.nodeCollisions) {
+            next = pushApartCollisions(next, node.id).nodes;
           }
         }
-      }
 
-      setNodes((ns) => ns.map((n) => ({ ...n, className: undefined })));
-      // Persist after React Flow commits final drag positions
-      queueMicrotask(() => {
-        scheduleSave(nodesRef.current, edgesRef.current);
+        next = next.map((n) => {
+          if (n.className === 'sc-flow-node-settle') return n;
+          return n.className ? { ...n, className: undefined } : n;
+        });
+        next = next.map((n) =>
+          n.parentId && n.type !== 'groupNode'
+            ? { ...n, extent: 'parent' as const, expandParent: true }
+            : n,
+        );
+        scheduleSave(next, edgesRef.current);
+        return next;
       });
+      window.setTimeout(() => {
+        setNodes((ns) => clearNodeMotionClasses(ns));
+      }, 220);
       lastDragPosRef.current = null;
     },
-    [getIntersectingNodes, scheduleSave, setNodes, settings.nodeCollisions, toast],
+    [scheduleSave, setNodes, settings.nodeCollisions],
   );
 
   const createSubFlow = useCallback(() => {
     const selected = nodes.filter(
       (n) => selectedNodeIds.includes(n.id) && n.type !== 'groupNode',
     );
+    const groupId = `group-${crypto.randomUUID().slice(0, 8)}`;
+
     if (!selected.length) {
-      toast.error(new Error('Selecione ao menos um card para o subfluxo'));
+      const center = screenToFlowPosition({
+        x: window.innerWidth * 0.5,
+        y: window.innerHeight * (compact ? 0.42 : 0.38),
+      });
+      const groupNode: Node = {
+        id: groupId,
+        type: 'groupNode',
+        position: { x: center.x - 160, y: center.y - 110 },
+        style: { width: 320, height: 220 },
+        data: { label: 'Subfluxo' },
+        zIndex: -1,
+      };
+      const nextNodes = sortNodesForSubflow([groupNode, ...nodes]);
+      setNodes(nextNodes);
+      scheduleSave(nextNodes, edges);
+      setSelectedNodeIds([groupId]);
+      toast.success('Subfluxo vazio criado — arraste cards para dentro');
       return;
     }
+
     const bounds = nodesAbsoluteBounds(selected);
-    const groupId = `group-${crypto.randomUUID().slice(0, 8)}`;
     const groupNode: Node = {
       id: groupId,
       type: 'groupNode',
@@ -653,7 +703,7 @@ function FlowCanvas({
       zIndex: -1,
     };
     const selectedIds = new Set(selected.map((n) => n.id));
-    const nextNodes = [
+    const nextNodes = sortNodesForSubflow([
       groupNode,
       ...nodes.map((n) => {
         if (!selectedIds.has(n.id)) return n;
@@ -668,12 +718,21 @@ function FlowCanvas({
           },
         };
       }),
-    ];
+    ]);
     setNodes(nextNodes);
     scheduleSave(nextNodes, edges);
     setSelectedNodeIds([groupId]);
     toast.success('Subfluxo criado');
-  }, [edges, nodes, scheduleSave, selectedNodeIds, setNodes, toast]);
+  }, [
+    compact,
+    edges,
+    nodes,
+    scheduleSave,
+    screenToFlowPosition,
+    selectedNodeIds,
+    setNodes,
+    toast,
+  ]);
 
   const ungroupSelected = useCallback(() => {
     const groups = nodes.filter(
@@ -1161,7 +1220,7 @@ function FlowCanvas({
         },
         {
           id: 'subflow',
-          label: 'Criar subfluxo da seleção',
+          label: 'Criar subfluxo (seleção ou vazio)',
           icon: layersOutline,
           separator: true,
           onSelect: createSubFlow,
@@ -1227,12 +1286,30 @@ function FlowCanvas({
           x: window.innerWidth * 0.5,
           y: window.innerHeight * (compact ? 0.42 : 0.35),
         });
-      const node: Node = {
+
+      const group = findGroupAtPoint(nodes, pos);
+      let node: Node = {
         id,
         type: 'cardNode',
         position: pos,
         data: cardToNodeData(card),
       };
+      if (group) {
+        const groupAbs = getAbsolutePosition(
+          group,
+          new Map(nodes.map((n) => [n.id, n])),
+        );
+        node = {
+          ...node,
+          parentId: group.id,
+          extent: 'parent',
+          expandParent: true,
+          position: {
+            x: pos.x - groupAbs.x,
+            y: pos.y - groupAbs.y,
+          },
+        };
+      }
 
       const linkEdges: Edge[] = [];
       for (const sourceId of card.sourceIds) {
@@ -1258,7 +1335,7 @@ function FlowCanvas({
         }
       }
 
-      const nextNodes = [...nodes, node];
+      const nextNodes = sortNodesForSubflow([...nodes, node]);
       const nextEdges = [...edges, ...linkEdges];
       setNodes(nextNodes);
       setEdges(nextEdges);
@@ -1520,25 +1597,26 @@ function FlowCanvas({
               type="button"
               className={`sc-btn sc-flow-tool-btn${eraserActive ? ' is-active' : ''}`}
               onClick={() => setEraserActive((v) => !v)}
-              aria-label="Eraser Tool"
-              title="Eraser Tool"
+              aria-label="Borracha"
+              title="Borracha — arraste sobre nós e conexões"
             >
               <IonIcon icon={brushOutline} />
-              {!compact ? <span>Eraser</span> : null}
             </button>
             <button
               type="button"
               className="sc-btn sc-flow-tool-btn"
-              disabled={!selectedNodeIds.some((id) => {
-                const n = nodes.find((x) => x.id === id);
-                return n && n.type !== 'groupNode';
-              })}
               onClick={createSubFlow}
-              aria-label="Sub Flow"
-              title="Criar Sub Flow da seleção"
+              aria-label="Subfluxo"
+              title={
+                selectedNodeIds.some((id) => {
+                  const n = nodes.find((x) => x.id === id);
+                  return n && n.type !== 'groupNode';
+                })
+                  ? 'Criar subfluxo com a seleção'
+                  : 'Criar subfluxo vazio (solte cards dentro)'
+              }
             >
               <IonIcon icon={layersOutline} />
-              {!compact ? <span>Sub Flow</span> : null}
             </button>
             <button
               type="button"
@@ -1546,20 +1624,18 @@ function FlowCanvas({
               disabled={!selectedNodeIds.some((id) => nodes.find((n) => n.id === id)?.type === 'groupNode')}
               onClick={ungroupSelected}
               aria-label="Desagrupar"
-              title="Desagrupar Sub Flow"
+              title="Desagrupar subfluxo"
             >
               <IonIcon icon={gitNetworkOutline} />
-              {!compact ? <span>Ungroup</span> : null}
             </button>
             <button
               type="button"
               className="sc-btn sc-flow-tool-btn"
               onClick={() => void downloadImage()}
-              aria-label="Download Image"
-              title="Download Image"
+              aria-label="Baixar PNG"
+              title="Baixar imagem PNG"
             >
               <IonIcon icon={downloadOutline} />
-              {!compact ? <span>PNG</span> : null}
             </button>
             <button
               type="button"
@@ -1570,7 +1646,6 @@ function FlowCanvas({
               title="Remover seleção"
             >
               <IonIcon icon={trashOutline} />
-              {!compact ? <span>Remover</span> : null}
             </button>
             <button
               type="button"
@@ -1580,17 +1655,15 @@ function FlowCanvas({
               title="Nova carta"
             >
               <IonIcon icon={createOutline} />
-              {!compact ? <span>Nova carta</span> : null}
             </button>
             <button
               type="button"
               className="sc-btn sc-flow-tool-btn"
               onClick={() => fitView({ padding: compact ? 0.15 : 0.2 })}
               aria-label="Enquadrar"
-              title="Enquadrar"
+              title="Enquadrar tudo"
             >
               <IonIcon icon={expandOutline} />
-              {!compact ? <span>Enquadrar</span> : null}
             </button>
             {compact ? (
               <button
@@ -1598,9 +1671,9 @@ function FlowCanvas({
                 className="sc-btn primary sc-flow-tool-btn"
                 onClick={() => setPaletteOpen(true)}
                 aria-label="Adicionar card"
+                title="Abrir lista de cards"
               >
                 <IonIcon icon={addOutline} />
-                <span>Cards</span>
               </button>
             ) : null}
           </div>
