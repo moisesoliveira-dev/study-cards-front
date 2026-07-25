@@ -18,6 +18,7 @@ export type PdfDocument = {
   storageName: string;
   mimeType: string;
   sizeBytes: number;
+  hasCover: boolean;
   favorite: boolean;
   createdAt: string;
   updatedAt: string;
