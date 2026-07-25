@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  IonAlert,
   IonContent,
   IonHeader,
   IonIcon,
@@ -89,6 +90,7 @@ export default function ProfilePage() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [savingPassword, setSavingPassword] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
   useEffect(() => {
     setUsername(user?.username ?? '');
@@ -386,7 +388,7 @@ export default function ProfilePage() {
                   <motion.button
                     type="button"
                     className="sc-btn sc-settings-logout"
-                    onClick={signOut}
+                    onClick={() => setConfirmLogout(true)}
                     whileTap={reduce ? undefined : tapScale}
                   >
                     <IonIcon icon={logOutOutline} />
@@ -397,6 +399,21 @@ export default function ProfilePage() {
             </motion.section>
           </div>
         </MotionShell>
+
+        <IonAlert
+          isOpen={confirmLogout}
+          header="Sair da conta?"
+          message="Você precisará entrar novamente para acessar seus cards."
+          onDidDismiss={() => setConfirmLogout(false)}
+          buttons={[
+            { text: 'Cancelar', role: 'cancel' },
+            {
+              text: 'Sair',
+              role: 'destructive',
+              handler: () => signOut(),
+            },
+          ]}
+        />
       </IonContent>
     </IonPage>
   );

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, useHistory, useLocation } from 'react-router-dom';
-import { IonIcon } from '@ionic/react';
+import { IonAlert, IonIcon } from '@ionic/react';
 import {
   albumsOutline,
   chatbubbleEllipsesOutline,
@@ -54,6 +54,7 @@ export function AppShell({ children }: Props) {
   const history = useHistory();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -159,8 +160,7 @@ export function AppShell({ children }: Props) {
             title="Sair"
             onClick={() => {
               closeMenu();
-              logout();
-              history.replace('/login');
+              setConfirmLogout(true);
             }}
           >
             <IonIcon icon={logOutOutline} />
@@ -168,6 +168,24 @@ export function AppShell({ children }: Props) {
           </button>
         </div>
       </aside>
+
+      <IonAlert
+        isOpen={confirmLogout}
+        header="Sair da conta?"
+        message="Você precisará entrar novamente para acessar seus cards."
+        onDidDismiss={() => setConfirmLogout(false)}
+        buttons={[
+          { text: 'Cancelar', role: 'cancel' },
+          {
+            text: 'Sair',
+            role: 'destructive',
+            handler: () => {
+              logout();
+              history.replace('/login');
+            },
+          },
+        ]}
+      />
 
       <div className="sc-app-main">
         <div className="sc-app-theme-float">

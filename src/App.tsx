@@ -13,6 +13,7 @@ import FlowEditorPage from './modules/flows/pages/FlowEditorPage';
 import PdfLibraryPage from './modules/pdf-library/pages/PdfLibraryPage';
 import ChatPage from './modules/chat/pages/ChatPage';
 import { AuthProvider, useAuth } from './modules/auth/context/AuthContext';
+import { SessionExpiredAlert } from './modules/auth/components/SessionExpiredAlert';
 import { ThemeProvider } from './shared/theme/ThemeContext';
 import { AppShell } from './shared/layout/AppShell';
 
@@ -76,6 +77,7 @@ const App: React.FC = () => (
             <Route exact path="/register" component={RegisterPage} />
             <Route path="/" component={AuthenticatedShell} />
           </Switch>
+          <SessionExpiredAlert />
         </IonReactRouter>
       </AuthProvider>
     </ThemeProvider>
