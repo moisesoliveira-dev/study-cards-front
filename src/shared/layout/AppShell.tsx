@@ -3,6 +3,7 @@ import { NavLink, useHistory, useLocation } from 'react-router-dom';
 import { IonIcon } from '@ionic/react';
 import {
   albumsOutline,
+  chatbubbleEllipsesOutline,
   closeOutline,
   gitNetworkOutline,
   libraryOutline,
@@ -39,6 +40,12 @@ const NAV = [
     label: 'Biblioteca',
     icon: libraryOutline,
     match: (path: string) => path.startsWith('/library'),
+  },
+  {
+    to: '/chat',
+    label: 'Assistente',
+    icon: chatbubbleEllipsesOutline,
+    match: (path: string) => path.startsWith('/chat'),
   },
 ];
 
