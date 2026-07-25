@@ -14,7 +14,7 @@ export function PrivateRoute({ component: Component, ...rest }: RouteProps) {
       render={(props) => {
         if (loading) {
           return (
-            <div className="sc-auth-shell">
+            <div className="sc-auth-loading">
               <IonSpinner name="crescent" />
             </div>
           );

@@ -20,22 +20,11 @@ type AuthContextValue = {
     password: string,
     rememberMe?: boolean,
   ) => Promise<void>;
-  startRegister: (input: {
+  register: (input: {
     email: string;
     username: string;
     password: string;
     name?: string;
-  }) => Promise<{ email: string }>;
-  verifyEmail: (input: {
-    email: string;
-    code: string;
-    rememberMe?: boolean;
-  }) => Promise<void>;
-  resendCode: (email: string) => Promise<void>;
-  forgotPassword: (email: string) => Promise<void>;
-  resetPassword: (input: {
-    token: string;
-    password: string;
   }) => Promise<void>;
   updateProfile: (input: {
     name?: string;
@@ -88,35 +77,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const startRegister = useCallback(
+  const register = useCallback(
     async (input: {
       email: string;
       username: string;
       password: string;
       name?: string;
-    }) => authFacade.startRegister(input),
-    [],
-  );
-
-  const verifyEmail = useCallback(
-    async (input: { email: string; code: string; rememberMe?: boolean }) => {
-      const next = await authFacade.verifyEmail(input);
+    }) => {
+      const next = await authFacade.register(input);
       setUser(next);
-    },
-    [],
-  );
-
-  const resendCode = useCallback(async (email: string) => {
-    await authFacade.resendCode(email);
-  }, []);
-
-  const forgotPassword = useCallback(async (email: string) => {
-    await authFacade.forgotPassword(email);
-  }, []);
-
-  const resetPassword = useCallback(
-    async (input: { token: string; password: string }) => {
-      await authFacade.resetPassword(input);
     },
     [],
   );
@@ -149,11 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: Boolean(user),
       rememberedLogin,
       login,
-      startRegister,
-      verifyEmail,
-      resendCode,
-      forgotPassword,
-      resetPassword,
+      register,
       updateProfile,
       changePassword,
       logout,
@@ -163,11 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       rememberedLogin,
       login,
-      startRegister,
-      verifyEmail,
-      resendCode,
-      forgotPassword,
-      resetPassword,
+      register,
       updateProfile,
       changePassword,
       logout,

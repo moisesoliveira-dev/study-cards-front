@@ -2328,74 +2328,289 @@ ion-popover {
   align-self: center;
 }
 
+/* ── Auth: split study stage + form ── */
+.sc-auth-content {
+  --background: transparent;
+}
+
+.sc-auth-loading {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+}
+
 .sc-auth-shell {
   position: relative;
   min-height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
   overflow: hidden;
-  background:
-    radial-gradient(ellipse 90% 55% at 12% -10%, color-mix(in srgb, #c8d5c0 55%, transparent) 0%, transparent 58%),
-    radial-gradient(ellipse 75% 50% at 95% 110%, color-mix(in srgb, #d4c4a8 45%, transparent) 0%, transparent 52%),
-    linear-gradient(165deg, var(--bg) 0%, color-mix(in srgb, var(--bg) 88%, #e8e4dc) 100%);
+  background: var(--bg);
+  font-family: Figtree, system-ui, sans-serif;
 }
 
-.sc-auth-atmosphere {
+.sc-auth-theme {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 5;
+}
+
+.sc-auth-stage {
+  position: relative;
+  min-height: 100%;
+  display: flex;
+  align-items: stretch;
+  padding: 28px 24px 28px 28px;
+}
+
+.sc-auth-scene {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 28px;
+  padding: 36px 32px 32px;
+  border-radius: 28px;
+  overflow: hidden;
+  color: #f4f1ea;
+  background:
+    radial-gradient(ellipse 80% 60% at 15% 10%, rgba(232, 196, 120, 0.22), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 90% 85%, rgba(96, 140, 110, 0.28), transparent 50%),
+    linear-gradient(155deg, #1c1a17 0%, #2a2620 48%, #1a2420 100%);
+}
+
+.sc-auth-scene-grid {
   pointer-events: none;
   position: absolute;
-  inset: -20% -10%;
-  background:
-    repeating-linear-gradient(
-      -12deg,
-      transparent,
-      transparent 48px,
-      color-mix(in srgb, var(--border) 35%, transparent) 48px,
-      color-mix(in srgb, var(--border) 35%, transparent) 49px
-    );
-  opacity: 0.35;
-  mask-image: radial-gradient(ellipse 70% 60% at 50% 45%, #000 20%, transparent 75%);
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 36px 36px;
+  mask-image: radial-gradient(ellipse 75% 70% at 40% 40%, #000 20%, transparent 80%);
+  opacity: 0.7;
 }
 
-.sc-auth-card {
+.sc-auth-scene-glow {
+  pointer-events: none;
+  position: absolute;
+  width: 320px;
+  height: 320px;
+  right: -60px;
+  top: 12%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(232, 196, 120, 0.14), transparent 70%);
+}
+
+.sc-auth-scene-brand {
   position: relative;
-  z-index: 1;
-  width: 100%;
+  z-index: 2;
   max-width: 420px;
-  padding: 32px 28px 26px;
-  border: 0.5px solid var(--border);
-  border-radius: 18px;
-  background: color-mix(in srgb, var(--surface-1) 92%, transparent);
-  backdrop-filter: blur(10px);
-  box-shadow:
-    0 1px 0 color-mix(in srgb, #fff 40%, transparent) inset,
-    0 18px 48px rgba(26, 25, 23, 0.08);
-}
-
-.sc-auth-brand-block {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 22px;
 }
 
 .sc-auth-logo {
-  width: 52px;
-  height: 52px;
+  width: 48px;
+  height: 48px;
   border-radius: 14px;
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  background: linear-gradient(145deg, #1a1917 0%, #3d3a34 100%);
-  box-shadow: 0 8px 20px rgba(26, 25, 23, 0.18);
+  background: linear-gradient(145deg, #f3efe6 0%, #e0d8c8 100%);
+  color: #1a1917;
+}
+
+.sc-auth-logo--hero {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  margin-bottom: 18px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
 }
 
 .sc-auth-logo-mark {
   font-family: 'Fraunces', Georgia, serif;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.04em;
+  color: #1a1917;
+}
+
+.sc-auth-logo--hero .sc-auth-logo-mark {
+  font-size: 18px;
+}
+
+.sc-auth-scene-name {
+  margin: 0 0 14px;
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: clamp(2.4rem, 4vw, 3.35rem);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+  color: #f7f4ec;
+}
+
+.sc-auth-scene-headline {
+  margin: 0 0 10px;
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: clamp(1.15rem, 2vw, 1.45rem);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  color: rgba(247, 244, 236, 0.92);
+}
+
+.sc-auth-scene-line {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: rgba(247, 244, 236, 0.62);
+  max-width: 34ch;
+}
+
+.sc-auth-deck {
+  position: relative;
+  z-index: 2;
+  height: 220px;
+  margin: 8px 0 4px;
+  perspective: 900px;
+}
+
+.sc-auth-flash {
+  position: absolute;
+  left: 8%;
+  top: 10%;
+  width: min(260px, 72%);
+  padding: 16px 16px 18px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 252, 245, 0.94);
+  color: #1a1917;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+  transform-origin: 50% 120%;
+}
+
+.sc-auth-flash:nth-child(1) {
+  left: 6%;
+  top: 4%;
+}
+
+.sc-auth-flash:nth-child(2) {
+  left: 22%;
+  top: 28%;
+}
+
+.sc-auth-flash:nth-child(3) {
+  left: 38%;
+  top: 12%;
+}
+
+.sc-auth-flash--ink {
+  background: linear-gradient(165deg, #faf8f3, #ece7dc);
+}
+
+.sc-auth-flash--sage {
+  background: linear-gradient(165deg, #eef5ef, #d9e8dc);
+}
+
+.sc-auth-flash--sand {
+  background: linear-gradient(165deg, #f7f0e4, #ead9bc);
+}
+
+.sc-auth-flash-face {
+  display: inline-block;
+  margin-bottom: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6d685f;
+}
+
+.sc-auth-flash-title {
+  display: block;
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+}
+
+.sc-auth-flash-body {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: #4a4843;
+}
+
+.sc-auth-scene-points {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sc-auth-scene-points li {
+  font-size: 12.5px;
+  color: rgba(247, 244, 236, 0.7);
+  padding-left: 14px;
+  position: relative;
+}
+
+.sc-auth-scene-points li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.45em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #c9a56a;
+}
+
+.sc-auth-panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 36px;
+  background:
+    radial-gradient(ellipse 60% 40% at 100% 0%, color-mix(in srgb, var(--bg-accent) 55%, transparent), transparent 60%),
+    var(--bg);
+}
+
+.sc-auth-panel-inner {
+  width: 100%;
+  max-width: 400px;
+}
+
+.sc-auth-form {
+  width: 100%;
+}
+
+.sc-auth-brand-mobile {
+  display: none;
+  margin-bottom: 22px;
+}
+
+.sc-auth-brand-block {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sc-auth-brand-block--panel .sc-auth-logo {
+  background: linear-gradient(145deg, #1a1917 0%, #3d3a34 100%);
+}
+
+.sc-auth-brand-block--panel .sc-auth-logo-mark {
   color: #f3f1ea;
 }
 
@@ -2405,49 +2620,68 @@ ion-popover {
 
 .sc-auth-brand-name {
   font-family: 'Fraunces', Georgia, serif;
-  font-size: 1.35rem;
+  font-size: 1.25rem;
   font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--text-primary);
   line-height: 1.15;
 }
 
-.sc-auth-brand-tagline {
-  margin: 4px 0 0;
-  font-size: 12.5px;
-  color: var(--text-muted);
-  line-height: 1.35;
-}
-
-.sc-auth-brand {
-  font-size: 12px;
+.sc-auth-kicker {
+  margin: 0 0 8px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-muted);
-  margin-bottom: 14px;
 }
 
 .sc-auth-title {
-  margin: 0 0 6px;
+  margin: 0 0 8px;
   font-family: 'Fraunces', Georgia, serif;
-  font-size: 1.65rem;
+  font-size: clamp(1.75rem, 3vw, 2.1rem);
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   color: var(--text-primary);
-  line-height: 1.2;
+  line-height: 1.15;
 }
 
 .sc-auth-subtitle {
-  margin: 0 0 22px;
-  font-size: 14px;
+  margin: 0 0 26px;
+  font-size: 14.5px;
   color: var(--text-secondary);
-  line-height: 1.45;
+  line-height: 1.5;
 }
 
 .sc-auth-subtitle strong {
   color: var(--text-primary);
   font-weight: 600;
+}
+
+.sc-auth-password-wrap {
+  position: relative;
+}
+
+.sc-auth-password-wrap .sc-field-input {
+  padding-right: 72px;
+}
+
+.sc-auth-eye {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 4px 6px;
+}
+
+.sc-auth-eye:hover {
+  color: var(--text-primary);
 }
 
 .sc-auth-row {
@@ -2493,18 +2727,6 @@ ion-popover {
   text-decoration: underline;
 }
 
-.sc-auth-link-btn.muted {
-  color: var(--text-muted);
-  font-weight: 500;
-}
-
-.sc-auth-resend {
-  display: flex;
-  justify-content: center;
-  gap: 18px;
-  margin-top: 14px;
-}
-
 .sc-auth-hint {
   margin: -6px 0 4px;
   font-size: 12px;
@@ -2517,18 +2739,20 @@ ion-popover {
 
 .sc-auth-submit {
   width: 100%;
-  margin-top: 16px;
-  min-height: 44px;
+  margin-top: 20px;
+  min-height: 48px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
+  border-radius: 14px;
+  font-weight: 600;
+  font-size: 15px;
 }
 
 .sc-auth-switch {
-  margin: 18px 0 0;
+  margin: 22px 0 0;
   text-align: center;
-  font-size: 13px;
+  font-size: 13.5px;
   color: var(--text-secondary);
   line-height: 1.4;
 }
@@ -2536,7 +2760,7 @@ ion-popover {
 .sc-auth-switch a {
   color: var(--text-accent);
   text-decoration: none;
-  font-weight: 550;
+  font-weight: 600;
 }
 
 .sc-auth-switch a:hover {
@@ -2553,6 +2777,172 @@ ion-popover {
   grid-template-columns: repeat(3, 1fr);
   gap: 6px;
   margin-bottom: 8px;
+}
+
+.sc-pw-meter-bar {
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border) 80%, transparent);
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.sc-pw-meter-bar.is-on {
+  transform: scaleY(1.15);
+}
+
+.sc-pw-meter-bars[data-level='weak'] .sc-pw-meter-bar.is-on {
+  background: #c45c3e;
+}
+
+.sc-pw-meter-bars[data-level='medium'] .sc-pw-meter-bar.is-on {
+  background: #c4923a;
+}
+
+.sc-pw-meter-bars[data-level='strong'] .sc-pw-meter-bar.is-on {
+  background: #3d7a5a;
+}
+
+.sc-pw-meter-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sc-pw-meter-label {
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+.sc-pw-meter-label.is-weak {
+  color: #c45c3e;
+}
+
+.sc-pw-meter-label.is-medium {
+  color: #c4923a;
+}
+
+.sc-pw-meter-label.is-strong {
+  color: #3d7a5a;
+}
+
+.sc-pw-meter-rules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sc-pw-meter-rules li {
+  font-size: 11px;
+  color: var(--text-muted);
+  position: relative;
+  padding-left: 12px;
+}
+
+.sc-pw-meter-rules li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.45em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--border);
+}
+
+.sc-pw-meter-rules li.ok {
+  color: var(--text-secondary);
+}
+
+.sc-pw-meter-rules li.ok::before {
+  background: #3d7a5a;
+}
+
+@media (max-width: 960px) {
+  .sc-auth-shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  .sc-auth-stage {
+    padding: 12px 12px 0;
+    min-height: auto;
+  }
+
+  .sc-auth-scene {
+    padding: 22px 20px 20px;
+    border-radius: 22px;
+    gap: 18px;
+    min-height: 280px;
+  }
+
+  .sc-auth-scene-name {
+    font-size: 2rem;
+    margin-bottom: 8px;
+  }
+
+  .sc-auth-scene-headline {
+    font-size: 1.05rem;
+  }
+
+  .sc-auth-scene-line {
+    font-size: 13px;
+  }
+
+  .sc-auth-logo--hero {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    margin-bottom: 12px;
+  }
+
+  .sc-auth-deck {
+    height: 140px;
+    margin: 0;
+  }
+
+  .sc-auth-flash {
+    width: min(200px, 58%);
+    padding: 12px;
+  }
+
+  .sc-auth-flash-title {
+    font-size: 0.95rem;
+  }
+
+  .sc-auth-flash-body {
+    font-size: 11px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .sc-auth-scene-points {
+    display: none;
+  }
+
+  .sc-auth-panel {
+    padding: 28px 20px 36px;
+    align-items: flex-start;
+  }
+
+  .sc-auth-brand-mobile {
+    display: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .sc-auth-flash:nth-child(3) {
+    display: none;
+  }
+
+  .sc-auth-flash:nth-child(2) {
+    left: 28%;
+  }
 }
 
 .sc-pw-meter-bar {
@@ -2884,26 +3274,22 @@ body.sc-dragging .sc-hand > .sc-drop-zone.sc-hand-slot:hover {
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
 }
 
-[data-theme='dark'] .sc-auth-card {
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.04) inset,
-    0 18px 48px rgba(0, 0, 0, 0.5);
-  background: color-mix(in srgb, var(--surface-1) 94%, transparent);
-}
-
-[data-theme='dark'] .sc-auth-logo {
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+[data-theme='dark'] .sc-auth-panel {
+  background:
+    radial-gradient(ellipse 60% 40% at 100% 0%, color-mix(in srgb, var(--bg-accent) 40%, transparent), transparent 60%),
+    var(--bg);
 }
 
 [data-theme='dark'] .sc-auth-check input {
   accent-color: #e8e4dc;
 }
 
-.sc-auth-theme {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  z-index: 2;
+[data-theme='dark'] .sc-auth-brand-block--panel .sc-auth-logo {
+  background: linear-gradient(145deg, #f3efe6 0%, #cfc7b6 100%);
+}
+
+[data-theme='dark'] .sc-auth-brand-block--panel .sc-auth-logo-mark {
+  color: #1a1917;
 }
 
 /* ?? App shell / sidebar environments ?? */
@@ -4821,12 +5207,8 @@ ion-toast.sc-toast--info::part(container) {
     gap: 10px;
   }
 
-  .sc-auth-shell {
-    padding: 16px 12px calc(24px + env(safe-area-inset-bottom, 0px));
-  }
-
-  .sc-auth-card {
-    padding: 22px 16px 18px;
+  .sc-auth-panel-inner {
+    max-width: 100%;
   }
 
   .sc-flow-workspace.is-compact .sc-flow-save {

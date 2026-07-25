@@ -2,36 +2,20 @@ import { authApi } from '../api/auth.api';
 import { authStorage } from '../../../core/auth/auth-storage';
 import type { AuthUser } from '../types/auth.types';
 
+function isPersisted(): boolean {
+  return localStorage.getItem('sc_auth_persist') !== '0';
+}
+
 export const authFacade = {
-  async startRegister(input: {
+  async register(input: {
     email: string;
     username: string;
     password: string;
     name?: string;
-  }): Promise<{ email: string }> {
-    const result = await authApi.register(input);
-    return { email: result.email };
-  },
-
-  async verifyEmail(input: {
-    email: string;
-    code: string;
-    rememberMe?: boolean;
   }): Promise<AuthUser> {
-    const result = await authApi.verifyEmail({
-      email: input.email,
-      code: input.code,
-    });
-    authStorage.setSession(
-      result.accessToken,
-      result.user,
-      input.rememberMe ?? true,
-    );
+    const result = await authApi.register(input);
+    authStorage.setSession(result.accessToken, result.user, true);
     return result.user;
-  },
-
-  resendCode(email: string) {
-    return authApi.resendCode({ email });
   },
 
   async login(input: {
@@ -54,23 +38,12 @@ export const authFacade = {
     return result.user;
   },
 
-  forgotPassword(email: string) {
-    return authApi.forgotPassword({ email });
-  },
-
-  resetPassword(input: { token: string; password: string }) {
-    return authApi.resetPassword(input);
-  },
-
   async refreshMe(): Promise<AuthUser | null> {
     if (!authStorage.getToken()) return null;
     try {
       const user = await authApi.me();
       const token = authStorage.getToken();
-      if (token) {
-        const persist = localStorage.getItem('sc_auth_persist') !== '0';
-        authStorage.setSession(token, user, persist);
-      }
+      if (token) authStorage.setSession(token, user, isPersisted());
       return user;
     } catch {
       authStorage.clear();
@@ -85,10 +58,7 @@ export const authFacade = {
   }): Promise<AuthUser> {
     const user = await authApi.updateProfile(input);
     const token = authStorage.getToken();
-    if (token) {
-      const persist = localStorage.getItem('sc_auth_persist') !== '0';
-      authStorage.setSession(token, user, persist);
-    }
+    if (token) authStorage.setSession(token, user, isPersisted());
     return user;
   },
 

@@ -8,30 +8,11 @@ export const authApi = {
     password: string;
     name?: string;
   }) {
-    return httpClient.post<{ ok: boolean; email: string }>(
-      '/auth/register',
-      input,
-    );
-  },
-
-  verifyEmail(input: { email: string; code: string }) {
-    return httpClient.post<AuthResponse>('/auth/verify-email', input);
-  },
-
-  resendCode(input: { email: string }) {
-    return httpClient.post<{ ok: boolean }>('/auth/resend-code', input);
+    return httpClient.post<AuthResponse>('/auth/register', input);
   },
 
   login(input: { login: string; password: string; rememberMe?: boolean }) {
     return httpClient.post<AuthResponse>('/auth/login', input);
-  },
-
-  forgotPassword(input: { email: string }) {
-    return httpClient.post<{ ok: boolean }>('/auth/forgot-password', input);
-  },
-
-  resetPassword(input: { token: string; password: string }) {
-    return httpClient.post<{ ok: boolean }>('/auth/reset-password', input);
   },
 
   me() {
