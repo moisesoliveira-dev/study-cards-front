@@ -19,7 +19,6 @@ import {
   documentTextOutline,
   folderOpenOutline,
   gridOutline,
-  imageOutline,
   libraryOutline,
   listOutline,
   bookOutline,
@@ -32,7 +31,6 @@ import {
 import { motion, useReducedMotion } from 'framer-motion';
 import { pdfLibraryFacade } from '../facades/pdf-library.facade';
 import { PdfReaderSheet } from '../components/PdfReaderSheet';
-import { PdfCoverImage } from '../components/PdfCoverImage';
 import type {
   PdfDocument,
   PdfGroup,
@@ -76,12 +74,10 @@ export default function PdfLibraryPage() {
   const reduce = useReducedMotion();
   const [presentAlert] = useIonAlert();
   const fileInput = useRef<HTMLInputElement>(null);
-  const coverInput = useRef<HTMLInputElement>(null);
   const [groups, setGroups] = useState<PdfGroup[]>([]);
   const [documents, setDocuments] = useState<PdfDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [coverSaving, setCoverSaving] = useState(false);
   const [collection, setCollection] = useState<Collection>('all');
   const [query, setQuery] = useState('');
   const [view, setView] = useState<ViewMode>('grid');
@@ -90,14 +86,12 @@ export default function PdfLibraryPage() {
   const [groupDescription, setGroupDescription] = useState('');
   const [groupColor, setGroupColor] = useState(GROUP_COLORS[0]);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
-  const [pendingCover, setPendingCover] = useState<File | null>(null);
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploadGroupId, setUploadGroupId] = useState('');
   const [editing, setEditing] = useState<PdfDocument | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editGroupId, setEditGroupId] = useState('');
   const [reading, setReading] = useState<PdfDocument | null>(null);
-  const [coverTargetId, setCoverTargetId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -187,7 +181,6 @@ export default function PdfLibraryPage() {
       return;
     }
     setPendingFile(file);
-    setPendingCover(null);
     setUploadTitle(file.name.replace(/\.pdf$/i, ''));
     setUploadGroupId(
       !['all', 'favorites', 'ungrouped'].includes(collection) ? collection : '',
@@ -195,77 +188,16 @@ export default function PdfLibraryPage() {
     if (fileInput.current) fileInput.current.value = '';
   };
 
-  const chooseCoverFile = (file?: File) => {
-    if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      toast.error(new Error('Escolha uma imagem (JPG, PNG, WEBP ou GIF).'));
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error(new Error('A capa deve ter no máximo 5 MB.'));
-      return;
-    }
-    if (coverTargetId) {
-      void applyCover(coverTargetId, file);
-      setCoverTargetId(null);
-    } else if (editing) {
-      void applyCover(editing.id, file);
-    } else {
-      setPendingCover(file);
-    }
-    if (coverInput.current) coverInput.current.value = '';
-  };
-
-  const applyCover = async (documentId: string, file: File) => {
-    setCoverSaving(true);
-    try {
-      const updated = await pdfLibraryFacade.setCover(documentId, file);
-      setDocuments((current) =>
-        current.map((item) => (item.id === updated.id ? updated : item)),
-      );
-      setEditing((current) =>
-        current?.id === updated.id ? updated : current,
-      );
-      toast.success('Capa atualizada');
-    } catch (error) {
-      toast.error(error);
-    } finally {
-      setCoverSaving(false);
-    }
-  };
-
-  const clearCover = async (documentId: string) => {
-    setCoverSaving(true);
-    try {
-      const updated = await pdfLibraryFacade.removeCover(documentId);
-      setDocuments((current) =>
-        current.map((item) => (item.id === updated.id ? updated : item)),
-      );
-      setEditing((current) =>
-        current?.id === updated.id ? updated : current,
-      );
-      toast.success('Capa removida');
-    } catch (error) {
-      toast.error(error);
-    } finally {
-      setCoverSaving(false);
-    }
-  };
-
   const upload = async () => {
     if (!pendingFile) return;
     setUploading(true);
     try {
-      let document = await pdfLibraryFacade.upload(pendingFile, {
+      const document = await pdfLibraryFacade.upload(pendingFile, {
         title: uploadTitle.trim() || undefined,
         groupId: uploadGroupId || undefined,
       });
-      if (pendingCover) {
-        document = await pdfLibraryFacade.setCover(document.id, pendingCover);
-      }
       setDocuments((current) => [document, ...current]);
       setPendingFile(null);
-      setPendingCover(null);
       toast.success('PDF adicionado à biblioteca');
     } catch (error) {
       toast.error(error);
@@ -397,13 +329,6 @@ export default function PdfLibraryPage() {
               accept="application/pdf,.pdf"
               hidden
               onChange={(event) => chooseFile(event.target.files?.[0])}
-            />
-            <input
-              ref={coverInput}
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif"
-              hidden
-              onChange={(event) => chooseCoverFile(event.target.files?.[0])}
             />
           </header>
 
@@ -548,25 +473,14 @@ export default function PdfLibraryPage() {
                       >
                         <button
                           type="button"
-                          className={`sc-pdf-cover${document.hasCover ? ' has-image' : ''}`}
+                          className="sc-pdf-cover"
                           onClick={() => setReading(document)}
                         >
                           <span className="sc-pdf-spine" />
-                          {document.hasCover ? (
-                            <PdfCoverImage
-                              documentId={document.id}
-                              hasCover={document.hasCover}
-                              alt={`Capa de ${document.title}`}
-                              className="sc-pdf-cover-img"
-                            />
-                          ) : (
-                            <>
-                              <span className="sc-pdf-file-type">PDF</span>
-                              <IonIcon icon={documentTextOutline} />
-                              <strong>{document.title}</strong>
-                              <span>{group?.name ?? 'Sem coleção'}</span>
-                            </>
-                          )}
+                          <span className="sc-pdf-file-type">PDF</span>
+                          <IonIcon icon={documentTextOutline} />
+                          <strong>{document.title}</strong>
+                          <span>{group?.name ?? 'Sem coleção'}</span>
                         </button>
                         <div className="sc-pdf-book-info">
                           <div>
@@ -591,17 +505,6 @@ export default function PdfLibraryPage() {
                               <IonIcon
                                 icon={document.favorite ? star : starOutline}
                               />
-                            </button>
-                            <button
-                              type="button"
-                              aria-label="Definir capa"
-                              title="Capa"
-                              onClick={() => {
-                                setCoverTargetId(document.id);
-                                coverInput.current?.click();
-                              }}
-                            >
-                              <IonIcon icon={imageOutline} />
                             </button>
                             <button
                               type="button"
@@ -764,38 +667,8 @@ export default function PdfLibraryPage() {
                 ))}
               </select>
             </label>
-            <div className="sc-pdf-cover-picker">
-              <span>Capa <small>opcional</small></span>
-              {pendingCover ? (
-                <div className="sc-pdf-cover-picker-row">
-                  <strong>{pendingCover.name}</strong>
-                  <button
-                    type="button"
-                    className="sc-btn"
-                    onClick={() => setPendingCover(null)}
-                  >
-                    Remover
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  className="sc-btn"
-                  onClick={() => {
-                    setCoverTargetId(null);
-                    coverInput.current?.click();
-                  }}
-                >
-                  <IonIcon icon={imageOutline} />
-                  Escolher imagem
-                </button>
-              )}
-            </div>
             <div className="sc-pdf-dialog-actions">
-              <button className="sc-btn" type="button" onClick={() => {
-                setPendingFile(null);
-                setPendingCover(null);
-              }}>
+              <button className="sc-btn" type="button" onClick={() => setPendingFile(null)}>
                 Cancelar
               </button>
               <button
@@ -841,53 +714,6 @@ export default function PdfLibraryPage() {
                 ))}
               </select>
             </label>
-            <div className="sc-pdf-cover-picker">
-              <span>Capa</span>
-              <div className="sc-pdf-cover-edit">
-                <div className={`sc-pdf-cover-preview${editing.hasCover ? ' has-image' : ''}`}>
-                  {editing.hasCover ? (
-                    <PdfCoverImage
-                      documentId={editing.id}
-                      hasCover={editing.hasCover}
-                      alt={`Capa de ${editing.title}`}
-                      className="sc-pdf-cover-img"
-                    />
-                  ) : (
-                    <IonIcon icon={imageOutline} />
-                  )}
-                </div>
-                <div className="sc-pdf-cover-picker-row">
-                  <button
-                    type="button"
-                    className="sc-btn"
-                    disabled={coverSaving}
-                    onClick={() => {
-                      setCoverTargetId(null);
-                      coverInput.current?.click();
-                    }}
-                  >
-                    {coverSaving ? (
-                      <IonSpinner name="crescent" />
-                    ) : (
-                      <>
-                        <IonIcon icon={imageOutline} />
-                        {editing.hasCover ? 'Trocar capa' : 'Adicionar capa'}
-                      </>
-                    )}
-                  </button>
-                  {editing.hasCover ? (
-                    <button
-                      type="button"
-                      className="sc-btn"
-                      disabled={coverSaving}
-                      onClick={() => void clearCover(editing.id)}
-                    >
-                      Remover
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-            </div>
             <div className="sc-pdf-dialog-actions">
               <button className="sc-btn" type="button" onClick={() => setEditing(null)}>
                 Cancelar

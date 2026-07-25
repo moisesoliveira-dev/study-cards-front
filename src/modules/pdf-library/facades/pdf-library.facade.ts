@@ -7,9 +7,6 @@ export const pdfLibraryFacade = {
   removeGroup: pdfLibraryApi.removeGroup,
   upload: pdfLibraryApi.upload,
   updateDocument: pdfLibraryApi.updateDocument,
-  setCover: pdfLibraryApi.setCover,
-  removeCover: pdfLibraryApi.removeCover,
   removeDocument: pdfLibraryApi.removeDocument,
   fetchBlob: (id: string) => pdfLibraryApi.file(id),
-  fetchCoverBlob: (id: string) => pdfLibraryApi.cover(id),
 };

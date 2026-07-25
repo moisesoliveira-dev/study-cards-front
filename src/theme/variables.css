@@ -5398,23 +5398,7 @@ ion-toast.sc-toast--info::part(container) {
   text-align: left;
 }
 .sc-pdf-cover::after { content: ""; position: absolute; inset: 0; background: linear-gradient(110deg, rgba(255,255,255,.14), transparent 30%, transparent 70%, rgba(0,0,0,.1)); pointer-events: none; }
-.sc-pdf-cover.has-image {
-  padding: 0;
-  background: #1a1917;
-}
-.sc-pdf-cover.has-image::after {
-  background: linear-gradient(180deg, transparent 55%, rgba(0,0,0,.45));
-}
-.sc-pdf-cover-img {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center top;
-}
-.sc-pdf-spine { position: absolute; z-index: 2; inset: 0 auto 0 8px; width: 8px; border-left: 1px solid rgba(255,255,255,.2); border-right: 1px solid rgba(0,0,0,.14); }
+.sc-pdf-spine { position: absolute; inset: 0 auto 0 8px; width: 8px; border-left: 1px solid rgba(255,255,255,.2); border-right: 1px solid rgba(0,0,0,.14); }
 .sc-pdf-file-type { position: absolute; top: 15px; right: 14px; padding: 4px 7px; border: 1px solid rgba(255,255,255,.35); border-radius: 6px; font-size: 9px; font-weight: 900; letter-spacing: .12em; }
 .sc-pdf-cover ion-icon { position: absolute; top: 18%; left: 27px; font-size: 38px; opacity: .82; }
 .sc-pdf-cover strong { position: relative; z-index: 1; display: -webkit-box; overflow: hidden; margin-bottom: 7px; font-family: Georgia, serif; font-size: clamp(17px, 2vw, 23px); line-height: 1.14; letter-spacing: -.02em; -webkit-line-clamp: 4; -webkit-box-orient: vertical; }
@@ -5436,7 +5420,6 @@ ion-toast.sc-toast--info::part(container) {
 .sc-pdf-grid.is-list .sc-pdf-cover > span:last-child,
 .sc-pdf-grid.is-list .sc-pdf-cover ion-icon,
 .sc-pdf-grid.is-list .sc-pdf-file-type { display: none; }
-.sc-pdf-grid.is-list .sc-pdf-cover.has-image .sc-pdf-cover-img { display: block; }
 .sc-pdf-grid.is-list .sc-pdf-book-info { align-items: center; padding: 0 8px; }
 .sc-pdf-grid.is-list .sc-pdf-book-info h3 { font-size: 15px; }
 .sc-pdf-grid.is-list .sc-pdf-book-actions { opacity: 1; }
@@ -5469,73 +5452,6 @@ ion-toast.sc-toast--info::part(container) {
 .sc-pdf-upload-file div { display: grid; min-width: 0; }
 .sc-pdf-upload-file strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sc-pdf-upload-file span { color: var(--text-muted); font-size: 11px; }
-
-.sc-pdf-cover-picker {
-  display: grid;
-  gap: 8px;
-  margin: 14px 0;
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.sc-pdf-cover-picker small {
-  color: var(--text-muted);
-  font-weight: 400;
-}
-
-.sc-pdf-cover-picker-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.sc-pdf-cover-picker-row strong {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.sc-pdf-cover-edit {
-  display: grid;
-  grid-template-columns: 72px minmax(0, 1fr);
-  gap: 12px;
-  align-items: center;
-}
-
-.sc-pdf-cover-preview {
-  position: relative;
-  width: 72px;
-  aspect-ratio: 0.78;
-  overflow: hidden;
-  border-radius: 6px 10px 10px 6px;
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  display: grid;
-  place-items: center;
-  color: var(--text-muted);
-}
-
-.sc-pdf-cover-preview ion-icon {
-  font-size: 22px;
-}
-
-.sc-pdf-cover-preview.has-image {
-  background: #1a1917;
-}
-
-.sc-pdf-cover-preview .sc-pdf-cover-img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
 
 .sc-pdf-reader-modal {
   z-index: 10040;

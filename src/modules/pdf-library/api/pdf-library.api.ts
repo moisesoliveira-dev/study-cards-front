@@ -32,18 +32,6 @@ export const pdfLibraryApi = {
       `/pdf-library/documents/${encodeURIComponent(id)}`,
       input,
     ),
-  setCover: (id: string, file: File) => {
-    const form = new FormData();
-    form.append('file', file);
-    return httpClient.postForm<PdfDocument>(
-      `/pdf-library/documents/${encodeURIComponent(id)}/cover`,
-      form,
-    );
-  },
-  removeCover: (id: string) =>
-    httpClient.delete<PdfDocument>(
-      `/pdf-library/documents/${encodeURIComponent(id)}/cover`,
-    ),
   removeDocument: (id: string) =>
     httpClient.delete<{ ok: true }>(
       `/pdf-library/documents/${encodeURIComponent(id)}`,
@@ -51,9 +39,5 @@ export const pdfLibraryApi = {
   file: (id: string) =>
     httpClient.getBlob(
       `/pdf-library/documents/${encodeURIComponent(id)}/file`,
-    ),
-  cover: (id: string) =>
-    httpClient.getBlob(
-      `/pdf-library/documents/${encodeURIComponent(id)}/cover`,
     ),
 };
