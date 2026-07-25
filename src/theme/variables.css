@@ -1308,6 +1308,33 @@ ion-popover {
   border-color: var(--border-accent);
 }
 
+.sc-doc-toolbar button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.sc-doc-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 2px 2px;
+  background: var(--border);
+}
+
+.sc-doc-toolbar .sc-doc-swatch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 6px;
+}
+
+.sc-doc-swatch-dot {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
 .sc-doc-lang {
   font: inherit;
   font-size: 12px;
@@ -1410,6 +1437,63 @@ ion-popover {
 .sc-doc-surface .tiptap ul,
 .sc-doc-surface .tiptap ol {
   padding-left: 1.3em;
+}
+
+.sc-doc-surface .tiptap h3 {
+  font-size: 1.1rem;
+  margin: 0.7em 0 0.3em;
+}
+
+.sc-doc-surface .tiptap mark {
+  border-radius: 3px;
+  padding: 0 2px;
+  color: #1f2937;
+}
+
+.sc-doc-surface .tiptap a {
+  color: var(--text-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.sc-doc-surface .tiptap hr {
+  border: none;
+  border-top: 1px solid var(--border-strong);
+  margin: 1.2em 0;
+}
+
+.sc-doc-surface .tiptap ul[data-type='taskList'] {
+  list-style: none;
+  padding-left: 0.2em;
+}
+
+.sc-doc-surface .tiptap ul[data-type='taskList'] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.sc-doc-surface .tiptap ul[data-type='taskList'] li > label {
+  flex: 0 0 auto;
+  margin-top: 0.35em;
+  user-select: none;
+}
+
+.sc-doc-surface .tiptap ul[data-type='taskList'] li > div {
+  flex: 1 1 auto;
+}
+
+.sc-doc-surface .tiptap ul[data-type='taskList'] input[type='checkbox'] {
+  accent-color: var(--text-accent);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
+.sc-doc-surface .tiptap ul[data-type='taskList'] li[data-checked='true'] > div {
+  color: var(--text-muted);
+  text-decoration: line-through;
 }
 
 .sc-face-compose.is-preview {
