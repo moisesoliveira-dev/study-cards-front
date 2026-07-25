@@ -8,8 +8,8 @@ import {
 import { IonIcon } from '@ionic/react';
 import {
   addOutline,
-  chevronDownOutline,
-  chevronUpOutline,
+  chevronBackOutline,
+  chevronForwardOutline,
   removeOutline,
   scanOutline,
 } from 'ionicons/icons';
@@ -19,60 +19,59 @@ import { ensurePdfWorker } from '../pdf-worker';
 type Props = {
   url: string;
   title: string;
-  onTextSelected?: (text: string, rect: DOMRect) => void;
-  onSelectionCleared?: () => void;
+  onTextSelected?: (text: string) => void;
 };
 
 const MIN_SCALE = 0.5;
 const MAX_SCALE = 3;
-const DEFAULT_SCALE = 1.15;
-const ZOOM_STEP = 0.15;
+const DEFAULT_SCALE = 1.1;
+const ZOOM_STEP = 0.12;
 
 const clampScale = (value: number) =>
   Math.min(MAX_SCALE, Math.max(MIN_SCALE, Math.round(value * 100) / 100));
 
-export function PdfSelectableViewer({
-  url,
-  title,
-  onTextSelected,
-  onSelectionCleared,
-}: Props) {
+export function PdfSelectableViewer({ url, title, onTextSelected }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
   const pdfRef = useRef<PDFDocumentProxy | null>(null);
   const baseWidthRef = useRef(0);
   const pendingPageRef = useRef<number | null>(null);
+  const scaleRef = useRef(DEFAULT_SCALE);
+  const selectingRef = useRef(false);
 
   const [error, setError] = useState<string | null>(null);
   const [numPages, setNumPages] = useState(0);
+  const [renderedPages, setRenderedPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [scale, setScale] = useState(DEFAULT_SCALE);
   const [docToken, setDocToken] = useState(0);
-  const [ready, setReady] = useState(false);
+  const [booting, setBooting] = useState(true);
+
+  scaleRef.current = scale;
 
   const getScrollParent = useCallback(
-    () => rootRef.current?.parentElement ?? null,
+    () => rootRef.current?.closest('.sc-pdf-reader-stage') as HTMLElement | null,
     [],
   );
 
   const scrollToPage = useCallback((pageNumber: number) => {
     const host = hostRef.current;
-    const scroller = rootRef.current?.parentElement;
+    const scroller = getScrollParent();
     if (!host || !scroller) return;
     const pageEl = host.querySelector<HTMLElement>(
       `.sc-pdf-page[data-page="${pageNumber}"]`,
     );
     if (!pageEl) return;
-    scroller.scrollTo({ top: Math.max(0, pageEl.offsetTop - 8) });
-  }, []);
+    scroller.scrollTo({ top: Math.max(0, pageEl.offsetTop - 12) });
+  }, [getScrollParent]);
 
-  // Load the document (only when the url changes).
   useEffect(() => {
     let cancelled = false;
     let loading: ReturnType<typeof getDocument> | null = null;
     setError(null);
-    setReady(false);
+    setBooting(true);
     setNumPages(0);
+    setRenderedPages(0);
     setCurrentPage(1);
     pdfRef.current = null;
 
@@ -90,13 +89,22 @@ export function PdfSelectableViewer({
         pdfRef.current = pdf;
         const page1 = await pdf.getPage(1);
         baseWidthRef.current = page1.getViewport({ scale: 1 }).width;
+
+        // Fit width on first open when possible.
+        const scroller = getScrollParent();
+        if (scroller && baseWidthRef.current) {
+          const fitted = clampScale(
+            (scroller.clientWidth - 40) / baseWidthRef.current,
+          );
+          setScale(fitted);
+        }
+
         setNumPages(pdf.numPages);
         setDocToken((t) => t + 1);
       } catch (err) {
         if (!cancelled) {
-          setError(
-            err instanceof Error ? err.message : 'Falha ao abrir o PDF',
-          );
+          setError(err instanceof Error ? err.message : 'Falha ao abrir o PDF');
+          setBooting(false);
         }
       }
     })();
@@ -118,9 +126,9 @@ export function PdfSelectableViewer({
         }
       })();
     };
-  }, [url]);
+  }, [getScrollParent, url]);
 
-  // Render every page for the current scale.
+  // Progressive page render — first page unlocks UI quickly.
   useEffect(() => {
     const host = hostRef.current;
     const pdf = pdfRef.current;
@@ -129,7 +137,8 @@ export function PdfSelectableViewer({
     let cancelled = false;
     const textLayers: TextLayer[] = [];
     const renderTasks: RenderTask[] = [];
-    setReady(false);
+    setRenderedPages(0);
+    setBooting(true);
     host.replaceChildren();
 
     void (async () => {
@@ -137,7 +146,7 @@ export function PdfSelectableViewer({
         for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
           if (cancelled) break;
           const page = await pdf.getPage(pageNumber);
-          const viewport = page.getViewport({ scale });
+          const viewport = page.getViewport({ scale: scaleRef.current });
 
           const pageEl = document.createElement('div');
           pageEl.className = 'sc-pdf-page';
@@ -146,10 +155,10 @@ export function PdfSelectableViewer({
           pageEl.style.height = `${viewport.height}px`;
 
           const canvas = document.createElement('canvas');
-          const context = canvas.getContext('2d');
+          const context = canvas.getContext('2d', { alpha: false });
           if (!context) throw new Error('Canvas indisponível');
 
-          const outputScale = window.devicePixelRatio || 1;
+          const outputScale = Math.min(window.devicePixelRatio || 1, 2);
           canvas.width = Math.floor(viewport.width * outputScale);
           canvas.height = Math.floor(viewport.height * outputScale);
           canvas.style.width = `${viewport.width}px`;
@@ -178,14 +187,17 @@ export function PdfSelectableViewer({
           });
           textLayers.push(textLayer);
           await textLayer.render();
-        }
 
-        if (!cancelled) {
-          setReady(true);
-          if (pendingPageRef.current) {
-            const target = pendingPageRef.current;
-            pendingPageRef.current = null;
-            requestAnimationFrame(() => scrollToPage(target));
+          if (!cancelled) {
+            setRenderedPages(pageNumber);
+            if (pageNumber === 1) {
+              setBooting(false);
+              if (pendingPageRef.current) {
+                const target = pendingPageRef.current;
+                pendingPageRef.current = null;
+                requestAnimationFrame(() => scrollToPage(target));
+              }
+            }
           }
         }
       } catch (err) {
@@ -194,6 +206,7 @@ export function PdfSelectableViewer({
           setError(
             err instanceof Error ? err.message : 'Falha ao renderizar o PDF',
           );
+          setBooting(false);
         }
       }
     })();
@@ -211,14 +224,13 @@ export function PdfSelectableViewer({
     };
   }, [docToken, scale, scrollToPage]);
 
-  // Track the page currently in view.
   useEffect(() => {
     const scroller = getScrollParent();
     const host = hostRef.current;
-    if (!scroller || !host || !ready) return;
+    if (!scroller || !host || renderedPages < 1) return;
 
     const onScroll = () => {
-      const mid = scroller.scrollTop + scroller.clientHeight / 2;
+      const mid = scroller.scrollTop + scroller.clientHeight / 3;
       const pages = host.querySelectorAll<HTMLElement>('.sc-pdf-page');
       let best = 1;
       for (const pageEl of pages) {
@@ -231,79 +243,95 @@ export function PdfSelectableViewer({
     onScroll();
     scroller.addEventListener('scroll', onScroll, { passive: true });
     return () => scroller.removeEventListener('scroll', onScroll);
-  }, [getScrollParent, ready, numPages]);
+  }, [getScrollParent, renderedPages, numPages]);
 
-  // Ctrl/⌘ + wheel to zoom.
   useEffect(() => {
     const scroller = getScrollParent();
     if (!scroller) return;
     const onWheel = (e: WheelEvent) => {
       if (!e.ctrlKey && !e.metaKey) return;
       e.preventDefault();
+      pendingPageRef.current = currentPage;
       setScale((s) => clampScale(s + (e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP)));
     };
     scroller.addEventListener('wheel', onWheel, { passive: false });
     return () => scroller.removeEventListener('wheel', onWheel);
-  }, [getScrollParent]);
+  }, [currentPage, getScrollParent]);
 
-  const zoomBy = useCallback((delta: number) => {
-    pendingPageRef.current = currentPage;
-    setScale((s) => clampScale(s + delta));
-  }, [currentPage]);
+  const zoomBy = useCallback(
+    (delta: number) => {
+      pendingPageRef.current = currentPage;
+      setScale((s) => clampScale(s + delta));
+    },
+    [currentPage],
+  );
 
   const fitWidth = useCallback(() => {
     const scroller = getScrollParent();
     if (!scroller || !baseWidthRef.current) return;
-    const available = scroller.clientWidth - 32;
     pendingPageRef.current = currentPage;
-    setScale(clampScale(available / baseWidthRef.current));
+    setScale(clampScale((scroller.clientWidth - 40) / baseWidthRef.current));
   }, [currentPage, getScrollParent]);
 
   const goToPage = useCallback(
     (pageNumber: number) => {
       const clamped = Math.min(numPages, Math.max(1, pageNumber));
       setCurrentPage(clamped);
+      if (clamped > renderedPages) {
+        // Page not ready yet — jump when available
+        pendingPageRef.current = clamped;
+        return;
+      }
       scrollToPage(clamped);
     },
-    [numPages, scrollToPage],
+    [numPages, renderedPages, scrollToPage],
   );
 
+  // Stable selection: capture on mouseup / touchend without clearing highlight.
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
 
-    const handleMouseUp = () => {
+    const readSelection = () => {
       const selection = window.getSelection();
-      if (!selection || selection.isCollapsed || !selection.rangeCount) {
-        onSelectionCleared?.();
-        return;
-      }
-      const text = selection.toString().replace(/\s+\n/g, '\n').trim();
-      if (!text) {
-        onSelectionCleared?.();
-        return;
-      }
+      if (!selection || selection.isCollapsed || !selection.rangeCount) return;
       const anchor = selection.anchorNode;
-      if (!anchor || !host.contains(anchor)) {
-        onSelectionCleared?.();
-        return;
-      }
-      const range = selection.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
-      if (rect.width === 0 && rect.height === 0) {
-        onSelectionCleared?.();
-        return;
-      }
-      onTextSelected?.(text, rect);
+      if (!anchor || !host.contains(anchor)) return;
+      const text = selection.toString().replace(/\s+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+      if (!text) return;
+      onTextSelected?.(text);
     };
 
-    host.addEventListener('mouseup', handleMouseUp);
-    return () => host.removeEventListener('mouseup', handleMouseUp);
-  }, [onSelectionCleared, onTextSelected, ready]);
+    const onDown = () => {
+      selectingRef.current = true;
+    };
+    const onUp = () => {
+      if (!selectingRef.current) return;
+      selectingRef.current = false;
+      // Defer so the browser finishes updating the selection range.
+      window.setTimeout(readSelection, 0);
+    };
+
+    host.addEventListener('mousedown', onDown);
+    host.addEventListener('mouseup', onUp);
+    host.addEventListener('touchstart', onDown, { passive: true });
+    host.addEventListener('touchend', onUp);
+    return () => {
+      host.removeEventListener('mousedown', onDown);
+      host.removeEventListener('mouseup', onUp);
+      host.removeEventListener('touchstart', onDown);
+      host.removeEventListener('touchend', onUp);
+    };
+  }, [onTextSelected, renderedPages]);
+
+  const progress =
+    numPages > 0 ? Math.round((renderedPages / numPages) * 100) : 0;
+  const stillLoading = renderedPages < numPages && numPages > 0;
 
   if (error) {
     return (
-      <div className="sc-pdf-reader-loading">
+      <div className="sc-pdf-boot-error">
+        <strong>Não foi possível abrir o PDF</strong>
         <span>{error}</span>
       </div>
     );
@@ -311,7 +339,7 @@ export function PdfSelectableViewer({
 
   return (
     <div ref={rootRef} className="sc-pdf-selectable" aria-label={title}>
-      <div className="sc-pdf-toolbar" role="toolbar" aria-label="Controles do PDF">
+      <div className="sc-pdf-viewer-bar" role="toolbar" aria-label="Controles do PDF">
         <div className="sc-pdf-toolbar-group">
           <button
             type="button"
@@ -321,7 +349,7 @@ export function PdfSelectableViewer({
             aria-label="Página anterior"
             title="Página anterior"
           >
-            <IonIcon icon={chevronUpOutline} />
+            <IonIcon icon={chevronBackOutline} />
           </button>
           <span className="sc-pdf-page-indicator">
             <input
@@ -341,11 +369,11 @@ export function PdfSelectableViewer({
             type="button"
             className="sc-pdf-tool-btn"
             onClick={() => goToPage(currentPage + 1)}
-            disabled={currentPage >= numPages}
+            disabled={!numPages || currentPage >= numPages}
             aria-label="Próxima página"
             title="Próxima página"
           >
-            <IonIcon icon={chevronDownOutline} />
+            <IonIcon icon={chevronForwardOutline} />
           </button>
         </div>
 
@@ -367,9 +395,9 @@ export function PdfSelectableViewer({
               pendingPageRef.current = currentPage;
               setScale(DEFAULT_SCALE);
             }}
-            title="Restaurar zoom (100%)"
+            title="Zoom padrão"
           >
-            {Math.round((scale / DEFAULT_SCALE) * 100)}%
+            {Math.round(scale * 100)}%
           </button>
           <button
             type="button"
@@ -391,17 +419,30 @@ export function PdfSelectableViewer({
             <IonIcon icon={scanOutline} />
           </button>
         </div>
+
+        {stillLoading ? (
+          <div
+            className="sc-pdf-render-progress"
+            role="status"
+            aria-label={`Carregando páginas ${progress}%`}
+          >
+            <span />
+            <i style={{ width: `${progress}%` }} />
+          </div>
+        ) : null}
       </div>
 
-      {!ready ? (
-        <div className="sc-pdf-reader-loading sc-pdf-selectable-loading">
-          <span>
-            Preparando leitura
-            {numPages ? ` · ${numPages} páginas` : '…'}
-          </span>
+      {booting ? (
+        <div className="sc-pdf-boot" aria-busy="true">
+          <div className="sc-pdf-boot-skeleton" />
+          <p>Abrindo páginas…</p>
         </div>
       ) : null}
-      <div ref={hostRef} className="sc-pdf-pages" />
+
+      <div
+        ref={hostRef}
+        className={`sc-pdf-pages${booting ? ' is-booting' : ''}`}
+      />
     </div>
   );
 }

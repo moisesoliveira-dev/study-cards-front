@@ -5358,91 +5358,64 @@ ion-toast.sc-toast--info::part(container) {
 }
 
 .sc-pdf-reader-shell {
-  width: min(1080px, 100%);
-  height: min(100%, 960px);
+  display: flex;
+  flex-direction: column;
+  width: min(1280px, 100%);
+  height: min(100%, 920px);
   max-height: 100%;
-  background:
-    linear-gradient(180deg, var(--surface-1), color-mix(in srgb, var(--surface-2) 55%, var(--surface-1)));
+  overflow: hidden;
+  background: var(--surface-1);
 }
 
-@media (min-width: 720px) {
+@media (min-width: 900px) {
   .sc-pdf-reader-shell {
-    margin: 20px auto;
-    max-height: calc(100% - 40px);
+    margin: 16px auto;
+    max-height: calc(100% - 32px);
+    border-radius: 18px;
   }
 }
 
 .sc-pdf-reader-header {
-  background: color-mix(in srgb, var(--surface-1) 92%, #7c5cfc);
-}
-
-.sc-pdf-reader-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
   flex-shrink: 0;
-  padding: 6px 10px;
-  border: 1px solid color-mix(in srgb, #7c5cfc 24%, var(--border));
-  border-radius: 999px;
-  color: #7254e5;
-  background: color-mix(in srgb, #7c5cfc 10%, var(--surface-1));
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  border-bottom: 0.5px solid var(--border);
+  background: color-mix(in srgb, var(--surface-1) 94%, #7c5cfc);
 }
 
-.sc-pdf-reader-badge ion-icon {
-  font-size: 14px;
-}
-
-.sc-pdf-reader-body {
-  position: relative;
+.sc-pdf-reader-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
   flex: 1;
   min-height: 0;
-  padding: 0;
-  overflow: auto;
-  background:
-    radial-gradient(circle at 50% 0%, color-mix(in srgb, #7c5cfc 8%, transparent), transparent 42%),
-    var(--surface-2);
 }
 
-.sc-pdf-reader-frame {
-  display: block;
-  width: 100%;
-  height: 100%;
-  border: 0;
-  background: #525659;
+.sc-pdf-reader-stage {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  background:
+    radial-gradient(circle at 50% 0%, color-mix(in srgb, #7c5cfc 7%, transparent), transparent 40%),
+    color-mix(in srgb, var(--surface-2) 70%, #1a1a1a);
 }
 
 .sc-pdf-selectable {
   position: relative;
   min-height: 100%;
-  padding: 18px 12px 36px;
+  padding: 0 0 40px;
 }
 
-.sc-pdf-selectable-loading {
-  position: sticky;
-  top: 52px;
-  z-index: 2;
-  min-height: 0;
-  padding: 10px;
-  background: color-mix(in srgb, var(--surface-1) 88%, transparent);
-}
-
-.sc-pdf-toolbar {
+.sc-pdf-viewer-bar {
   position: sticky;
   top: 0;
-  z-index: 5;
+  z-index: 6;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
   flex-wrap: wrap;
-  margin: -18px -12px 14px;
   padding: 8px 12px;
-  background: color-mix(in srgb, var(--surface-1) 94%, transparent);
-  backdrop-filter: blur(8px);
+  background: color-mix(in srgb, var(--surface-1) 92%, transparent);
+  backdrop-filter: blur(10px);
   border-bottom: 0.5px solid var(--border);
 }
 
@@ -5456,43 +5429,43 @@ ion-toast.sc-toast--info::part(container) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
   border: 0.5px solid var(--border);
   background: var(--surface-2);
   color: var(--text-primary);
-  font-size: 18px;
+  font-size: 17px;
   cursor: pointer;
-  transition: background 0.15s ease, opacity 0.15s ease;
 }
 
 .sc-pdf-tool-btn:hover:not(:disabled) {
-  background: color-mix(in srgb, #7c5cfc 16%, var(--surface-2));
+  background: color-mix(in srgb, #7c5cfc 14%, var(--surface-2));
 }
 
 .sc-pdf-tool-btn:disabled {
-  opacity: 0.4;
+  opacity: 0.35;
   cursor: not-allowed;
 }
 
 .sc-pdf-page-indicator {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
+  gap: 5px;
+  font-size: 12px;
   color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
 }
 
 .sc-pdf-page-indicator input {
-  width: 48px;
-  padding: 5px 6px;
-  border-radius: 8px;
+  width: 44px;
+  padding: 4px 5px;
+  border-radius: 7px;
   border: 0.5px solid var(--border);
   background: var(--surface-1);
   color: var(--text-primary);
   text-align: center;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .sc-pdf-page-indicator input::-webkit-outer-spin-button,
@@ -5502,35 +5475,98 @@ ion-toast.sc-toast--info::part(container) {
 }
 
 .sc-pdf-zoom-value {
-  min-width: 56px;
-  height: 34px;
-  padding: 0 8px;
-  border-radius: 10px;
+  min-width: 52px;
+  height: 32px;
+  padding: 0 7px;
+  border-radius: 9px;
   border: 0.5px solid var(--border);
   background: var(--surface-2);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
 
-.sc-pdf-zoom-value:hover {
-  background: color-mix(in srgb, #7c5cfc 16%, var(--surface-2));
+.sc-pdf-render-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  overflow: hidden;
+  background: transparent;
 }
 
-.card-compose-note {
-  margin: 8px 0 0;
-  font-size: 12px;
-  line-height: 1.4;
+.sc-pdf-render-progress i {
+  display: block;
+  height: 100%;
+  background: #7c5cfc;
+  transition: width 0.2s ease;
+}
+
+.sc-pdf-boot {
+  display: grid;
+  place-items: center;
+  gap: 14px;
+  min-height: 280px;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.sc-pdf-boot-skeleton {
+  width: min(220px, 55%);
+  aspect-ratio: 0.72;
+  border-radius: 4px;
+  background:
+    linear-gradient(
+      100deg,
+      color-mix(in srgb, var(--surface-1) 40%, transparent) 20%,
+      color-mix(in srgb, #fff 18%, transparent) 40%,
+      color-mix(in srgb, var(--surface-1) 40%, transparent) 60%
+    );
+  background-size: 200% 100%;
+  animation: sc-pdf-shimmer 1.2s ease-in-out infinite;
+  box-shadow: 0 12px 28px color-mix(in srgb, #000 22%, transparent);
+}
+
+@keyframes sc-pdf-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+.sc-pdf-boot p {
+  margin: 0;
+}
+
+.sc-pdf-boot-error {
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  min-height: 280px;
+  padding: 32px;
   text-align: center;
   color: var(--text-secondary);
+}
+
+.sc-pdf-boot-error strong {
+  color: var(--text-primary);
 }
 
 .sc-pdf-pages {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 18px;
+  gap: 16px;
+  padding: 16px 12px 28px;
+}
+
+.sc-pdf-pages.is-booting {
+  opacity: 0;
+  pointer-events: none;
+  height: 0;
+  overflow: hidden;
+  padding: 0;
 }
 
 .sc-pdf-page {
@@ -5539,7 +5575,7 @@ ion-toast.sc-toast--info::part(container) {
   background: #fff;
   box-shadow:
     0 1px 0 color-mix(in srgb, #000 8%, transparent),
-    0 18px 40px color-mix(in srgb, #000 18%, transparent);
+    0 14px 36px color-mix(in srgb, #000 20%, transparent);
 }
 
 .sc-pdf-page canvas {
@@ -5554,6 +5590,8 @@ ion-toast.sc-toast--info::part(container) {
   text-align: initial;
   opacity: 1;
   caret-color: #7c5cfc;
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .sc-pdf-page .textLayer span,
@@ -5566,38 +5604,66 @@ ion-toast.sc-toast--info::part(container) {
 }
 
 .sc-pdf-page .textLayer ::selection {
-  background: color-mix(in srgb, #7c5cfc 42%, transparent);
+  background: color-mix(in srgb, #7c5cfc 45%, transparent);
 }
 
-.sc-pdf-selection-menu {
-  position: fixed;
-  z-index: 10060;
-  width: min(300px, calc(100vw - 24px));
-  padding: 12px;
-  border: 1px solid color-mix(in srgb, #7c5cfc 28%, var(--border));
-  border-radius: 14px;
-  color: var(--text-primary);
-  background: color-mix(in srgb, var(--surface-1) 96%, #7c5cfc);
-  box-shadow: var(--shadow-soft);
-  backdrop-filter: blur(8px);
+/* Side panel — card builder */
+.sc-pdf-card-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px 14px 18px;
+  border-left: 0.5px solid var(--border);
+  background: var(--surface-1);
 }
 
-.sc-pdf-selection-preview {
-  max-height: 72px;
-  overflow: hidden;
-  margin-bottom: 10px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  color: var(--text-secondary);
-  background: var(--surface-2);
+.sc-pdf-card-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.sc-pdf-card-kicker {
+  display: block;
+  color: #7254e5;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.sc-pdf-card-panel-head h2 {
+  margin: 3px 0 0;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+
+.sc-pdf-created-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: #1d9e75;
+  background: color-mix(in srgb, #1d9e75 12%, var(--surface-2));
   font-size: 12px;
-  line-height: 1.4;
+  font-weight: 700;
 }
 
-.sc-pdf-selection-subject {
+.sc-pdf-created-pill ion-icon {
+  font-size: 14px;
+}
+
+.sc-pdf-field {
   display: grid;
-  gap: 6px;
-  margin-bottom: 10px;
+  gap: 5px;
+  min-width: 0;
+}
+
+.sc-pdf-field > span {
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 700;
@@ -5605,84 +5671,169 @@ ion-toast.sc-toast--info::part(container) {
   text-transform: uppercase;
 }
 
-.sc-pdf-selection-subject select {
-  min-height: 36px;
+.sc-pdf-field input,
+.sc-pdf-field select,
+.sc-pdf-field textarea {
+  width: 100%;
+  border: 0.5px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-primary);
+  background: var(--surface-2);
+  font: inherit;
+}
+
+.sc-pdf-field input,
+.sc-pdf-field select {
+  min-height: 38px;
   padding: 0 10px;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  color: var(--text-primary);
-  background: var(--surface-1);
-  text-transform: none;
-  letter-spacing: normal;
-  font-weight: 500;
-  font-size: 13px;
 }
 
-.sc-pdf-selection-label {
-  margin: 0 0 8px;
-  color: var(--text-primary);
-  font-size: 13px;
-  font-weight: 700;
+.sc-pdf-field textarea {
+  padding: 9px 10px;
+  resize: vertical;
+  line-height: 1.45;
 }
 
-.sc-pdf-selection-actions {
+.sc-pdf-field input:focus,
+.sc-pdf-field select:focus,
+.sc-pdf-field textarea:focus {
+  outline: none;
+  border-color: color-mix(in srgb, #7c5cfc 55%, var(--border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, #7c5cfc 14%, transparent);
+}
+
+.sc-pdf-field-row {
   display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.sc-pdf-clip {
+  padding: 10px;
+  border: 0.5px dashed var(--border-strong);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-2) 70%, transparent);
+}
+
+.sc-pdf-clip.has-text {
+  border-style: solid;
+  border-color: color-mix(in srgb, #7c5cfc 35%, var(--border));
+  background: color-mix(in srgb, #7c5cfc 7%, var(--surface-2));
+}
+
+.sc-pdf-clip-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.sc-pdf-clip-head span {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.sc-pdf-clip-head button {
+  border: 0;
+  background: transparent;
+  color: #7254e5;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sc-pdf-clip > p {
+  margin: 0 0 10px;
+  min-height: 42px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.sc-pdf-assign-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 6px;
 }
 
-.sc-pdf-selection-actions button {
+.sc-pdf-assign-grid button {
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr);
-  align-items: center;
-  gap: 8px;
-  width: 100%;
+  justify-items: start;
+  gap: 1px;
   padding: 8px 9px;
-  border: 0;
+  border: 0.5px solid var(--border);
   border-radius: 10px;
   color: var(--text-secondary);
-  background: transparent;
+  background: var(--surface-1);
   text-align: left;
+  cursor: pointer;
 }
 
-.sc-pdf-selection-actions button:hover:not(:disabled) {
-  color: var(--text-primary);
-  background: color-mix(in srgb, #7c5cfc 12%, var(--surface-2));
-}
-
-.sc-pdf-selection-actions button:disabled {
-  opacity: 0.45;
-}
-
-.sc-pdf-selection-actions button ion-icon {
-  font-size: 18px;
+.sc-pdf-assign-grid button ion-icon {
+  font-size: 16px;
   color: #7254e5;
 }
 
-.sc-pdf-selection-actions button span {
-  display: grid;
-  min-width: 0;
+.sc-pdf-assign-grid button strong {
+  font-size: 12px;
+  color: var(--text-primary);
 }
 
-.sc-pdf-selection-actions button strong {
-  font-size: 13px;
-}
-
-.sc-pdf-selection-actions button small {
+.sc-pdf-assign-grid button small {
+  font-size: 10px;
   color: var(--text-muted);
-  font-size: 11px;
 }
 
-.sc-pdf-reader-loading {
+.sc-pdf-assign-grid button:hover:not(:disabled),
+.sc-pdf-assign-grid button.is-last {
+  border-color: color-mix(in srgb, #7c5cfc 40%, var(--border));
+  background: color-mix(in srgb, #7c5cfc 10%, var(--surface-1));
+}
+
+.sc-pdf-assign-grid button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.sc-pdf-card-actions {
   display: grid;
-  place-items: center;
-  gap: 12px;
-  min-height: 420px;
-  height: 100%;
-  color: var(--text-muted);
-  font-size: 14px;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  margin-top: 4px;
 }
 
-@media (max-width: 720px) {
+.sc-pdf-card-actions .sc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+}
+
+.sc-pdf-card-hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.sc-pdf-card-hint.is-warn {
+  color: #ba7517;
+}
+
+.card-compose-note {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 900px) {
   .sc-pdf-reader-shell {
     width: 100%;
     height: 100%;
@@ -5691,17 +5842,18 @@ ion-toast.sc-toast--info::part(container) {
     border-radius: 0;
   }
 
-  .sc-pdf-reader-badge {
-    display: none;
+  .sc-pdf-reader-workspace {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) minmax(280px, 42vh);
   }
 
-  .sc-pdf-selectable {
-    padding: 12px 0 28px;
+  .sc-pdf-card-panel {
+    border-left: 0;
+    border-top: 0.5px solid var(--border);
   }
 
   .sc-pdf-page {
-    width: min(100%, 100vw) !important;
-    height: auto !important;
+    max-width: calc(100vw - 24px);
   }
 }
 
@@ -5734,4 +5886,5 @@ ion-toast.sc-toast--info::part(container) {
   .sc-pdf-cover strong { font-size: 15px; }
   .sc-pdf-book-info { display: block; }
   .sc-pdf-book-actions { margin-top: 5px; opacity: 1; }
+  .sc-pdf-field-row { grid-template-columns: 1fr; }
 }
