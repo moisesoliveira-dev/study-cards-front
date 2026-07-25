@@ -5432,7 +5432,6 @@ ion-toast.sc-toast--info::part(container) {
   align-items: center;
   gap: 16px;
   padding: 16px 12px 40px;
-  cursor: crosshair;
 }
 
 .sc-pdf-pages.is-booting {
@@ -5451,34 +5450,75 @@ ion-toast.sc-toast--info::part(container) {
   box-shadow:
     0 1px 0 color-mix(in srgb, #000 8%, transparent),
     0 14px 36px color-mix(in srgb, #000 20%, transparent);
-  touch-action: none;
-  user-select: none;
 }
 
 .sc-pdf-page canvas {
   display: block;
+  user-select: none;
   pointer-events: none;
 }
 
-.sc-pdf-page-overlay {
+/* Camada de texto nativa do pdf.js (seleção alinhada ao glifo, como no Edge). */
+.sc-pdf-page .textLayer {
   position: absolute;
+  text-align: initial;
   inset: 0;
-  pointer-events: none;
+  overflow: clip;
+  opacity: 1;
+  line-height: 1;
+  letter-spacing: normal;
+  word-spacing: normal;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  caret-color: CanvasText;
   z-index: 2;
+  cursor: text;
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
 }
 
-.sc-pdf-drag-rect {
+.sc-pdf-page .textLayer :is(span, br) {
+  color: transparent;
   position: absolute;
-  border: 1.5px solid #7c5cfc;
-  background: color-mix(in srgb, #7c5cfc 18%, transparent);
-  border-radius: 2px;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+  user-select: text;
 }
 
-.sc-pdf-hit-rect {
+.sc-pdf-page .textLayer > :not(.markedContent),
+.sc-pdf-page .textLayer .markedContent span:not(.markedContent) {
+  z-index: 1;
+  --font-height: 0;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  --scale-x: 1;
+  --rotate: 0deg;
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+}
+
+.sc-pdf-page .textLayer .markedContent {
+  display: contents;
+}
+
+.sc-pdf-page .textLayer span[role='img'] {
+  user-select: none;
+  cursor: default;
+}
+
+.sc-pdf-page .textLayer ::selection {
+  background: color-mix(in srgb, #7c5cfc 40%, transparent);
+  color: transparent;
+}
+
+.sc-pdf-page .textLayer .endOfContent {
+  display: block;
   position: absolute;
-  border-radius: 1px;
-  background: color-mix(in srgb, #7c5cfc 32%, transparent);
-  mix-blend-mode: multiply;
+  inset: 100% 0 0;
+  z-index: 0;
+  cursor: default;
+  user-select: none;
 }
 
 .sc-pdf-viewer-bar {

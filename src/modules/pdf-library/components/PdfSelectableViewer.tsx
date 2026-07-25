@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   getDocument,
   GlobalWorkerOptions,
+  TextLayer,
   version as pdfjsVersion,
   type PDFDocumentProxy,
   type PDFPageProxy,
@@ -16,13 +17,6 @@ import {
   scanOutline,
 } from 'ionicons/icons';
 
-type PdfJsTextItem = {
-  str: string;
-  transform: number[];
-  width: number;
-  height: number;
-};
-
 export type PdfViewerHandle = {
   clearSelection: () => void;
 };
@@ -32,24 +26,6 @@ type Props = {
   title: string;
   onTextSelected?: (text: string) => void;
   viewerRef?: React.MutableRefObject<PdfViewerHandle | null>;
-};
-
-type PdfTextBox = {
-  text: string;
-  pageNumber: number;
-  /** PDF user-space coords (origin bottom-left). */
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-};
-
-type DragBox = {
-  pageNumber: number;
-  left: number;
-  top: number;
-  width: number;
-  height: number;
 };
 
 const MIN_SCALE = 0.5;
@@ -64,72 +40,14 @@ GlobalWorkerOptions.workerSrc = WORKER_SRC;
 const clampScale = (value: number) =>
   Math.min(MAX_SCALE, Math.max(MIN_SCALE, Math.round(value * 100) / 100));
 
-function isTextItem(item: unknown): item is PdfJsTextItem {
-  return Boolean(
-    item &&
-      typeof item === 'object' &&
-      'str' in item &&
-      'transform' in item &&
-      Array.isArray((item as PdfJsTextItem).transform),
-  );
-}
-
-async function loadPageTextBoxes(
-  page: PDFPageProxy,
-  pageNumber: number,
-): Promise<PdfTextBox[]> {
-  const content = await page.getTextContent();
-  const boxes: PdfTextBox[] = [];
-  for (const raw of content.items) {
-    if (!isTextItem(raw) || !raw.str.trim()) continue;
-    const [, , , , e, f] = raw.transform;
-    const fontHeight = Math.hypot(raw.transform[2], raw.transform[3]) || raw.height || 10;
-    const width = raw.width || fontHeight * raw.str.length * 0.5;
-    boxes.push({
-      text: raw.str,
-      pageNumber,
-      x: e,
-      y: f,
-      w: Math.max(width, 1),
-      h: Math.max(fontHeight, 1),
-    });
-  }
-  return boxes;
-}
-
-function rectsIntersect(
-  a: { x: number; y: number; w: number; h: number },
-  b: { x: number; y: number; w: number; h: number },
-) {
-  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
-}
-
-function textFromBoxesInPdfRect(
-  boxes: PdfTextBox[],
-  pageNumber: number,
-  pdfRect: { x: number; y: number; w: number; h: number },
-) {
-  const hits = boxes
-    .filter((box) => box.pageNumber === pageNumber && rectsIntersect(box, pdfRect))
-    .sort((a, b) => {
-      // Reading order: top-to-bottom, then left-to-right (PDF y grows up).
-      const dy = b.y - a.y;
-      if (Math.abs(dy) > Math.min(a.h, b.h) * 0.5) return dy;
-      return a.x - b.x;
-    });
-
-  if (!hits.length) return '';
-
-  let out = hits[0].text;
-  for (let i = 1; i < hits.length; i++) {
-    const prev = hits[i - 1];
-    const cur = hits[i];
-    const sameLine = Math.abs(prev.y - cur.y) <= Math.min(prev.h, cur.h) * 0.55;
-    if (!sameLine) out += '\n';
-    else if (!/\s$/.test(out) && !/^\s/.test(cur.text)) out += ' ';
-    out += cur.text;
-  }
-  return out.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+/** Normaliza o texto selecionado nativamente (colapsa espaços/quebras herdados dos spans). */
+function normalizeSelection(raw: string) {
+  return raw
+    .replace(/\u00ad/g, '') // soft hyphen
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim();
 }
 
 export function PdfSelectableViewer({
@@ -141,15 +59,9 @@ export function PdfSelectableViewer({
   const rootRef = useRef<HTMLDivElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
   const pdfRef = useRef<PDFDocumentProxy | null>(null);
-  const textBoxesRef = useRef<PdfTextBox[]>([]);
-  const pageViewsRef = useRef<
-    Map<number, { el: HTMLElement; page: PDFPageProxy; viewportScale: number }>
-  >(new Map());
-  const dragOriginRef = useRef<{
-    pageNumber: number;
-    x: number;
-    y: number;
-  } | null>(null);
+  const pageViewsRef = useRef<Map<number, { el: HTMLElement; page: PDFPageProxy }>>(
+    new Map(),
+  );
   const scaleRef = useRef(DEFAULT_SCALE);
   const pendingPageRef = useRef<number | null>(null);
 
@@ -159,8 +71,6 @@ export function PdfSelectableViewer({
   const [scale, setScale] = useState(DEFAULT_SCALE);
   const [docToken, setDocToken] = useState(0);
   const [booting, setBooting] = useState(true);
-  const [dragBox, setDragBox] = useState<DragBox | null>(null);
-  const [hitBoxes, setHitBoxes] = useState<DragBox[]>([]);
 
   scaleRef.current = scale;
 
@@ -170,9 +80,8 @@ export function PdfSelectableViewer({
   );
 
   const clearSelection = useCallback(() => {
-    setDragBox(null);
-    setHitBoxes([]);
-    dragOriginRef.current = null;
+    const sel = window.getSelection();
+    if (sel && !sel.isCollapsed) sel.removeAllRanges();
   }, []);
 
   useEffect(() => {
@@ -203,7 +112,6 @@ export function PdfSelectableViewer({
     setCurrentPage(1);
     clearSelection();
     pdfRef.current = null;
-    textBoxesRef.current = [];
     pageViewsRef.current.clear();
 
     void (async () => {
@@ -253,7 +161,7 @@ export function PdfSelectableViewer({
     };
   }, [clearSelection, getScrollParent, url]);
 
-  // Progressive render (canvas only — no textLayer, evita desalinhamento)
+  // Progressive render (canvas + camada de texto nativa alinhada)
   useEffect(() => {
     const host = hostRef.current;
     const pdf = pdfRef.current;
@@ -265,11 +173,9 @@ export function PdfSelectableViewer({
     clearSelection();
     host.replaceChildren();
     pageViewsRef.current.clear();
-    textBoxesRef.current = [];
 
     void (async () => {
       try {
-        const allBoxes: PdfTextBox[] = [];
         for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
           if (cancelled) break;
           const page = await pdf.getPage(pageNumber);
@@ -280,6 +186,11 @@ export function PdfSelectableViewer({
           pageEl.dataset.page = String(pageNumber);
           pageEl.style.width = `${viewport.width}px`;
           pageEl.style.height = `${viewport.height}px`;
+          // Variáveis exigidas pela camada de texto do pdf.js para escalar corretamente.
+          pageEl.style.setProperty('--scale-factor', String(scaleRef.current));
+          pageEl.style.setProperty('--total-scale-factor', String(scaleRef.current));
+          pageEl.style.setProperty('--scale-round-x', '1px');
+          pageEl.style.setProperty('--scale-round-y', '1px');
 
           const canvas = document.createElement('canvas');
           const context = canvas.getContext('2d', { alpha: false });
@@ -292,25 +203,26 @@ export function PdfSelectableViewer({
           canvas.style.height = `${viewport.height}px`;
           context.setTransform(outputScale, 0, 0, outputScale, 0, 0);
 
-          const overlay = document.createElement('div');
-          overlay.className = 'sc-pdf-page-overlay';
+          const textLayerDiv = document.createElement('div');
+          textLayerDiv.className = 'textLayer';
 
-          pageEl.append(canvas, overlay);
+          pageEl.append(canvas, textLayerDiv);
           host.append(pageEl);
-          pageViewsRef.current.set(pageNumber, {
-            el: pageEl,
-            page,
-            viewportScale: scaleRef.current,
-          });
+          pageViewsRef.current.set(pageNumber, { el: pageEl, page });
 
           const task = page.render({ canvasContext: context, viewport, canvas });
           tasks.push(task);
           await task.promise;
           if (cancelled) break;
 
-          const boxes = await loadPageTextBoxes(page, pageNumber);
-          allBoxes.push(...boxes);
-          textBoxesRef.current = allBoxes;
+          const textContent = await page.getTextContent();
+          if (cancelled) break;
+          const textLayer = new TextLayer({
+            textContentSource: textContent,
+            container: textLayerDiv,
+            viewport,
+          });
+          await textLayer.render();
 
           if (pageNumber === 1) {
             setBooting(false);
@@ -375,209 +287,33 @@ export function PdfSelectableViewer({
     return () => scroller.removeEventListener('wheel', onWheel);
   }, [currentPage, getScrollParent]);
 
-  const clientToPageLocal = (pageNumber: number, clientX: number, clientY: number) => {
-    const view = pageViewsRef.current.get(pageNumber);
-    if (!view) return null;
-    const rect = view.el.getBoundingClientRect();
-    return {
-      x: clientX - rect.left,
-      y: clientY - rect.top,
-      pageWidth: rect.width,
-      pageHeight: rect.height,
-      page: view.page,
-      viewportScale: view.viewportScale,
-    };
-  };
-
-  const pageLocalToPdfRect = (
-    pageNumber: number,
-    left: number,
-    top: number,
-    width: number,
-    height: number,
-  ) => {
-    const view = pageViewsRef.current.get(pageNumber);
-    if (!view) return null;
-    const s = view.viewportScale;
-    const pageHeight = view.page.getViewport({ scale: 1 }).height;
-    // DOM y grows down; PDF y grows up.
-    const pdfX = left / s;
-    const pdfW = width / s;
-    const pdfH = height / s;
-    const pdfY = pageHeight - (top + height) / s;
-    return { x: pdfX, y: pdfY, w: pdfW, h: pdfH };
-  };
-
-  const pageNumberFromPoint = (clientX: number, clientY: number) => {
-    for (const [n, view] of pageViewsRef.current) {
-      const r = view.el.getBoundingClientRect();
-      if (
-        clientX >= r.left &&
-        clientX <= r.right &&
-        clientY >= r.top &&
-        clientY <= r.bottom
-      ) {
-        return n;
-      }
-    }
-    return null;
-  };
-
-  const finishDrag = useCallback(
-    (box: DragBox) => {
-      if (box.width < 4 || box.height < 4) {
-        clearSelection();
-        return;
-      }
-      const pdfRect = pageLocalToPdfRect(
-        box.pageNumber,
-        box.left,
-        box.top,
-        box.width,
-        box.height,
-      );
-      if (!pdfRect) return;
-      const text = textFromBoxesInPdfRect(
-        textBoxesRef.current,
-        box.pageNumber,
-        pdfRect,
-      );
-      if (!text) {
-        clearSelection();
-        return;
-      }
-
-      // Highlight matched glyph boxes in page-local coords for feedback.
-      const view = pageViewsRef.current.get(box.pageNumber);
-      const s = view?.viewportScale ?? scaleRef.current;
-      const pageHeight = view?.page.getViewport({ scale: 1 }).height ?? 0;
-      const matched = textBoxesRef.current
-        .filter(
-          (b) =>
-            b.pageNumber === box.pageNumber && rectsIntersect(b, pdfRect),
-        )
-        .map((b) => ({
-          pageNumber: box.pageNumber,
-          left: b.x * s,
-          top: (pageHeight - b.y - b.h) * s,
-          width: b.w * s,
-          height: b.h * s,
-        }));
-      setHitBoxes(matched);
-      setDragBox(null);
-      onTextSelected?.(text);
-    },
-    [clearSelection, onTextSelected],
-  );
-
-  // Geometry selection (drag rectangle) — independente do textLayer
+  // Seleção nativa do navegador (como no Edge): captura ao soltar o mouse.
   useEffect(() => {
     const host = hostRef.current;
     if (!host || booting) return;
 
-    const onDown = (e: PointerEvent) => {
-      if (e.button !== 0) return;
-      const pageNumber = pageNumberFromPoint(e.clientX, e.clientY);
-      if (!pageNumber) return;
-      const local = clientToPageLocal(pageNumber, e.clientX, e.clientY);
-      if (!local) return;
-      e.preventDefault();
-      host.setPointerCapture(e.pointerId);
-      dragOriginRef.current = {
-        pageNumber,
-        x: local.x,
-        y: local.y,
-      };
-      setHitBoxes([]);
-      setDragBox({
-        pageNumber,
-        left: local.x,
-        top: local.y,
-        width: 0,
-        height: 0,
-      });
+    const emitSelection = () => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed) return;
+      const anchor = sel.anchorNode;
+      if (anchor && !host.contains(anchor)) return;
+      const text = normalizeSelection(sel.toString());
+      if (text) onTextSelected?.(text);
     };
 
-    const onMove = (e: PointerEvent) => {
-      const origin = dragOriginRef.current;
-      if (!origin) return;
-      const local = clientToPageLocal(origin.pageNumber, e.clientX, e.clientY);
-      if (!local) return;
-      const left = Math.min(origin.x, local.x);
-      const top = Math.min(origin.y, local.y);
-      const width = Math.abs(local.x - origin.x);
-      const height = Math.abs(local.y - origin.y);
-      setDragBox({
-        pageNumber: origin.pageNumber,
-        left,
-        top,
-        width,
-        height,
-      });
+    const onPointerUp = () => {
+      // Espera o navegador finalizar o range antes de ler.
+      window.setTimeout(emitSelection, 0);
     };
 
-    const onUp = (e: PointerEvent) => {
-      const origin = dragOriginRef.current;
-      if (!origin) return;
-      const local = clientToPageLocal(origin.pageNumber, e.clientX, e.clientY);
-      dragOriginRef.current = null;
-      try {
-        host.releasePointerCapture(e.pointerId);
-      } catch {
-        /* ignore */
-      }
-      if (!local) {
-        clearSelection();
-        return;
-      }
-      const box: DragBox = {
-        pageNumber: origin.pageNumber,
-        left: Math.min(origin.x, local.x),
-        top: Math.min(origin.y, local.y),
-        width: Math.abs(local.x - origin.x),
-        height: Math.abs(local.y - origin.y),
-      };
-      finishDrag(box);
-    };
-
-    host.addEventListener('pointerdown', onDown);
-    host.addEventListener('pointermove', onMove);
-    host.addEventListener('pointerup', onUp);
-    host.addEventListener('pointercancel', () => {
-      dragOriginRef.current = null;
-      setDragBox(null);
+    host.addEventListener('pointerup', onPointerUp);
+    document.addEventListener('keyup', (e) => {
+      if (e.key === 'Shift' || e.ctrlKey || e.metaKey) emitSelection();
     });
     return () => {
-      host.removeEventListener('pointerdown', onDown);
-      host.removeEventListener('pointermove', onMove);
-      host.removeEventListener('pointerup', onUp);
+      host.removeEventListener('pointerup', onPointerUp);
     };
-  }, [booting, clearSelection, finishDrag]);
-
-  // Paint overlays into the active page
-  useEffect(() => {
-    for (const [n, view] of pageViewsRef.current) {
-      const overlay = view.el.querySelector('.sc-pdf-page-overlay');
-      if (!overlay) continue;
-      overlay.replaceChildren();
-      const boxes = [
-        ...(dragBox && dragBox.pageNumber === n ? [dragBox] : []),
-        ...hitBoxes.filter((b) => b.pageNumber === n),
-      ];
-      for (const box of boxes) {
-        const el = document.createElement('div');
-        el.className =
-          dragBox && box === dragBox
-            ? 'sc-pdf-drag-rect'
-            : 'sc-pdf-hit-rect';
-        el.style.left = `${box.left}px`;
-        el.style.top = `${box.top}px`;
-        el.style.width = `${box.width}px`;
-        el.style.height = `${box.height}px`;
-        overlay.append(el);
-      }
-    }
-  }, [dragBox, hitBoxes, docToken, scale, booting]);
+  }, [booting, onTextSelected]);
 
   const zoomBy = (delta: number) => {
     pendingPageRef.current = currentPage;
@@ -648,7 +384,7 @@ export function PdfSelectableViewer({
           </button>
         </div>
 
-        <p className="sc-pdf-select-hint">Arraste sobre o texto para selecionar</p>
+        <p className="sc-pdf-select-hint">Selecione o texto com o mouse</p>
 
         <div className="sc-pdf-toolbar-group">
           <button

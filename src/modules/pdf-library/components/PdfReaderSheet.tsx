@@ -264,7 +264,7 @@ export function PdfReaderSheet({ pdf, groupName, onClose }: Props) {
                   {groupName?.trim() || 'Sem coleção'}
                   {createdCount > 0
                     ? ` · ${createdCount} carta${createdCount > 1 ? 's' : ''} criada${createdCount > 1 ? 's' : ''}`
-                    : ' · arraste sobre o texto para selecionar'}
+                    : ' · selecione o texto com o mouse'}
                 </p>
               </div>
             </header>
@@ -337,7 +337,7 @@ export function PdfReaderSheet({ pdf, groupName, onClose }: Props) {
                       ? pendingText.length > 280
                         ? `${pendingText.slice(0, 280)}…`
                         : pendingText
-                      : 'Arraste sobre o texto no PDF. Depois escolha onde colocar.'}
+                      : 'Selecione o texto no PDF com o mouse. Depois escolha onde colocar.'}
                   </p>
                   <div className="sc-pdf-assign-grid">
                     {FIELD_OPTIONS.map((option) => (
