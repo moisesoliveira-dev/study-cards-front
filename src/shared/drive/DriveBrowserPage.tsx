@@ -337,8 +337,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   const createCard = async () => {
     if (!front.trim()) return;
     const plain = documentToPlainText(docJson);
-    const nextBack = back.trim() || plain.slice(0, 280);
-    if (!nextBack) return;
+    const nextBack = back.trim() || plain.slice(0, 280) || front.trim();
     setSaving(true);
     try {
       await cardsFacade.create({

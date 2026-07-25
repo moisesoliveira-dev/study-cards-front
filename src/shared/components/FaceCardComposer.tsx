@@ -70,9 +70,8 @@ export function FaceCardComposer({
   const initials = cardInitials(front.trim() || 'Novo');
   const suit = tag.trim() || 'Conceito';
   const accent = suitColor(suit);
-  const canSubmit =
-    Boolean(front.trim() && (back.trim() || documentToPlainText(docJson))) &&
-    !saving;
+  const hasBody = Boolean(back.trim() || documentToPlainText(docJson));
+  const canSubmit = Boolean(front.trim()) && !saving;
 
   useEffect(() => {
     if (!open) {
@@ -250,6 +249,13 @@ export function FaceCardComposer({
                     {saving ? <IonSpinner name="crescent" /> : submitLabel}
                   </motion.button>
                 </div>
+                <p className="card-compose-note">
+                  {!front.trim()
+                    ? 'Dê um título (frente) para criar a carta.'
+                    : hasBody
+                      ? 'Pronto para salvar.'
+                      : 'Sem verso/documento, o título será usado como verso.'}
+                </p>
               </motion.div>
             ) : (
               <motion.div

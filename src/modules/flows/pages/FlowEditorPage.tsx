@@ -1796,8 +1796,7 @@ function FlowCanvas({
   const createCard = useCallback(async () => {
     if (!front.trim()) return;
     const plain = documentToPlainText(docJson);
-    const nextBack = back.trim() || plain.slice(0, 280);
-    if (!nextBack) return;
+    const nextBack = back.trim() || plain.slice(0, 280) || front.trim();
     setComposerSaving(true);
     try {
       const created = await cardsFacade.create({

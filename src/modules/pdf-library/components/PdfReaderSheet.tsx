@@ -233,10 +233,6 @@ export function PdfReaderSheet({ pdf, groupName, onClose }: Props) {
       toast.error(new Error('A frente da carta é obrigatória.'));
       return;
     }
-    if (!back.trim() && !docJson.trim()) {
-      toast.error(new Error('Preencha o verso ou o documento.'));
-      return;
-    }
     setSaving(true);
     try {
       await cardsFacade.create({
