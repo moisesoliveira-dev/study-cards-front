@@ -1282,18 +1282,86 @@ ion-popover {
   overflow: hidden;
 }
 
-.sc-doc-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 10px;
+.sc-doc-ribbon {
   border-bottom: 0.5px solid var(--border);
   background: var(--surface-2);
 }
 
-.sc-doc-toolbar button {
-  border: 0.5px solid var(--border);
+.sc-doc-ribbon-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 6px 8px 0;
+  border-bottom: 0.5px solid var(--border);
+}
+
+.sc-doc-ribbon-tab {
+  border: 0.5px solid transparent;
+  border-bottom: none;
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: 6px 6px 0 0;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: -1px;
+}
+
+.sc-doc-ribbon-tab:hover {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--surface-1) 70%, transparent);
+}
+
+.sc-doc-ribbon-tab.active {
+  color: var(--text-primary);
   background: var(--surface-1);
+  border-color: var(--border);
+}
+
+.sc-doc-ribbon-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  align-items: stretch;
+  padding: 8px 6px 6px;
+  background: var(--surface-1);
+}
+
+.sc-doc-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-right: 0.5px solid var(--border);
+  min-width: 0;
+}
+
+.sc-doc-group:last-child {
+  border-right: none;
+}
+
+.sc-doc-group-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+}
+
+.sc-doc-group-label {
+  font-size: 10px;
+  line-height: 1;
+  color: var(--text-muted);
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.sc-doc-ribbon-panel button {
+  border: 0.5px solid var(--border);
+  background: var(--surface-2);
   color: var(--text-secondary);
   border-radius: 6px;
   padding: 5px 8px;
@@ -1302,25 +1370,18 @@ ion-popover {
   cursor: pointer;
 }
 
-.sc-doc-toolbar button.active {
+.sc-doc-ribbon-panel button.active {
   background: var(--bg-accent);
   color: var(--text-accent);
   border-color: var(--border-accent);
 }
 
-.sc-doc-toolbar button:disabled {
+.sc-doc-ribbon-panel button:disabled {
   opacity: 0.4;
   cursor: default;
 }
 
-.sc-doc-sep {
-  width: 1px;
-  align-self: stretch;
-  margin: 2px 2px;
-  background: var(--border);
-}
-
-.sc-doc-toolbar .sc-doc-swatch {
+.sc-doc-ribbon-panel .sc-doc-swatch {
   display: inline-flex;
   align-items: center;
   justify-content: center;

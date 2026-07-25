@@ -1,5 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
+import { Extension } from '@tiptap/core';
+import type { Editor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
@@ -29,11 +31,19 @@ export const CODE_LANGUAGES = [
 ] as const;
 
 const HIGHLIGHT_COLORS = [
-  { color: '#fde047', label: 'Marca-texto amarelo' },
-  { color: '#86efac', label: 'Marca-texto verde' },
-  { color: '#f9a8d4', label: 'Marca-texto rosa' },
-  { color: '#93c5fd', label: 'Marca-texto azul' },
+  { color: '#fde047', label: 'Amarelo', shortcut: 'Mod-Shift-1' },
+  { color: '#86efac', label: 'Verde', shortcut: 'Mod-Shift-2' },
+  { color: '#f9a8d4', label: 'Rosa', shortcut: 'Mod-Shift-3' },
+  { color: '#93c5fd', label: 'Azul', shortcut: 'Mod-Shift-4' },
 ] as const;
+
+type RibbonTab = 'inicio' | 'inserir' | 'marcar';
+
+const RIBBON_TABS: { id: RibbonTab; label: string }[] = [
+  { id: 'inicio', label: 'Início' },
+  { id: 'inserir', label: 'Inserir' },
+  { id: 'marcar', label: 'Marcar' },
+];
 
 type Props = {
   value: string;
@@ -41,6 +51,22 @@ type Props = {
   editable?: boolean;
   placeholder?: string;
 };
+
+function isMac() {
+  return (
+    typeof navigator !== 'undefined' &&
+    /Mac|iPhone|iPad|iPod/i.test(navigator.platform)
+  );
+}
+
+function shortcutLabel(modShortcut: string): string {
+  const mac = isMac();
+  return modShortcut
+    .replace(/Mod/g, mac ? '⌘' : 'Ctrl')
+    .replace(/Shift/g, mac ? '⇧' : 'Shift')
+    .replace(/Alt/g, mac ? '⌥' : 'Alt')
+    .replace(/-/g, '+');
+}
 
 function parseDoc(value: string) {
   if (!value?.trim()) return undefined;
@@ -87,8 +113,69 @@ export function documentToPlainText(value: string | null | undefined): string {
   }
 }
 
+function promptLink(editor: Editor) {
+  const previous = editor.getAttributes('link').href as string | undefined;
+  const url = window.prompt('Endereço do link', previous ?? 'https://');
+  if (url === null) return false;
+  const trimmed = url.trim();
+  if (!trimmed || trimmed === 'https://') {
+    return editor.chain().focus().extendMarkRange('link').unsetLink().run();
+  }
+  return editor
+    .chain()
+    .focus()
+    .extendMarkRange('link')
+    .setLink({ href: trimmed })
+    .run();
+}
+
+function toggleHighlightColor(editor: Editor, color: string) {
+  if (editor.isActive('highlight', { color })) {
+    return editor.chain().focus().unsetHighlight().run();
+  }
+  return editor.chain().focus().setHighlight({ color }).run();
+}
+
+/**
+ * Atalhos extras só disparam com o TipTap focado (ProseMirror keymap).
+ * Não afetam o verso curto nem outros campos fora do documento.
+ */
+const DocumentShortcuts = Extension.create({
+  name: 'documentShortcuts',
+  addKeyboardShortcuts() {
+    return {
+      'Mod-Shift-x': () => this.editor.commands.toggleStrike(),
+      'Mod-Shift-k': () => promptLink(this.editor),
+      'Mod-Shift-h': () => this.editor.commands.setHorizontalRule(),
+      'Mod-Shift-t': () => this.editor.commands.toggleTaskList(),
+      'Mod-Alt-c': () => this.editor.commands.toggleCodeBlock(),
+      'Mod-Shift-.': () => this.editor.commands.toggleSuperscript(),
+      'Mod-Shift-,': () => this.editor.commands.toggleSubscript(),
+      'Mod-Shift-l': () => this.editor.commands.toggleTextAlign('left'),
+      'Mod-Shift-e': () => this.editor.commands.toggleTextAlign('center'),
+      'Mod-Shift-r': () => this.editor.commands.toggleTextAlign('right'),
+      'Mod-\\': () =>
+        this.editor.chain().focus().unsetAllMarks().clearNodes().run(),
+      'Mod-Shift-1': () =>
+        toggleHighlightColor(this.editor, HIGHLIGHT_COLORS[0].color),
+      'Mod-Shift-2': () =>
+        toggleHighlightColor(this.editor, HIGHLIGHT_COLORS[1].color),
+      'Mod-Shift-3': () =>
+        toggleHighlightColor(this.editor, HIGHLIGHT_COLORS[2].color),
+      'Mod-Shift-4': () =>
+        toggleHighlightColor(this.editor, HIGHLIGHT_COLORS[3].color),
+      'Mod-Alt-0': () => this.editor.commands.setParagraph(),
+    };
+  },
+});
+
 function AlignIcon({ align }: { align: 'left' | 'center' | 'right' }) {
-  const short = align === 'left' ? { x1: 2, x2: 10 } : align === 'center' ? { x1: 4, x2: 12 } : { x1: 6, x2: 14 };
+  const short =
+    align === 'left'
+      ? { x1: 2, x2: 10 }
+      : align === 'center'
+        ? { x1: 4, x2: 12 }
+        : { x1: 6, x2: 14 };
   return (
     <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
       <g stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
@@ -100,12 +187,62 @@ function AlignIcon({ align }: { align: 'left' | 'center' | 'right' }) {
   );
 }
 
+function ToolButton({
+  title,
+  shortcut,
+  active,
+  disabled,
+  onClick,
+  children,
+  className = '',
+}: {
+  title: string;
+  shortcut?: string;
+  active?: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  children: ReactNode;
+  className?: string;
+}) {
+  const tip = shortcut ? `${title} (${shortcutLabel(shortcut)})` : title;
+  return (
+    <button
+      type="button"
+      title={tip}
+      aria-label={tip}
+      aria-pressed={active}
+      disabled={disabled}
+      className={`${className}${active ? ' active' : ''}`.trim()}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Group({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="sc-doc-group">
+      <div className="sc-doc-group-tools">{children}</div>
+      <span className="sc-doc-group-label">{label}</span>
+    </div>
+  );
+}
+
 export function DocumentEditor({
   value,
   onChange,
   editable = true,
   placeholder = 'Escreva notas, exemplos, ideias… Digite / para pensar como no Notion.',
 }: Props) {
+  const [tab, setTab] = useState<RibbonTab>('inicio');
+
   const editor = useEditor({
     editable,
     shouldRerenderOnTransaction: true,
@@ -128,6 +265,7 @@ export function DocumentEditor({
       Superscript,
       TaskList,
       TaskItem.configure({ nested: true }),
+      DocumentShortcuts,
     ],
     content: parseDoc(value),
     onUpdate: ({ editor: ed }) => {
@@ -144,7 +282,10 @@ export function DocumentEditor({
     if (!editor) return;
     const current = JSON.stringify(editor.getJSON());
     if (!value) {
-      if (current !== JSON.stringify({ type: 'doc', content: [{ type: 'paragraph' }] })) {
+      if (
+        current !==
+        JSON.stringify({ type: 'doc', content: [{ type: 'paragraph' }] })
+      ) {
         editor.commands.setContent(
           { type: 'doc', content: [{ type: 'paragraph' }] },
           { emitUpdate: false },
@@ -161,294 +302,341 @@ export function DocumentEditor({
 
   if (!editor) return null;
 
-  const setCodeLanguage = (language: string) => {
-    editor.chain().focus().updateAttributes('codeBlock', { language }).run();
-  };
-
   const activeLanguage =
     (editor.getAttributes('codeBlock').language as string | undefined) ??
     'typescript';
 
-  const toggleLink = () => {
-    const previous = editor.getAttributes('link').href as string | undefined;
-    const url = window.prompt('Endereço do link', previous ?? 'https://');
-    if (url === null) return;
-    const trimmed = url.trim();
-    if (!trimmed || trimmed === 'https://') {
-      editor.chain().focus().extendMarkRange('link').unsetLink().run();
-      return;
-    }
-    editor
-      .chain()
-      .focus()
-      .extendMarkRange('link')
-      .setLink({ href: trimmed })
-      .run();
-  };
-
-  const toggleHighlight = (color: string) => {
-    if (editor.isActive('highlight', { color })) {
-      editor.chain().focus().unsetHighlight().run();
-    } else {
-      editor.chain().focus().setHighlight({ color }).run();
-    }
+  const setCodeLanguage = (language: string) => {
+    editor.chain().focus().updateAttributes('codeBlock', { language }).run();
   };
 
   return (
     <div className={`sc-doc-editor${editable ? '' : ' is-readonly'}`}>
       {editable ? (
-        <div className="sc-doc-toolbar" role="toolbar" aria-label="Formatação">
-          <button
-            type="button"
-            title="Desfazer (Ctrl+Z)"
-            disabled={!editor.can().undo()}
-            onClick={() => editor.chain().focus().undo().run()}
-          >
-            ↺
-          </button>
-          <button
-            type="button"
-            title="Refazer (Ctrl+Y)"
-            disabled={!editor.can().redo()}
-            onClick={() => editor.chain().focus().redo().run()}
-          >
-            ↻
-          </button>
-
-          <span className="sc-doc-sep" aria-hidden="true" />
-
-          <button
-            type="button"
-            title="Título 1"
-            className={editor.isActive('heading', { level: 1 }) ? 'active' : ''}
-            onClick={() =>
-              editor.chain().focus().toggleHeading({ level: 1 }).run()
-            }
-          >
-            H1
-          </button>
-          <button
-            type="button"
-            title="Título 2"
-            className={editor.isActive('heading', { level: 2 }) ? 'active' : ''}
-            onClick={() =>
-              editor.chain().focus().toggleHeading({ level: 2 }).run()
-            }
-          >
-            H2
-          </button>
-          <button
-            type="button"
-            title="Título 3"
-            className={editor.isActive('heading', { level: 3 }) ? 'active' : ''}
-            onClick={() =>
-              editor.chain().focus().toggleHeading({ level: 3 }).run()
-            }
-          >
-            H3
-          </button>
-
-          <span className="sc-doc-sep" aria-hidden="true" />
-
-          <button
-            type="button"
-            title="Negrito (Ctrl+B)"
-            className={editor.isActive('bold') ? 'active' : ''}
-            onClick={() => editor.chain().focus().toggleBold().run()}
-          >
-            <strong>B</strong>
-          </button>
-          <button
-            type="button"
-            title="Itálico (Ctrl+I)"
-            className={editor.isActive('italic') ? 'active' : ''}
-            onClick={() => editor.chain().focus().toggleItalic().run()}
-          >
-            <em>I</em>
-          </button>
-          <button
-            type="button"
-            title="Sublinhado (Ctrl+U)"
-            className={editor.isActive('underline') ? 'active' : ''}
-            onClick={() => editor.chain().focus().toggleUnderline().run()}
-          >
-            <span style={{ textDecoration: 'underline' }}>U</span>
-          </button>
-          <button
-            type="button"
-            title="Tachado"
-            className={editor.isActive('strike') ? 'active' : ''}
-            onClick={() => editor.chain().focus().toggleStrike().run()}
-          >
-            <span style={{ textDecoration: 'line-through' }}>S</span>
-          </button>
-          <button
-            type="button"
-            title="Sobrescrito (x²)"
-            className={editor.isActive('superscript') ? 'active' : ''}
-            onClick={() => editor.chain().focus().toggleSuperscript().run()}
-          >
-            x²
-          </button>
-          <button
-            type="button"
-            title="Subscrito (x₂)"
-            className={editor.isActive('subscript') ? 'active' : ''}
-            onClick={() => editor.chain().focus().toggleSubscript().run()}
-          >
-            x₂
-          </button>
-
-          <span className="sc-doc-sep" aria-hidden="true" />
-
-          {HIGHLIGHT_COLORS.map(({ color, label }) => (
-            <button
-              key={color}
-              type="button"
-              title={label}
-              className={`sc-doc-swatch${
-                editor.isActive('highlight', { color }) ? ' active' : ''
-              }`}
-              onClick={() => toggleHighlight(color)}
-            >
-              <span
-                className="sc-doc-swatch-dot"
-                style={{ background: color }}
-              />
-            </button>
-          ))}
-
-          <span className="sc-doc-sep" aria-hidden="true" />
-
-          <button
-            type="button"
-            title="Inserir/editar link"
-            className={editor.isActive('link') ? 'active' : ''}
-            onClick={toggleLink}
-          >
-            Link
-          </button>
-
-          <span className="sc-doc-sep" aria-hidden="true" />
-
-          <button
-            type="button"
-            title="Alinhar à esquerda"
-            className={editor.isActive({ textAlign: 'left' }) ? 'active' : ''}
-            onClick={() => editor.chain().focus().toggleTextAlign('left').run()}
-          >
-            <AlignIcon align="left" />
-          </button>
-          <button
-            type="button"
-            title="Centralizar"
-            className={editor.isActive({ textAlign: 'center' }) ? 'active' : ''}
-            onClick={() =>
-              editor.chain().focus().toggleTextAlign('center').run()
-            }
-          >
-            <AlignIcon align="center" />
-          </button>
-          <button
-            type="button"
-            title="Alinhar à direita"
-            className={editor.isActive({ textAlign: 'right' }) ? 'active' : ''}
-            onClick={() =>
-              editor.chain().focus().toggleTextAlign('right').run()
-            }
-          >
-            <AlignIcon align="right" />
-          </button>
-
-          <span className="sc-doc-sep" aria-hidden="true" />
-
-          <button
-            type="button"
-            title="Lista com marcadores"
-            className={editor.isActive('bulletList') ? 'active' : ''}
-            onClick={() => editor.chain().focus().toggleBulletList().run()}
-          >
-            • Lista
-          </button>
-          <button
-            type="button"
-            title="Lista numerada"
-            className={editor.isActive('orderedList') ? 'active' : ''}
-            onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          >
-            1. Lista
-          </button>
-          <button
-            type="button"
-            title="Lista de tarefas"
-            className={editor.isActive('taskList') ? 'active' : ''}
-            onClick={() => editor.chain().focus().toggleTaskList().run()}
-          >
-            ✓ Tarefas
-          </button>
-
-          <span className="sc-doc-sep" aria-hidden="true" />
-
-          <button
-            type="button"
-            title="Citação"
-            className={editor.isActive('blockquote') ? 'active' : ''}
-            onClick={() => editor.chain().focus().toggleBlockquote().run()}
-          >
-            “ ”
-          </button>
-          <button
-            type="button"
-            title="Código em linha"
-            className={editor.isActive('code') ? 'active' : ''}
-            onClick={() => editor.chain().focus().toggleCode().run()}
-          >
-            `code`
-          </button>
-          <button
-            type="button"
-            title="Bloco de código"
-            className={editor.isActive('codeBlock') ? 'active' : ''}
-            onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-          >
-            {'</>'} Bloco
-          </button>
-          <select
-            className="sc-doc-lang"
-            value={activeLanguage}
-            aria-label="Linguagem do código"
-            onChange={(e) => {
-              if (!editor.isActive('codeBlock')) {
-                editor.chain().focus().toggleCodeBlock().run();
-              }
-              setCodeLanguage(e.target.value);
-            }}
-          >
-            {CODE_LANGUAGES.map((lang) => (
-              <option key={lang.value} value={lang.value}>
-                {lang.label}
-              </option>
+        <div className="sc-doc-ribbon">
+          <div className="sc-doc-ribbon-tabs" role="tablist" aria-label="Ferramentas">
+            {RIBBON_TABS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                role="tab"
+                aria-selected={tab === item.id}
+                className={`sc-doc-ribbon-tab${tab === item.id ? ' active' : ''}`}
+                onClick={() => setTab(item.id)}
+              >
+                {item.label}
+              </button>
             ))}
-          </select>
-          <button
-            type="button"
-            title="Linha divisória"
-            onClick={() => editor.chain().focus().setHorizontalRule().run()}
-          >
-            —
-          </button>
+          </div>
 
-          <span className="sc-doc-sep" aria-hidden="true" />
-
-          <button
-            type="button"
-            title="Limpar formatação"
-            onClick={() =>
-              editor.chain().focus().unsetAllMarks().clearNodes().run()
-            }
+          <div
+            className="sc-doc-ribbon-panel"
+            role="tabpanel"
+            aria-label={RIBBON_TABS.find((t) => t.id === tab)?.label}
           >
-            Limpar
-          </button>
+            {tab === 'inicio' ? (
+              <>
+                <Group label="Área de transferência">
+                  <ToolButton
+                    title="Desfazer"
+                    shortcut="Mod-z"
+                    disabled={!editor.can().undo()}
+                    onClick={() => editor.chain().focus().undo().run()}
+                  >
+                    ↺
+                  </ToolButton>
+                  <ToolButton
+                    title="Refazer"
+                    shortcut="Mod-y"
+                    disabled={!editor.can().redo()}
+                    onClick={() => editor.chain().focus().redo().run()}
+                  >
+                    ↻
+                  </ToolButton>
+                </Group>
+
+                <Group label="Fonte">
+                  <ToolButton
+                    title="Negrito"
+                    shortcut="Mod-b"
+                    active={editor.isActive('bold')}
+                    onClick={() => editor.chain().focus().toggleBold().run()}
+                  >
+                    <strong>B</strong>
+                  </ToolButton>
+                  <ToolButton
+                    title="Itálico"
+                    shortcut="Mod-i"
+                    active={editor.isActive('italic')}
+                    onClick={() => editor.chain().focus().toggleItalic().run()}
+                  >
+                    <em>I</em>
+                  </ToolButton>
+                  <ToolButton
+                    title="Sublinhado"
+                    shortcut="Mod-u"
+                    active={editor.isActive('underline')}
+                    onClick={() =>
+                      editor.chain().focus().toggleUnderline().run()
+                    }
+                  >
+                    <span style={{ textDecoration: 'underline' }}>U</span>
+                  </ToolButton>
+                  <ToolButton
+                    title="Tachado"
+                    shortcut="Mod-Shift-x"
+                    active={editor.isActive('strike')}
+                    onClick={() => editor.chain().focus().toggleStrike().run()}
+                  >
+                    <span style={{ textDecoration: 'line-through' }}>S</span>
+                  </ToolButton>
+                  <ToolButton
+                    title="Código em linha"
+                    shortcut="Mod-e"
+                    active={editor.isActive('code')}
+                    onClick={() => editor.chain().focus().toggleCode().run()}
+                  >
+                    `code`
+                  </ToolButton>
+                  <ToolButton
+                    title="Limpar formatação"
+                    shortcut="Mod-\\"
+                    onClick={() =>
+                      editor.chain().focus().unsetAllMarks().clearNodes().run()
+                    }
+                  >
+                    Limpar
+                  </ToolButton>
+                </Group>
+
+                <Group label="Parágrafo">
+                  <ToolButton
+                    title="Título 1"
+                    shortcut="Mod-Alt-1"
+                    active={editor.isActive('heading', { level: 1 })}
+                    onClick={() =>
+                      editor.chain().focus().toggleHeading({ level: 1 }).run()
+                    }
+                  >
+                    H1
+                  </ToolButton>
+                  <ToolButton
+                    title="Título 2"
+                    shortcut="Mod-Alt-2"
+                    active={editor.isActive('heading', { level: 2 })}
+                    onClick={() =>
+                      editor.chain().focus().toggleHeading({ level: 2 }).run()
+                    }
+                  >
+                    H2
+                  </ToolButton>
+                  <ToolButton
+                    title="Título 3"
+                    shortcut="Mod-Alt-3"
+                    active={editor.isActive('heading', { level: 3 })}
+                    onClick={() =>
+                      editor.chain().focus().toggleHeading({ level: 3 }).run()
+                    }
+                  >
+                    H3
+                  </ToolButton>
+                  <ToolButton
+                    title="Texto normal"
+                    shortcut="Mod-Alt-0"
+                    active={editor.isActive('paragraph')}
+                    onClick={() => editor.chain().focus().setParagraph().run()}
+                  >
+                    ¶
+                  </ToolButton>
+                  <ToolButton
+                    title="Lista com marcadores"
+                    shortcut="Mod-Shift-8"
+                    active={editor.isActive('bulletList')}
+                    onClick={() =>
+                      editor.chain().focus().toggleBulletList().run()
+                    }
+                  >
+                    • Lista
+                  </ToolButton>
+                  <ToolButton
+                    title="Lista numerada"
+                    shortcut="Mod-Shift-7"
+                    active={editor.isActive('orderedList')}
+                    onClick={() =>
+                      editor.chain().focus().toggleOrderedList().run()
+                    }
+                  >
+                    1. Lista
+                  </ToolButton>
+                </Group>
+
+                <Group label="Alinhamento">
+                  <ToolButton
+                    title="Alinhar à esquerda"
+                    shortcut="Mod-Shift-l"
+                    active={editor.isActive({ textAlign: 'left' })}
+                    onClick={() =>
+                      editor.chain().focus().toggleTextAlign('left').run()
+                    }
+                  >
+                    <AlignIcon align="left" />
+                  </ToolButton>
+                  <ToolButton
+                    title="Centralizar"
+                    shortcut="Mod-Shift-e"
+                    active={editor.isActive({ textAlign: 'center' })}
+                    onClick={() =>
+                      editor.chain().focus().toggleTextAlign('center').run()
+                    }
+                  >
+                    <AlignIcon align="center" />
+                  </ToolButton>
+                  <ToolButton
+                    title="Alinhar à direita"
+                    shortcut="Mod-Shift-r"
+                    active={editor.isActive({ textAlign: 'right' })}
+                    onClick={() =>
+                      editor.chain().focus().toggleTextAlign('right').run()
+                    }
+                  >
+                    <AlignIcon align="right" />
+                  </ToolButton>
+                </Group>
+              </>
+            ) : null}
+
+            {tab === 'inserir' ? (
+              <>
+                <Group label="Links">
+                  <ToolButton
+                    title="Inserir/editar link"
+                    shortcut="Mod-Shift-k"
+                    active={editor.isActive('link')}
+                    onClick={() => promptLink(editor)}
+                  >
+                    Link
+                  </ToolButton>
+                </Group>
+
+                <Group label="Blocos">
+                  <ToolButton
+                    title="Citação"
+                    shortcut="Mod-Shift-b"
+                    active={editor.isActive('blockquote')}
+                    onClick={() =>
+                      editor.chain().focus().toggleBlockquote().run()
+                    }
+                  >
+                    “ ”
+                  </ToolButton>
+                  <ToolButton
+                    title="Bloco de código"
+                    shortcut="Mod-Alt-c"
+                    active={editor.isActive('codeBlock')}
+                    onClick={() =>
+                      editor.chain().focus().toggleCodeBlock().run()
+                    }
+                  >
+                    {'</>'} Bloco
+                  </ToolButton>
+                  <select
+                    className="sc-doc-lang"
+                    value={activeLanguage}
+                    aria-label="Linguagem do código"
+                    title="Linguagem do bloco de código"
+                    onChange={(e) => {
+                      if (!editor.isActive('codeBlock')) {
+                        editor.chain().focus().toggleCodeBlock().run();
+                      }
+                      setCodeLanguage(e.target.value);
+                    }}
+                  >
+                    {CODE_LANGUAGES.map((lang) => (
+                      <option key={lang.value} value={lang.value}>
+                        {lang.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ToolButton
+                    title="Linha divisória"
+                    shortcut="Mod-Shift-h"
+                    onClick={() =>
+                      editor.chain().focus().setHorizontalRule().run()
+                    }
+                  >
+                    —
+                  </ToolButton>
+                </Group>
+
+                <Group label="Listas">
+                  <ToolButton
+                    title="Lista de tarefas"
+                    shortcut="Mod-Shift-t"
+                    active={editor.isActive('taskList')}
+                    onClick={() =>
+                      editor.chain().focus().toggleTaskList().run()
+                    }
+                  >
+                    ✓ Tarefas
+                  </ToolButton>
+                </Group>
+              </>
+            ) : null}
+
+            {tab === 'marcar' ? (
+              <>
+                <Group label="Marca-texto">
+                  {HIGHLIGHT_COLORS.map(({ color, label, shortcut }) => (
+                    <ToolButton
+                      key={color}
+                      title={`Marca-texto ${label.toLowerCase()}`}
+                      shortcut={shortcut}
+                      className="sc-doc-swatch"
+                      active={editor.isActive('highlight', { color })}
+                      onClick={() => toggleHighlightColor(editor, color)}
+                    >
+                      <span
+                        className="sc-doc-swatch-dot"
+                        style={{ background: color }}
+                      />
+                    </ToolButton>
+                  ))}
+                  <ToolButton
+                    title="Remover marca-texto"
+                    active={editor.isActive('highlight')}
+                    onClick={() =>
+                      editor.chain().focus().unsetHighlight().run()
+                    }
+                  >
+                    Sem marca
+                  </ToolButton>
+                </Group>
+
+                <Group label="Script">
+                  <ToolButton
+                    title="Sobrescrito"
+                    shortcut="Mod-Shift-."
+                    active={editor.isActive('superscript')}
+                    onClick={() =>
+                      editor.chain().focus().toggleSuperscript().run()
+                    }
+                  >
+                    x²
+                  </ToolButton>
+                  <ToolButton
+                    title="Subscrito"
+                    shortcut="Mod-Shift-,"
+                    active={editor.isActive('subscript')}
+                    onClick={() =>
+                      editor.chain().focus().toggleSubscript().run()
+                    }
+                  >
+                    x₂
+                  </ToolButton>
+                </Group>
+              </>
+            ) : null}
+          </div>
         </div>
       ) : null}
       <EditorContent editor={editor} className="sc-doc-surface" />
