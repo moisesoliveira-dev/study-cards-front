@@ -11,6 +11,9 @@
 # production
 /dist
 
+# gerado no build (vite copy-pdf-worker)
+/public/pdf.worker.min.mjs
+
 # misc
 .DS_Store
 .env.local

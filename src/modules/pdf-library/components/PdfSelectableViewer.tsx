@@ -1,14 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   getDocument,
-  GlobalWorkerOptions,
   TextLayer,
   type PDFDocumentProxy,
 } from 'pdfjs-dist';
-import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import 'pdfjs-dist/web/pdf_viewer.css';
-
-GlobalWorkerOptions.workerSrc = pdfWorker;
+import { ensurePdfWorker } from '../pdf-worker';
 
 type Props = {
   url: string;
@@ -36,15 +33,19 @@ export function PdfSelectableViewer({
 
     let cancelled = false;
     let pdf: PDFDocumentProxy | null = null;
+    let loading: ReturnType<typeof getDocument> | null = null;
     const textLayers: TextLayer[] = [];
     setError(null);
     setReady(false);
     setPageCount(0);
     host.replaceChildren();
 
-    const loading = getDocument({ url });
     void (async () => {
       try {
+        await ensurePdfWorker();
+        if (cancelled) return;
+
+        loading = getDocument({ url });
         pdf = await loading.promise;
         if (cancelled) {
           await pdf.cleanup();
@@ -117,7 +118,7 @@ export function PdfSelectableViewer({
           /* ignore */
         }
         try {
-          await loading.destroy();
+          await loading?.destroy();
         } catch {
           /* ignore */
         }
