@@ -5412,25 +5412,73 @@ ion-toast.sc-toast--info::part(container) {
   position: relative;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  min-height: 0;
+  min-height: 100%;
 }
 
-.sc-pdf-highlighter-host {
-  position: relative;
+.sc-pdf-select-hint {
+  margin: 0;
   flex: 1;
-  min-height: 0;
+  min-width: 140px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.sc-pdf-pages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 12px 40px;
+  cursor: crosshair;
+}
+
+.sc-pdf-pages.is-booting {
+  opacity: 0;
+  pointer-events: none;
+  height: 0;
   overflow: hidden;
+  padding: 0;
 }
 
-.sc-pdf-highlighter-host .PdfHighlighter {
-  position: absolute !important;
+.sc-pdf-page {
+  position: relative;
+  flex-shrink: 0;
+  overflow: hidden;
+  background: #fff;
+  box-shadow:
+    0 1px 0 color-mix(in srgb, #000 8%, transparent),
+    0 14px 36px color-mix(in srgb, #000 20%, transparent);
+  touch-action: none;
+  user-select: none;
+}
+
+.sc-pdf-page canvas {
+  display: block;
+  pointer-events: none;
+}
+
+.sc-pdf-page-overlay {
+  position: absolute;
   inset: 0;
+  pointer-events: none;
+  z-index: 2;
 }
 
-.sc-pdf-highlighter-host .PdfLoader,
-.sc-pdf-highlighter-host > div {
-  height: 100%;
+.sc-pdf-drag-rect {
+  position: absolute;
+  border: 1.5px solid #7c5cfc;
+  background: color-mix(in srgb, #7c5cfc 18%, transparent);
+  border-radius: 2px;
+}
+
+.sc-pdf-hit-rect {
+  position: absolute;
+  border-radius: 1px;
+  background: color-mix(in srgb, #7c5cfc 32%, transparent);
+  mix-blend-mode: multiply;
 }
 
 .sc-pdf-viewer-bar {
@@ -5564,10 +5612,6 @@ ion-toast.sc-toast--info::part(container) {
 
 .sc-pdf-boot-error strong {
   color: var(--text-primary);
-}
-
-.sc-pdf-highlighter-host .textLayer ::selection {
-  background: color-mix(in srgb, #7c5cfc 45%, transparent);
 }
 
 /* Side panel — card builder */
