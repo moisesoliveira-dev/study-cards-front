@@ -296,13 +296,15 @@ body {
 }
 
 .sc-item.card-item .thumb {
-  height: 80px;
+  height: 96px;
   padding: 10px 12px;
   background: var(--surface-1);
   border-bottom: 0.5px solid var(--border);
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
 }
 
 .sc-item.dashed {
@@ -321,10 +323,16 @@ body {
 }
 
 .thumb-title {
+  width: 100%;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
-  line-height: 1.3;
+  line-height: 1.25;
+  text-align: center;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .item-meta { padding: 8px 10px; }
@@ -1450,6 +1458,58 @@ ion-popover {
 
 .card-face-emoji {
   font-size: 34px;
+  line-height: 1;
+}
+
+/* Compact face cards: title on top, icon centered */
+.sc-face-card.is-simple {
+  align-items: center;
+  text-align: center;
+  padding: 16px 12px 18px;
+  gap: 10px;
+}
+
+.sc-face-card.is-simple .card-title {
+  flex: 0 0 auto;
+  width: 100%;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.sc-face-card.is-simple .card-face-icon {
+  flex: 1;
+  width: 100%;
+  margin: 0;
+  min-height: 0;
+}
+
+.sc-face-card.is-simple .card-face-icon ion-icon,
+.sc-face-card.is-simple .card-face-icon-img {
+  font-size: 48px;
+  width: 48px;
+  height: 48px;
+}
+
+.sc-face-card.is-simple .card-face-emoji {
+  font-size: 42px;
+}
+
+.sc-face-card.is-simple .card-face-fallback {
+  font-size: 34px;
+  line-height: 1;
+  color: var(--text-muted);
+  opacity: 0.55;
+}
+
+.sc-face-add.is-simple .card-face-icon {
+  font-size: 36px;
+  font-weight: 300;
   line-height: 1;
 }
 

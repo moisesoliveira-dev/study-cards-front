@@ -1,12 +1,6 @@
 import type { CSSProperties } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import {
-  cardInitials,
-  statusClass,
-  statusDot,
-  statusLabel,
-  type Card,
-} from '../../modules/cards/types/card.types';
+import type { Card } from '../../modules/cards/types/card.types';
 import { suitColor } from './FaceCardComposer';
 import { CardFaceIcon } from './CardIcon';
 import { staggerItem, tapScale } from '../motion';
@@ -32,18 +26,13 @@ export function DriveCardItem({ card, selected, onClick, view = 'grid' }: Props)
         whileTap={reduce ? undefined : tapScale}
       >
         <span className="list-icon">
-          {card.icon ? (
-            <CardFaceIcon icon={card.icon} className="list-face-icon" />
-          ) : (
-            '◇'
-          )}
+          <CardFaceIcon
+            icon={card.icon}
+            className="list-face-icon"
+            color={suitColor(card.tag)}
+          />
         </span>
         <span className="list-name">{card.front}</span>
-        <span className="list-tag">{card.tag}</span>
-        <span className={`list-status ${statusClass(card.status)}`}>
-          {statusLabel(card.status)}
-        </span>
-        <span className="list-links">{card.linkCount} links</span>
       </motion.div>
     );
   }
@@ -58,23 +47,15 @@ export function DriveCardItem({ card, selected, onClick, view = 'grid' }: Props)
       whileTap={reduce ? undefined : tapScale}
     >
       <div className="thumb">
-        <div className="thumb-tag">{card.tag}</div>
-        {card.icon ? (
-          <CardFaceIcon
-            icon={card.icon}
-            className="thumb-face-icon"
-            color={suitColor(card.tag)}
-          />
-        ) : (
-          <div className="thumb-title">{card.front}</div>
-        )}
+        <div className="thumb-title">{card.front}</div>
+        <CardFaceIcon
+          icon={card.icon}
+          className="thumb-face-icon"
+          color={suitColor(card.tag)}
+        />
       </div>
       <div className="item-meta">
         <div className="item-name">{card.front}</div>
-        <div className="item-sub">
-          <span className={`dot ${statusDot(card.status)}`} />
-          {statusLabel(card.status)} · {card.linkCount} links
-        </div>
       </div>
     </motion.div>
   );
@@ -89,16 +70,14 @@ type FaceProps = {
 };
 
 export function FaceCard({ card, selected, onClick, style, index = 0 }: FaceProps) {
-  const initials = cardInitials(card.front);
   const reduce = useReducedMotion();
   const accent = suitColor(card.tag);
-  const hasIcon = Boolean(card.icon);
 
   return (
     <motion.div
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
-      className={`sc-face-card${selected ? ' selected' : ''}${hasIcon ? ' has-icon' : ''}`}
+      className={`sc-face-card is-simple${selected ? ' selected' : ''}`}
       onClick={onClick}
       style={style}
       initial={reduce ? false : 'hidden'}
@@ -125,18 +104,14 @@ export function FaceCard({ card, selected, onClick, style, index = 0 }: FaceProp
       whileTap={reduce ? undefined : tapScale}
       layout
     >
-      <span className="card-corner tl">{initials}</span>
-      <span className="card-corner br">{initials}</span>
-      <div className="card-suit" style={{ color: accent }}>
-        {card.tag}
-      </div>
-      <CardFaceIcon icon={card.icon} color={accent} />
       <div className="card-title">{card.front}</div>
-      {!hasIcon ? <div className="card-body">{card.back}</div> : null}
-      <span className={`card-status ${statusClass(card.status)}`}>
-        {statusLabel(card.status)}
-      </span>
-      <div className="card-links">→ {card.linkCount} links</div>
+      {card.icon ? (
+        <CardFaceIcon icon={card.icon} color={accent} />
+      ) : (
+        <div className="card-face-icon is-fallback" aria-hidden>
+          <span className="card-face-fallback">◇</span>
+        </div>
+      )}
     </motion.div>
   );
 }

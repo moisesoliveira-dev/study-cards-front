@@ -662,7 +662,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
               })}
               <motion.button
                 type="button"
-                className="sc-face-card sc-face-add"
+                className="sc-face-card sc-face-add is-simple"
                 onClick={() => setCardOpen(true)}
                 aria-label="Criar card"
                 initial={reduce ? false : { opacity: 0, y: 20 }}
@@ -670,14 +670,11 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                 transition={{ delay: filteredCards.length * 0.04 }}
                 whileTap={reduce ? undefined : tapScale}
               >
-                <div className="card-suit" style={{ color: 'var(--text-muted)' }}>
-                  Novo
-                </div>
                 <div className="card-title" style={{ color: 'var(--text-muted)' }}>
-                  + Criar card
+                  Novo card
                 </div>
-                <div className="card-body">
-                  Conceito na frente, explicação no verso.
+                <div className="card-face-icon" style={{ color: 'var(--text-muted)' }}>
+                  +
                 </div>
               </motion.button>
               {!filteredCards.length ? (
