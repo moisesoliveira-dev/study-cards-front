@@ -7,6 +7,8 @@ import TopicCardsPage from './modules/cards/pages/TopicCardsPage';
 import StudyPage from './modules/study/pages/StudyPage';
 import LoginPage from './modules/auth/pages/LoginPage';
 import RegisterPage from './modules/auth/pages/RegisterPage';
+import ForgotPasswordPage from './modules/auth/pages/ForgotPasswordPage';
+import ResetPasswordPage from './modules/auth/pages/ResetPasswordPage';
 import ProfilePage from './modules/auth/pages/ProfilePage';
 import FlowsListPage from './modules/flows/pages/FlowsListPage';
 import FlowEditorPage from './modules/flows/pages/FlowEditorPage';
@@ -74,6 +76,8 @@ const App: React.FC = () => (
           <Switch>
             <Route exact path="/login" component={LoginPage} />
             <Route exact path="/register" component={RegisterPage} />
+            <Route exact path="/forgot-password" component={ForgotPasswordPage} />
+            <Route exact path="/reset-password" component={ResetPasswordPage} />
             <Route path="/" component={AuthenticatedShell} />
           </Switch>
         </IonReactRouter>

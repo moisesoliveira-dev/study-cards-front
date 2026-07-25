@@ -12,14 +12,16 @@ import {
   tapScale,
 } from '../../../shared/motion';
 import { ThemeToggle } from '../../../shared/theme/ThemeToggle';
+import { AuthBrand } from '../components/AuthBrand';
 
 export default function LoginPage() {
-  const { login, isAuthenticated, loading } = useAuth();
+  const { login, isAuthenticated, loading, rememberedLogin } = useAuth();
   const history = useHistory();
   const toast = useAppToast();
   const reduce = useReducedMotion();
-  const [loginId, setLoginId] = useState('');
+  const [loginId, setLoginId] = useState(rememberedLogin);
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(Boolean(rememberedLogin));
   const [saving, setSaving] = useState(false);
 
   if (!loading && isAuthenticated) {
@@ -30,7 +32,7 @@ export default function LoginPage() {
     if (!loginId.trim() || !password) return;
     setSaving(true);
     try {
-      await login(loginId.trim(), password);
+      await login(loginId.trim(), password, rememberMe);
       history.replace('/home');
     } catch (error) {
       toast.error(error);
@@ -43,6 +45,7 @@ export default function LoginPage() {
     <IonPage>
       <IonContent fullscreen>
         <div className="sc-auth-shell">
+          <div className="sc-auth-atmosphere" aria-hidden="true" />
           <div className="sc-auth-theme">
             <ThemeToggle compact />
           </div>
@@ -52,14 +55,14 @@ export default function LoginPage() {
             initial={reduce ? false : 'hidden'}
             animate="show"
           >
-            <motion.div className="sc-auth-brand" variants={staggerItem}>
-              Study Cards
+            <motion.div variants={staggerItem}>
+              <AuthBrand tagline="Seu ambiente de estudo pessoal" />
             </motion.div>
             <motion.h1 className="sc-auth-title" variants={staggerItem}>
-              Entrar
+              Bem-vindo de volta
             </motion.h1>
             <motion.p className="sc-auth-subtitle" variants={staggerItem}>
-              Acesse seu ambiente de estudo pessoal.
+              Entre para continuar de onde parou.
             </motion.p>
 
             <motion.div className="sc-auth-fields" variants={staggerItem}>
@@ -69,7 +72,7 @@ export default function LoginPage() {
                 onChange={setLoginId}
                 placeholder="seu_usuario ou voce@email.com"
                 autoComplete="username"
-                autoFocus
+                autoFocus={!rememberedLogin}
               />
               <Field
                 label="Senha"
@@ -78,8 +81,23 @@ export default function LoginPage() {
                 onChange={setPassword}
                 placeholder="••••••••"
                 autoComplete="current-password"
+                autoFocus={Boolean(rememberedLogin)}
                 onEnter={() => void submit()}
               />
+            </motion.div>
+
+            <motion.div className="sc-auth-row" variants={staggerItem}>
+              <label className="sc-auth-check">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                />
+                <span>Lembrar do acesso</span>
+              </label>
+              <Link className="sc-auth-link" to="/forgot-password">
+                Esqueceu a senha?
+              </Link>
             </motion.div>
 
             <motion.button

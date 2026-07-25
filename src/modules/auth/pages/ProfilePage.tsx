@@ -27,6 +27,8 @@ import {
   staggerItem,
   tapScale,
 } from '../../../shared/motion';
+import { PasswordStrengthMeter } from '../components/PasswordStrengthMeter';
+import { isPasswordValid } from '../utils/password-strength';
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,24}$/;
 
@@ -132,8 +134,12 @@ export default function ProfilePage() {
       toast.error(new Error('Preencha a senha atual e a nova senha.'));
       return;
     }
-    if (newPassword.length < 6) {
-      toast.error(new Error('A nova senha deve ter pelo menos 6 caracteres.'));
+    if (!isPasswordValid(newPassword)) {
+      toast.error(
+        new Error(
+          'A nova senha precisa ter 8+ caracteres, maiúscula, minúscula e número.',
+        ),
+      );
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -287,8 +293,8 @@ export default function ProfilePage() {
               {section === 'security' ? (
                 <>
                   <motion.p className="sc-settings-lead" variants={staggerItem}>
-                    Use a senha atual e escolha uma nova com pelo menos 6
-                    caracteres.
+                    Use a senha atual e escolha uma nova forte (8+ caracteres,
+                    maiúscula, minúscula e número).
                   </motion.p>
                   <motion.div className="sc-settings-fields" variants={staggerItem}>
                     <Field
@@ -307,6 +313,7 @@ export default function ProfilePage() {
                       placeholder="••••••••"
                       autoComplete="new-password"
                     />
+                    <PasswordStrengthMeter password={newPassword} />
                     <Field
                       label="Confirmar nova senha"
                       type="password"

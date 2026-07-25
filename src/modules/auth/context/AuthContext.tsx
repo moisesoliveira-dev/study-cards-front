@@ -14,12 +14,28 @@ type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
   isAuthenticated: boolean;
-  login: (login: string, password: string) => Promise<void>;
-  register: (input: {
+  rememberedLogin: string;
+  login: (
+    login: string,
+    password: string,
+    rememberMe?: boolean,
+  ) => Promise<void>;
+  startRegister: (input: {
     email: string;
     username: string;
     password: string;
     name?: string;
+  }) => Promise<{ email: string }>;
+  verifyEmail: (input: {
+    email: string;
+    code: string;
+    rememberMe?: boolean;
+  }) => Promise<void>;
+  resendCode: (email: string) => Promise<void>;
+  forgotPassword: (email: string) => Promise<void>;
+  resetPassword: (input: {
+    token: string;
+    password: string;
   }) => Promise<void>;
   updateProfile: (input: {
     name?: string;
@@ -40,6 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => authFacade.getStoredUser(),
   );
   const [loading, setLoading] = useState(true);
+  const [rememberedLogin] = useState(() => authFacade.getRememberedLogin());
 
   useEffect(() => {
     let cancelled = false;
@@ -59,20 +76,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const login = useCallback(async (loginValue: string, password: string) => {
-    const next = await authFacade.login({ login: loginValue, password });
-    setUser(next);
-  }, []);
+  const login = useCallback(
+    async (loginValue: string, password: string, rememberMe = false) => {
+      const next = await authFacade.login({
+        login: loginValue,
+        password,
+        rememberMe,
+      });
+      setUser(next);
+    },
+    [],
+  );
 
-  const register = useCallback(
+  const startRegister = useCallback(
     async (input: {
       email: string;
       username: string;
       password: string;
       name?: string;
-    }) => {
-      const next = await authFacade.register(input);
+    }) => authFacade.startRegister(input),
+    [],
+  );
+
+  const verifyEmail = useCallback(
+    async (input: { email: string; code: string; rememberMe?: boolean }) => {
+      const next = await authFacade.verifyEmail(input);
       setUser(next);
+    },
+    [],
+  );
+
+  const resendCode = useCallback(async (email: string) => {
+    await authFacade.resendCode(email);
+  }, []);
+
+  const forgotPassword = useCallback(async (email: string) => {
+    await authFacade.forgotPassword(email);
+  }, []);
+
+  const resetPassword = useCallback(
+    async (input: { token: string; password: string }) => {
+      await authFacade.resetPassword(input);
     },
     [],
   );
@@ -103,13 +147,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       loading,
       isAuthenticated: Boolean(user),
+      rememberedLogin,
       login,
-      register,
+      startRegister,
+      verifyEmail,
+      resendCode,
+      forgotPassword,
+      resetPassword,
       updateProfile,
       changePassword,
       logout,
     }),
-    [user, loading, login, register, updateProfile, changePassword, logout],
+    [
+      user,
+      loading,
+      rememberedLogin,
+      login,
+      startRegister,
+      verifyEmail,
+      resendCode,
+      forgotPassword,
+      resetPassword,
+      updateProfile,
+      changePassword,
+      logout,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
