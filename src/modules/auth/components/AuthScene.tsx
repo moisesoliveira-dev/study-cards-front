@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { BRAND_LOGO_SRC } from '../brand';
 
 type Props = {
   headline: string;
@@ -38,10 +39,16 @@ export function AuthScene({ headline, line, reduce }: Props) {
 
       <div className="sc-auth-scene-brand">
         <div className="sc-auth-logo sc-auth-logo--hero" aria-hidden="true">
-          {/* Slot da logo — troque por <img src="/logo.svg" alt="" /> */}
-          <span className="sc-auth-logo-mark">SC</span>
+          <img
+            className="sc-auth-logo-img"
+            src={BRAND_LOGO_SRC}
+            alt=""
+          />
         </div>
-        <h1 className="sc-auth-scene-name">Study Cards</h1>
+        <div className="sc-auth-scene-name-row">
+          <h1 className="sc-auth-scene-name">Study Cards</h1>
+          <span className="sc-auth-beta">Beta</span>
+        </div>
         <p className="sc-auth-scene-headline">{headline}</p>
         <p className="sc-auth-scene-line">{line}</p>
       </div>

@@ -2418,8 +2418,16 @@ ion-popover {
   display: grid;
   place-items: center;
   flex-shrink: 0;
+  overflow: hidden;
   background: linear-gradient(145deg, #f3efe6 0%, #e0d8c8 100%);
   color: #1a1917;
+}
+
+.sc-auth-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .sc-auth-logo--hero {
@@ -2442,14 +2450,38 @@ ion-popover {
   font-size: 18px;
 }
 
-.sc-auth-scene-name {
+.sc-auth-scene-name-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 12px;
   margin: 0 0 14px;
+}
+
+.sc-auth-scene-name {
+  margin: 0;
   font-family: 'Fraunces', Georgia, serif;
   font-size: clamp(2.4rem, 4vw, 3.35rem);
   font-weight: 600;
   letter-spacing: -0.035em;
   line-height: 1.05;
   color: #f7f4ec;
+}
+
+.sc-auth-beta {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(247, 244, 236, 0.28);
+  background: rgba(247, 244, 236, 0.08);
+  color: rgba(247, 244, 236, 0.82);
+  font-family: Figtree, system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1.2;
 }
 
 .sc-auth-scene-headline {
@@ -2879,9 +2911,12 @@ ion-popover {
     min-height: 280px;
   }
 
+  .sc-auth-scene-name-row {
+    margin-bottom: 8px;
+  }
+
   .sc-auth-scene-name {
     font-size: 2rem;
-    margin-bottom: 8px;
   }
 
   .sc-auth-scene-headline {
