@@ -9,9 +9,10 @@ import {
   libraryOutline,
   logOutOutline,
   menuOutline,
-  personOutline,
+  settingsOutline,
 } from 'ionicons/icons';
 import { useAuth } from '../../modules/auth/context/AuthContext';
+import { UserAvatar } from '../../modules/auth/components/UserAvatar';
 import { ThemeToggle } from '../theme/ThemeToggle';
 
 type Props = {
@@ -46,6 +47,12 @@ const NAV = [
     label: 'Assistente',
     icon: chatbubbleEllipsesOutline,
     match: (path: string) => path.startsWith('/chat'),
+  },
+  {
+    to: '/settings',
+    label: 'Configurações',
+    icon: settingsOutline,
+    match: (path: string) => path.startsWith('/settings'),
   },
 ];
 
@@ -148,7 +155,7 @@ export function AppShell({ children }: Props) {
             onClick={closeMenu}
             title={user?.email || 'Perfil'}
           >
-            <IonIcon icon={personOutline} />
+            <UserAvatar user={user} size="sm" />
             <span className="sc-sidebar-user">
               @{user?.username || 'usuario'}
             </span>

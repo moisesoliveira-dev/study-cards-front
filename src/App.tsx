@@ -8,6 +8,7 @@ import StudyPage from './modules/study/pages/StudyPage';
 import LoginPage from './modules/auth/pages/LoginPage';
 import RegisterPage from './modules/auth/pages/RegisterPage';
 import ProfilePage from './modules/auth/pages/ProfilePage';
+import SettingsPage from './modules/auth/pages/SettingsPage';
 import FlowsListPage from './modules/flows/pages/FlowsListPage';
 import FlowEditorPage from './modules/flows/pages/FlowEditorPage';
 import PdfLibraryPage from './modules/pdf-library/pages/PdfLibraryPage';
@@ -59,6 +60,7 @@ function AuthenticatedShell() {
         <Route exact path="/chat" component={ChatPage} />
         <Route exact path="/study/:topicId" component={StudyPage} />
         <Route exact path="/profile" component={ProfilePage} />
+        <Route exact path="/settings" component={SettingsPage} />
         <Route exact path="/">
           <Redirect to="/home" />
         </Route>

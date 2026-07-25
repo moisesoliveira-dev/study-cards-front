@@ -26,4 +26,19 @@ export const authApi = {
   changePassword(input: { currentPassword: string; newPassword: string }) {
     return httpClient.post<{ ok: boolean }>('/auth/change-password', input);
   },
+
+  uploadAvatar(file: File) {
+    const body = new FormData();
+    body.append('file', file);
+    return httpClient.postForm<AuthUser>('/auth/me/avatar', body);
+  },
+
+  removeAvatar() {
+    return httpClient.delete<AuthUser>('/auth/me/avatar');
+  },
+
+  async avatarBlob(cacheKey?: string) {
+    const qs = cacheKey ? `?v=${encodeURIComponent(cacheKey)}` : '';
+    return httpClient.getBlob(`/auth/me/avatar${qs}`);
+  },
 };

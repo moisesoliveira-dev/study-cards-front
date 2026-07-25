@@ -6,6 +6,21 @@ function isPersisted(): boolean {
   return localStorage.getItem('sc_auth_persist') !== '0';
 }
 
+function persistUser(user: AuthUser): AuthUser {
+  const token = authStorage.getToken();
+  if (token) authStorage.setSession(token, user, isPersisted());
+  return user;
+}
+
+function normalizeUser(user: AuthUser | null): AuthUser | null {
+  if (!user) return null;
+  return {
+    ...user,
+    hasAvatar: Boolean(user.hasAvatar),
+    updatedAt: user.updatedAt ?? new Date(0).toISOString(),
+  };
+}
+
 export const authFacade = {
   async register(input: {
     email: string;
@@ -42,9 +57,7 @@ export const authFacade = {
     if (!authStorage.getToken()) return null;
     try {
       const user = await authApi.me();
-      const token = authStorage.getToken();
-      if (token) authStorage.setSession(token, user, isPersisted());
-      return user;
+      return persistUser(user);
     } catch {
       authStorage.clear();
       return null;
@@ -56,10 +69,15 @@ export const authFacade = {
     email?: string;
     username?: string;
   }): Promise<AuthUser> {
-    const user = await authApi.updateProfile(input);
-    const token = authStorage.getToken();
-    if (token) authStorage.setSession(token, user, isPersisted());
-    return user;
+    return persistUser(await authApi.updateProfile(input));
+  },
+
+  async uploadAvatar(file: File): Promise<AuthUser> {
+    return persistUser(await authApi.uploadAvatar(file));
+  },
+
+  async removeAvatar(): Promise<AuthUser> {
+    return persistUser(await authApi.removeAvatar());
   },
 
   changePassword(input: { currentPassword: string; newPassword: string }) {
@@ -71,7 +89,7 @@ export const authFacade = {
   },
 
   getStoredUser(): AuthUser | null {
-    return authStorage.getUser();
+    return normalizeUser(authStorage.getUser());
   },
 
   getRememberedLogin(): string {

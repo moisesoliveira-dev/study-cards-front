@@ -34,6 +34,8 @@ type AuthContextValue = {
     email?: string;
     username?: string;
   }) => Promise<AuthUser>;
+  uploadAvatar: (file: File) => Promise<AuthUser>;
+  removeAvatar: () => Promise<AuthUser>;
   changePassword: (input: {
     currentPassword: string;
     newPassword: string;
@@ -173,6 +175,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const uploadAvatar = useCallback(async (file: File) => {
+    const next = await authFacade.uploadAvatar(file);
+    setUser(next);
+    return next;
+  }, []);
+
+  const removeAvatar = useCallback(async () => {
+    const next = await authFacade.removeAvatar();
+    setUser(next);
+    return next;
+  }, []);
+
   const changePassword = useCallback(
     async (input: { currentPassword: string; newPassword: string }) => {
       await authFacade.changePassword(input);
@@ -200,6 +214,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       register,
       updateProfile,
+      uploadAvatar,
+      removeAvatar,
       changePassword,
       logout,
       acknowledgeExpired,
@@ -212,6 +228,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       register,
       updateProfile,
+      uploadAvatar,
+      removeAvatar,
       changePassword,
       logout,
       acknowledgeExpired,
