@@ -5,28 +5,21 @@ import {
   IonHeader,
   IonIcon,
   IonPage,
-  IonSpinner,
   IonTitle,
   IonToolbar,
 } from '@ionic/react';
 import {
   colorPaletteOutline,
-  keyOutline,
   logOutOutline,
 } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Field } from '../../../shared/components/Field';
-import { useAppToast } from '../../../shared/hooks/useAppToast';
 import { useTheme, type ThemeMode } from '../../../shared/theme/ThemeContext';
-import { PasswordStrengthMeter } from '../components/PasswordStrengthMeter';
-import { isPasswordValid } from '../utils/password-strength';
 
-type Section = 'appearance' | 'security' | 'session';
+type Section = 'appearance' | 'session';
 
 const NAV: { id: Section; label: string; icon: string }[] = [
   { id: 'appearance', label: 'Aparência', icon: colorPaletteOutline },
-  { id: 'security', label: 'Senha', icon: keyOutline },
   { id: 'session', label: 'Sessão', icon: logOutOutline },
 ];
 
@@ -37,47 +30,11 @@ const THEME_OPTIONS: { id: ThemeMode; label: string; hint: string }[] = [
 ];
 
 export default function SettingsPage() {
-  const { changePassword, logout } = useAuth();
+  const { logout } = useAuth();
   const { mode, setMode } = useTheme();
-  const toast = useAppToast();
   const history = useHistory();
   const [section, setSection] = useState<Section>('appearance');
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [savingPassword, setSavingPassword] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
-
-  const savePassword = async () => {
-    if (!currentPassword || !newPassword) {
-      toast.error(new Error('Preencha a senha atual e a nova senha.'));
-      return;
-    }
-    if (!isPasswordValid(newPassword)) {
-      toast.error(
-        new Error(
-          'A nova senha precisa ter 8+ caracteres, maiúscula, minúscula e número.',
-        ),
-      );
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      toast.error(new Error('A confirmação da senha não confere.'));
-      return;
-    }
-    setSavingPassword(true);
-    try {
-      await changePassword({ currentPassword, newPassword });
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      toast.success('Senha alterada');
-    } catch (error) {
-      toast.error(error);
-    } finally {
-      setSavingPassword(false);
-    }
-  };
 
   return (
     <IonPage>
@@ -92,8 +49,7 @@ export default function SettingsPage() {
             <div>
               <h1 className="sc-gh-title">Configurações</h1>
               <p className="sc-gh-subtitle">
-                Preferências do aplicativo, segurança e sessão neste
-                dispositivo.
+                Preferências do aplicativo e sessão neste dispositivo.
               </p>
             </div>
           </header>
@@ -146,60 +102,6 @@ export default function SettingsPage() {
                         <span className="sc-gh-radio" aria-hidden />
                       </button>
                     ))}
-                  </div>
-                </section>
-              ) : null}
-
-              {section === 'security' ? (
-                <section className="sc-gh-box">
-                  <div className="sc-gh-box-head">
-                    <h2>Alterar senha</h2>
-                    <p>
-                      Use a senha atual e escolha uma nova forte (8+ caracteres,
-                      maiúscula, minúscula e número).
-                    </p>
-                  </div>
-                  <div className="sc-gh-fields">
-                    <Field
-                      label="Senha atual"
-                      type="password"
-                      value={currentPassword}
-                      onChange={setCurrentPassword}
-                      placeholder="••••••••"
-                      autoComplete="current-password"
-                    />
-                    <Field
-                      label="Nova senha"
-                      type="password"
-                      value={newPassword}
-                      onChange={setNewPassword}
-                      placeholder="••••••••"
-                      autoComplete="new-password"
-                    />
-                    <PasswordStrengthMeter password={newPassword} />
-                    <Field
-                      label="Confirmar nova senha"
-                      type="password"
-                      value={confirmPassword}
-                      onChange={setConfirmPassword}
-                      placeholder="••••••••"
-                      autoComplete="new-password"
-                      onEnter={() => void savePassword()}
-                    />
-                  </div>
-                  <div className="sc-gh-box-foot">
-                    <button
-                      type="button"
-                      className="sc-btn primary"
-                      disabled={savingPassword}
-                      onClick={() => void savePassword()}
-                    >
-                      {savingPassword ? (
-                        <IonSpinner name="crescent" />
-                      ) : (
-                        'Atualizar senha'
-                      )}
-                    </button>
                   </div>
                 </section>
               ) : null}

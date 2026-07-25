@@ -11,11 +11,19 @@ import { useAuth } from '../context/AuthContext';
 import { Field } from '../../../shared/components/Field';
 import { useAppToast } from '../../../shared/hooks/useAppToast';
 import { UserAvatar } from '../components/UserAvatar';
+import { PasswordStrengthMeter } from '../components/PasswordStrengthMeter';
+import { isPasswordValid } from '../utils/password-strength';
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,24}$/;
 
 export default function ProfilePage() {
-  const { user, updateProfile, uploadAvatar, removeAvatar } = useAuth();
+  const {
+    user,
+    updateProfile,
+    uploadAvatar,
+    removeAvatar,
+    changePassword,
+  } = useAuth();
   const toast = useAppToast();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -24,6 +32,11 @@ export default function ProfilePage() {
   const [name, setName] = useState(user?.name ?? '');
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [savingPassword, setSavingPassword] = useState(false);
 
   useEffect(() => {
     setUsername(user?.username ?? '');
@@ -56,6 +69,37 @@ export default function ProfilePage() {
       toast.error(error);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const savePassword = async () => {
+    if (!currentPassword || !newPassword) {
+      toast.error(new Error('Preencha a senha atual e a nova senha.'));
+      return;
+    }
+    if (!isPasswordValid(newPassword)) {
+      toast.error(
+        new Error(
+          'A nova senha precisa ter 8+ caracteres, maiúscula, minúscula e número.',
+        ),
+      );
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error(new Error('A confirmação da senha não confere.'));
+      return;
+    }
+    setSavingPassword(true);
+    try {
+      await changePassword({ currentPassword, newPassword });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      toast.success('Senha alterada');
+    } catch (error) {
+      toast.error(error);
+    } finally {
+      setSavingPassword(false);
     }
   };
 
@@ -104,10 +148,9 @@ export default function ProfilePage() {
         <div className="sc-shell sc-gh">
           <header className="sc-gh-page-head">
             <div>
-              <h1 className="sc-gh-title">Perfil público</h1>
+              <h1 className="sc-gh-title">Perfil</h1>
               <p className="sc-gh-subtitle">
-                Como você aparece no Study Cards. Alterações aqui afetam sua
-                identidade de conta.
+                Identidade da conta, foto e senha de acesso.
               </p>
             </div>
           </header>
@@ -201,6 +244,58 @@ export default function ProfilePage() {
                     onClick={() => void save()}
                   >
                     {saving ? <IonSpinner name="crescent" /> : 'Salvar perfil'}
+                  </button>
+                </div>
+              </section>
+
+              <section className="sc-gh-box">
+                <div className="sc-gh-box-head">
+                  <h2>Senha</h2>
+                  <p>
+                    Use a senha atual e escolha uma nova forte (8+ caracteres,
+                    maiúscula, minúscula e número).
+                  </p>
+                </div>
+                <div className="sc-gh-fields">
+                  <Field
+                    label="Senha atual"
+                    type="password"
+                    value={currentPassword}
+                    onChange={setCurrentPassword}
+                    placeholder="••••••••"
+                    autoComplete="current-password"
+                  />
+                  <Field
+                    label="Nova senha"
+                    type="password"
+                    value={newPassword}
+                    onChange={setNewPassword}
+                    placeholder="••••••••"
+                    autoComplete="new-password"
+                  />
+                  <PasswordStrengthMeter password={newPassword} />
+                  <Field
+                    label="Confirmar nova senha"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={setConfirmPassword}
+                    placeholder="••••••••"
+                    autoComplete="new-password"
+                    onEnter={() => void savePassword()}
+                  />
+                </div>
+                <div className="sc-gh-box-foot">
+                  <button
+                    type="button"
+                    className="sc-btn primary"
+                    disabled={savingPassword}
+                    onClick={() => void savePassword()}
+                  >
+                    {savingPassword ? (
+                      <IonSpinner name="crescent" />
+                    ) : (
+                      'Atualizar senha'
+                    )}
                   </button>
                 </div>
               </section>
