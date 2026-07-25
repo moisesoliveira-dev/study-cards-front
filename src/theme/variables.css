@@ -5755,6 +5755,89 @@ ion-toast.sc-toast--info::part(container) {
   gap: 10px;
 }
 
+.sc-pdf-target {
+  display: grid;
+  gap: 10px;
+}
+
+.sc-pdf-field-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sc-pdf-mini-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  border: 0.5px solid color-mix(in srgb, #7c5cfc 40%, var(--border));
+  border-radius: 999px;
+  color: #7254e5;
+  background: color-mix(in srgb, #7c5cfc 10%, transparent);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.sc-pdf-mini-add:hover:not(:disabled) {
+  background: color-mix(in srgb, #7c5cfc 18%, transparent);
+}
+
+.sc-pdf-mini-add:disabled {
+  opacity: 0.45;
+}
+
+.sc-pdf-mini-add ion-icon {
+  font-size: 13px;
+}
+
+.sc-pdf-target-create {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border: 0.5px solid color-mix(in srgb, #7c5cfc 45%, var(--border));
+  border-radius: 12px;
+  background: color-mix(in srgb, #7c5cfc 7%, var(--surface-2));
+}
+
+.sc-pdf-target-create-label {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.sc-pdf-target-create-row {
+  display: flex;
+  gap: 6px;
+}
+
+.sc-pdf-target-create-row input {
+  flex: 1;
+  min-width: 0;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 0.5px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-primary);
+  background: var(--surface-1);
+  font: inherit;
+}
+
+.sc-pdf-target-create-row input:focus {
+  outline: none;
+  border-color: color-mix(in srgb, #7c5cfc 55%, var(--border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, #7c5cfc 14%, transparent);
+}
+
+.sc-pdf-target-create-row .sc-btn {
+  flex: 0 0 auto;
+  min-width: 40px;
+  padding: 0 10px;
+}
+
 .sc-pdf-clip {
   padding: 10px;
   border: 0.5px dashed var(--border-strong);

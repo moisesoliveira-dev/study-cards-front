@@ -3,8 +3,10 @@ import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { IonIcon, IonSpinner } from '@ionic/react';
 import {
+  addOutline,
   arrowBackOutline,
   checkmarkCircleOutline,
+  closeOutline,
   documentTextOutline,
   helpCircleOutline,
   layersOutline,
@@ -14,8 +16,10 @@ import {
 import type { PdfDocument } from '../types/pdf-library.types';
 import { pdfLibraryFacade } from '../facades/pdf-library.facade';
 import { subjectsFacade } from '../../subjects/facades/subjects.facade';
+import { topicsFacade } from '../../topics/facades/topics.facade';
 import { cardsFacade } from '../../cards/facades/cards.facade';
 import type { Subject } from '../../subjects/types/subject.types';
+import type { TopicTreeNode } from '../../topics/types/topic.types';
 import { useAppToast } from '../../../shared/hooks/useAppToast';
 import { docExpand, fadeIn } from '../../../shared/motion';
 import {
@@ -57,6 +61,23 @@ const FIELD_OPTIONS: {
   { id: 'hint', label: 'Dica', short: 'Opcional', icon: helpCircleOutline },
 ];
 
+const GROUP_COLORS = ['#BA7517', '#378ADD', '#1D9E75', '#7F77DD', '#D4537E', '#888780'];
+
+type FlatTopic = { id: string; name: string; depth: number };
+
+/** Flatten the topic tree keeping depth so every subgroup level is selectable. */
+function flattenTopics(
+  nodes: TopicTreeNode[],
+  depth = 0,
+  acc: FlatTopic[] = [],
+): FlatTopic[] {
+  for (const node of nodes) {
+    acc.push({ id: node.id, name: node.name, depth });
+    if (node.children?.length) flattenTopics(node.children, depth + 1, acc);
+  }
+  return acc;
+}
+
 export function PdfReaderSheet({ pdf, groupName, onClose }: Props) {
   const toast = useAppToast();
   const reduce = useReducedMotion();
@@ -65,6 +86,11 @@ export function PdfReaderSheet({ pdf, groupName, onClose }: Props) {
   const [pendingText, setPendingText] = useState('');
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [subjectId, setSubjectId] = useState('');
+  const [topics, setTopics] = useState<TopicTreeNode[]>([]);
+  const [topicId, setTopicId] = useState('');
+  const [creating, setCreating] = useState<'group' | 'subgroup' | null>(null);
+  const [newName, setNewName] = useState('');
+  const [savingTarget, setSavingTarget] = useState(false);
   const [saving, setSaving] = useState(false);
   const [createdCount, setCreatedCount] = useState(0);
   const [front, setFront] = useState('');
@@ -142,6 +168,32 @@ export function PdfReaderSheet({ pdf, groupName, onClose }: Props) {
   }, [pdf, toast]);
 
   useEffect(() => {
+    if (!pdf || !subjectId) {
+      setTopics([]);
+      setTopicId('');
+      return;
+    }
+    let cancelled = false;
+    void topicsFacade
+      .tree(subjectId)
+      .then((tree) => {
+        if (cancelled) return;
+        setTopics(tree);
+        setTopicId((prev) =>
+          prev && flattenTopics(tree).some((t) => t.id === prev) ? prev : '',
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setTopics([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [pdf, subjectId]);
+
+  const flatTopics = useMemo(() => flattenTopics(topics), [topics]);
+
+  useEffect(() => {
     if (!pdf) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -182,6 +234,53 @@ export function PdfReaderSheet({ pdf, groupName, onClose }: Props) {
     setLastAssigned(field);
   };
 
+  const startCreate = (kind: 'group' | 'subgroup') => {
+    if (kind === 'subgroup' && !subjectId) {
+      toast.error(new Error('Escolha um grupo antes de criar um subgrupo.'));
+      return;
+    }
+    setCreating(kind);
+    setNewName('');
+  };
+
+  const cancelCreate = () => {
+    setCreating(null);
+    setNewName('');
+  };
+
+  const confirmCreate = async () => {
+    const name = newName.trim();
+    if (!name) return;
+    setSavingTarget(true);
+    try {
+      if (creating === 'group') {
+        const color = GROUP_COLORS[subjects.length % GROUP_COLORS.length];
+        const subject = await subjectsFacade.create({ name, color });
+        setSubjects((prev) => [...prev, subject]);
+        setSubjectId(subject.id);
+        setTopicId('');
+        toast.success('Grupo criado');
+      } else if (creating === 'subgroup') {
+        // Nest under the currently selected subgroup (or group root)
+        const topic = await topicsFacade.create({
+          subjectId,
+          parentId: topicId || null,
+          name,
+        });
+        const tree = await topicsFacade.tree(subjectId);
+        setTopics(tree);
+        setTopicId(topic.id);
+        toast.success('Subgrupo criado');
+      }
+      setCreating(null);
+      setNewName('');
+    } catch (error) {
+      toast.error(error);
+    } finally {
+      setSavingTarget(false);
+    }
+  };
+
   const createCard = async () => {
     if (!subjectId) {
       toast.error(new Error('Escolha um grupo de cartas na lateral.'));
@@ -202,7 +301,7 @@ export function PdfReaderSheet({ pdf, groupName, onClose }: Props) {
     try {
       await cardsFacade.create({
         subjectId,
-        topicId: null,
+        topicId: topicId || null,
         front: nextFront,
         back: nextBack,
         document: nextDoc,
@@ -300,22 +399,111 @@ export function PdfReaderSheet({ pdf, groupName, onClose }: Props) {
                   ) : null}
                 </div>
 
-                <label className="sc-pdf-field">
-                  <span>Grupo</span>
-                  <select
-                    value={subjectId}
-                    onChange={(e) => setSubjectId(e.target.value)}
-                  >
-                    {!subjects.length ? (
-                      <option value="">Nenhum grupo em Cartas</option>
-                    ) : null}
-                    {subjects.map((subject) => (
-                      <option key={subject.id} value={subject.id}>
-                        {subject.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <div className="sc-pdf-target">
+                  {creating ? (
+                    <div className="sc-pdf-target-create">
+                      <span className="sc-pdf-target-create-label">
+                        {creating === 'group'
+                          ? 'Novo grupo'
+                          : topicId
+                            ? 'Novo subgrupo (dentro do selecionado)'
+                            : 'Novo subgrupo (na raiz do grupo)'}
+                      </span>
+                      <div className="sc-pdf-target-create-row">
+                        <input
+                          autoFocus
+                          value={newName}
+                          placeholder={
+                            creating === 'group' ? 'Ex.: Direito' : 'Ex.: Capítulo 1'
+                          }
+                          onChange={(e) => setNewName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') void confirmCreate();
+                            if (e.key === 'Escape') cancelCreate();
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="sc-btn primary"
+                          disabled={!newName.trim() || savingTarget}
+                          onClick={() => void confirmCreate()}
+                        >
+                          {savingTarget ? (
+                            <IonSpinner name="crescent" />
+                          ) : (
+                            <IonIcon icon={checkmarkCircleOutline} />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          className="sc-btn sc-btn-icon"
+                          onClick={cancelCreate}
+                          aria-label="Cancelar"
+                        >
+                          <IonIcon icon={closeOutline} />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <label className="sc-pdf-field">
+                        <span className="sc-pdf-field-head">
+                          Grupo
+                          <button
+                            type="button"
+                            className="sc-pdf-mini-add"
+                            onClick={() => startCreate('group')}
+                            title="Criar novo grupo"
+                          >
+                            <IonIcon icon={addOutline} />
+                            Novo
+                          </button>
+                        </span>
+                        <select
+                          value={subjectId}
+                          onChange={(e) => setSubjectId(e.target.value)}
+                        >
+                          {!subjects.length ? (
+                            <option value="">Nenhum grupo em Cartas</option>
+                          ) : null}
+                          {subjects.map((subject) => (
+                            <option key={subject.id} value={subject.id}>
+                              {subject.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="sc-pdf-field">
+                        <span className="sc-pdf-field-head">
+                          Subgrupo
+                          <button
+                            type="button"
+                            className="sc-pdf-mini-add"
+                            disabled={!subjectId}
+                            onClick={() => startCreate('subgroup')}
+                            title="Criar subgrupo dentro do destino atual"
+                          >
+                            <IonIcon icon={addOutline} />
+                            Novo
+                          </button>
+                        </span>
+                        <select
+                          value={topicId}
+                          disabled={!subjectId}
+                          onChange={(e) => setTopicId(e.target.value)}
+                        >
+                          <option value="">Raiz do grupo</option>
+                          {flatTopics.map((topic) => (
+                            <option key={topic.id} value={topic.id}>
+                              {`${'\u00A0\u00A0'.repeat(topic.depth)}${topic.depth ? '└ ' : ''}${topic.name}`}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </>
+                  )}
+                </div>
 
                 <div className={`sc-pdf-clip${pendingText ? ' has-text' : ''}`}>
                   <div className="sc-pdf-clip-head">
