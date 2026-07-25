@@ -79,7 +79,12 @@ export function FaceCard({ card, selected, onClick, style, index = 0 }: FaceProp
       tabIndex={onClick ? 0 : undefined}
       className={`sc-face-card is-simple${selected ? ' selected' : ''}`}
       onClick={onClick}
-      style={style}
+      style={
+        {
+          ...style,
+          '--card-accent': accent,
+        } as CSSProperties
+      }
       initial={reduce ? false : 'hidden'}
       animate="show"
       variants={
@@ -104,14 +109,17 @@ export function FaceCard({ card, selected, onClick, style, index = 0 }: FaceProp
       whileTap={reduce ? undefined : tapScale}
       layout
     >
+      <span className="card-accent-bar" aria-hidden />
       <div className="card-title">{card.front}</div>
-      {card.icon ? (
-        <CardFaceIcon icon={card.icon} color={accent} />
-      ) : (
-        <div className="card-face-icon is-fallback" aria-hidden>
-          <span className="card-face-fallback">◇</span>
-        </div>
-      )}
+      <div className="card-icon-stage">
+        {card.icon ? (
+          <CardFaceIcon icon={card.icon} color={accent} />
+        ) : (
+          <div className="card-face-icon is-fallback" aria-hidden>
+            <span className="card-face-fallback">◇</span>
+          </div>
+        )}
+      </div>
     </motion.div>
   );
 }
