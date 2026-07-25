@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   getDocument,
   GlobalWorkerOptions,
+  version as pdfjsVersion,
   type PDFDocumentProxy,
   type PDFPageProxy,
   type RenderTask,
@@ -55,7 +56,8 @@ const MIN_SCALE = 0.5;
 const MAX_SCALE = 3;
 const DEFAULT_SCALE = 1.15;
 const ZOOM_STEP = 0.12;
-const WORKER_SRC = `${import.meta.env.BASE_URL}pdf.worker.min.mjs`;
+// Query string evita worker antigo em cache (ex.: 6.x vs 4.x no Railway/CDN).
+const WORKER_SRC = `${import.meta.env.BASE_URL}pdf.worker.min.mjs?v=${pdfjsVersion}`;
 
 GlobalWorkerOptions.workerSrc = WORKER_SRC;
 
@@ -301,7 +303,7 @@ export function PdfSelectableViewer({
             viewportScale: scaleRef.current,
           });
 
-          const task = page.render({ canvasContext: context, viewport });
+          const task = page.render({ canvasContext: context, viewport, canvas });
           tasks.push(task);
           await task.promise;
           if (cancelled) break;

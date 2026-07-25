@@ -20,7 +20,16 @@ server {
         client_max_body_size 32m;
     }
 
-    # ES modules (.mjs, ex.: pdf.worker do pdfjs) precisam de MIME de JavaScript;
+    # Worker do pdf.js na raiz: cache curto (versão muda sem hash no nome).
+    # Query ?v= na URL do app força reload; MIME deve ser JavaScript.
+    location = /pdf.worker.min.mjs {
+        types { text/javascript mjs; }
+        default_type text/javascript;
+        try_files $uri =404;
+        add_header Cache-Control "public, max-age=3600, must-revalidate";
+    }
+
+    # ES modules (.mjs, ex.: assets hashados) precisam de MIME de JavaScript;
     # sem isso o import() dinâmico falha por checagem estrita de MIME.
     location ~* \.mjs$ {
         types { text/javascript mjs; }
