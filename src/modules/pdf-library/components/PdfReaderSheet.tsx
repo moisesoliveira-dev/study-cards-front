@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { IonIcon, IonSpinner } from '@ionic/react';
@@ -18,7 +18,10 @@ import { cardsFacade } from '../../cards/facades/cards.facade';
 import type { Subject } from '../../subjects/types/subject.types';
 import { useAppToast } from '../../../shared/hooks/useAppToast';
 import { docExpand, fadeIn } from '../../../shared/motion';
-import { PdfSelectableViewer } from './PdfSelectableViewer';
+import {
+  PdfSelectableViewer,
+  type PdfViewerHandle,
+} from './PdfSelectableViewer';
 
 type CardField = 'front' | 'back' | 'document' | 'hint';
 
@@ -70,6 +73,7 @@ export function PdfReaderSheet({ pdf, groupName, onClose }: Props) {
   const [tag, setTag] = useState('Conceito');
   const [hint, setHint] = useState('');
   const [lastAssigned, setLastAssigned] = useState<CardField | null>(null);
+  const pdfViewerRef = useRef<PdfViewerHandle | null>(null);
 
   const resetDraft = useCallback(() => {
     setFront('');
@@ -79,7 +83,7 @@ export function PdfReaderSheet({ pdf, groupName, onClose }: Props) {
     setTag('Conceito');
     setPendingText('');
     setLastAssigned(null);
-    window.getSelection()?.removeAllRanges();
+    pdfViewerRef.current?.clearSelection();
   }, []);
 
   useEffect(() => {
@@ -277,6 +281,7 @@ export function PdfReaderSheet({ pdf, groupName, onClose }: Props) {
                     url={url}
                     title={pdf.title}
                     onTextSelected={onTextSelected}
+                    viewerRef={pdfViewerRef}
                   />
                 )}
               </section>
@@ -320,7 +325,7 @@ export function PdfReaderSheet({ pdf, groupName, onClose }: Props) {
                         type="button"
                         onClick={() => {
                           setPendingText('');
-                          window.getSelection()?.removeAllRanges();
+                          pdfViewerRef.current?.clearSelection();
                         }}
                       >
                         Limpar
