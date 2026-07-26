@@ -174,6 +174,18 @@ export default function PdfLibraryPage() {
     }
   };
 
+  const openDocument = (document: PdfDocument) => {
+    if (document.fileAvailable === false) {
+      toast.error(
+        new Error(
+          'Arquivo ausente na pasta de armazenamento. Exclua o item e envie o PDF de novo.',
+        ),
+      );
+      return;
+    }
+    setReading(document);
+  };
+
   const chooseFile = (file?: File) => {
     if (!file) return;
     if (file.type !== 'application/pdf' && !file.name.endsWith('.pdf')) {
@@ -462,7 +474,9 @@ export default function PdfLibraryPage() {
                     return (
                       <motion.article
                         key={document.id}
-                        className="sc-pdf-book"
+                        className={`sc-pdf-book${
+                          document.fileAvailable === false ? ' is-missing' : ''
+                        }`}
                         variants={reduce ? undefined : staggerItem}
                         whileHover={reduce ? undefined : { y: -4 }}
                         style={
@@ -474,20 +488,24 @@ export default function PdfLibraryPage() {
                         <button
                           type="button"
                           className="sc-pdf-cover"
-                          onClick={() => setReading(document)}
+                          onClick={() => openDocument(document)}
                         >
                           <span className="sc-pdf-spine" />
                           <span className="sc-pdf-file-type">PDF</span>
                           <IonIcon icon={documentTextOutline} />
                           <strong>{document.title}</strong>
                           <span>{group?.name ?? 'Sem coleção'}</span>
+                          {document.fileAvailable === false ? (
+                            <em className="sc-pdf-missing-badge">Arquivo ausente</em>
+                          ) : null}
                         </button>
                         <div className="sc-pdf-book-info">
                           <div>
                             <h3>{document.title}</h3>
                             <p>
-                              {formatBytes(document.sizeBytes)} ·{' '}
-                              {formatDate(document.updatedAt)}
+                              {document.fileAvailable === false
+                                ? 'Cadastro ok · arquivo sumiu do disco'
+                                : `${formatBytes(document.sizeBytes)} · ${formatDate(document.updatedAt)}`}
                             </p>
                           </div>
                           <div className="sc-pdf-book-actions">
@@ -521,8 +539,13 @@ export default function PdfLibraryPage() {
                             <button
                               type="button"
                               aria-label="Ler PDF"
-                              title="Ler"
-                              onClick={() => setReading(document)}
+                              title={
+                                document.fileAvailable === false
+                                  ? 'Arquivo ausente'
+                                  : 'Ler'
+                              }
+                              disabled={document.fileAvailable === false}
+                              onClick={() => openDocument(document)}
                             >
                               <IonIcon icon={bookOutline} />
                             </button>

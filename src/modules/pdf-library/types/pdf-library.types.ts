@@ -19,6 +19,8 @@ export type PdfDocument = {
   mimeType: string;
   sizeBytes: number;
   favorite: boolean;
+  /** true se o arquivo existe em PDF_STORAGE_PATH */
+  fileAvailable: boolean;
   createdAt: string;
   updatedAt: string;
 };

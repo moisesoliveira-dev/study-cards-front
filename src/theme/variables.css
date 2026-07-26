@@ -6874,6 +6874,31 @@ ion-toast.sc-toast--info::part(container) {
 
 .sc-pdf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(205px, 1fr)); gap: 22px 18px; }
 .sc-pdf-book { min-width: 0; }
+.sc-pdf-book.is-missing .sc-pdf-cover {
+  filter: grayscale(0.55);
+  opacity: 0.78;
+}
+.sc-pdf-missing-badge {
+  position: absolute;
+  bottom: 10px;
+  left: 12px;
+  right: 12px;
+  z-index: 2;
+  margin: 0;
+  padding: 4px 6px;
+  border-radius: 6px;
+  background: color-mix(in srgb, #c0392b 88%, #000);
+  color: #fff;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+.sc-pdf-book-actions button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
 .sc-pdf-cover {
   position: relative;
   display: flex;
