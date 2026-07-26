@@ -98,7 +98,9 @@ export default function PdfLibraryPage() {
     try {
       const result = await pdfLibraryFacade.list();
       setGroups(result.groups);
-      setDocuments(result.documents);
+      setDocuments(
+        result.documents.filter((doc) => doc.fileAvailable !== false),
+      );
     } catch (error) {
       toast.error(error);
     } finally {
