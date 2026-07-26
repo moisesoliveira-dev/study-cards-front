@@ -12,7 +12,9 @@ import {
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useLocation, useParams } from 'react-router-dom';
 import { cardsFacade } from '../../cards/facades/cards.facade';
+import { cardLevelsFacade } from '../../cards/facades/card-levels.facade';
 import type { Card } from '../../cards/types/card.types';
+import type { CardLevel } from '../../cards/types/card-level.types';
 import { statusClass, statusLabel } from '../../cards/types/card.types';
 import { useAppToast } from '../../../shared/hooks/useAppToast';
 import {
@@ -35,6 +37,7 @@ export default function StudyPage() {
   const toast = useAppToast();
   const reduce = useReducedMotion();
   const [cards, setCards] = useState<Card[]>([]);
+  const [levels, setLevels] = useState<CardLevel[]>([]);
   const [index, setIndex] = useState(0);
   const [dir, setDir] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -63,7 +66,14 @@ export default function StudyPage() {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    void cardLevelsFacade.list().then(setLevels).catch(() => setLevels([]));
+  }, []);
+
   const current = cards[index];
+  const currentLevel = current
+    ? levels.find((l) => l.id === current.levelId)
+    : undefined;
   const done = !loading && (!cards.length || index >= cards.length);
   const progress = useMemo(() => {
     if (!cards.length) return 0;
@@ -175,10 +185,10 @@ export default function StudyPage() {
                       <h4>Explicação</h4>
                       <p>{current.back}</p>
                     </div>
-                    {current.hint ? (
+                    {currentLevel ? (
                       <div className="sc-detail-block">
-                        <h4>Dica</h4>
-                        <p>{current.hint}</p>
+                        <h4>Nível</h4>
+                        <p>{currentLevel.name}</p>
                       </div>
                     ) : null}
                   </motion.div>

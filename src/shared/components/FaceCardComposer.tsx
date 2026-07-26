@@ -8,7 +8,9 @@ import {
   DocumentEditor,
   documentToPlainText,
 } from './DocumentEditor';
+import type { CardLevel } from '../../modules/cards/types/card-level.types';
 import { CardAccentPicker } from './CardAccentPicker';
+import { CardLevelPicker } from './CardLevelPicker';
 import { CardIconPicker } from './CardIcon';
 import { docExpand, fadeIn, scaleIn, tapScale } from '../motion';
 
@@ -32,7 +34,9 @@ type Props = {
   back: string;
   docJson: string;
   tag: string;
-  hint: string;
+  levelId: string | null;
+  levels: CardLevel[];
+  levelsLoading?: boolean;
   icon: string | null;
   color: string | null;
   saving?: boolean;
@@ -43,7 +47,7 @@ type Props = {
   onBack: (value: string) => void;
   onDocJson: (value: string) => void;
   onTag: (value: string) => void;
-  onHint: (value: string) => void;
+  onLevelId: (value: string | null) => void;
   onIcon: (value: string | null) => void;
   onColor: (value: string | null) => void;
   onClose: () => void;
@@ -57,7 +61,9 @@ export function FaceCardComposer({
   back,
   docJson,
   tag,
-  hint,
+  levelId,
+  levels,
+  levelsLoading = false,
   icon,
   color,
   saving = false,
@@ -68,7 +74,7 @@ export function FaceCardComposer({
   onBack,
   onDocJson,
   onTag,
-  onHint,
+  onLevelId,
   onIcon,
   onColor,
   onClose,
@@ -200,17 +206,6 @@ export function FaceCardComposer({
                     />
                   </label>
 
-                  <label className="card-compose-field hint">
-                    <span className="sr-only">Dica</span>
-                    <input
-                      className="card-hint-input"
-                      value={hint}
-                      onChange={(e) => onHint(e.target.value)}
-                      placeholder="Dica (opcional)"
-                      autoComplete="off"
-                    />
-                  </label>
-
                   <button
                     type="button"
                     className="card-expand-doc"
@@ -267,6 +262,12 @@ export function FaceCardComposer({
                         : 'Sem verso/documento, o título será usado como verso.'}
                   </p>
                 </div>
+                <CardLevelPicker
+                  levels={levels}
+                  value={levelId}
+                  onChange={onLevelId}
+                  loading={levelsLoading}
+                />
                 <CardAccentPicker value={color} onChange={onColor} />
               </motion.div>
             ) : (
@@ -332,14 +333,6 @@ export function FaceCardComposer({
                     com a linguagem escolhida.
                   </p>
                   <DocumentEditor value={docJson} onChange={onDocJson} />
-                  <label className="sc-doc-hint-row">
-                    <span>Dica rápida (aparece na carta)</span>
-                    <input
-                      value={hint}
-                      onChange={(e) => onHint(e.target.value)}
-                      placeholder="Opcional"
-                    />
-                  </label>
                   <label className="sc-doc-hint-row">
                     <span>Conceito resumido (verso ao girar)</span>
                     <textarea

@@ -55,8 +55,10 @@ import {
 import '@xyflow/react/dist/style.css';
 import { flowsFacade } from '../facades/flows.facade';
 import { cardsFacade } from '../../cards/facades/cards.facade';
+import { cardLevelsFacade } from '../../cards/facades/card-levels.facade';
 import { subjectsFacade } from '../../subjects/facades/subjects.facade';
 import type { Card } from '../../cards/types/card.types';
+import type { CardLevel } from '../../cards/types/card-level.types';
 import type { FlowBoard } from '../types/flow.types';
 import {
   CardFlowNode,
@@ -319,7 +321,8 @@ function FlowCanvas({
   const [back, setBack] = useState('');
   const [docJson, setDocJson] = useState('');
   const [tag, setTag] = useState('Conceito');
-  const [hint, setHint] = useState('');
+  const [levelId, setLevelId] = useState<string | null>(null);
+  const [levels, setLevels] = useState<CardLevel[]>([]);
   const [icon, setIcon] = useState<string | null>(null);
   const [color, setColor] = useState<string | null>('#1D9E75');
   const [detail, setDetail] = useState<Card | null>(null);
@@ -1380,7 +1383,7 @@ function FlowCanvas({
     setBack('');
     setDocJson('');
     setTag('Conceito');
-    setHint('');
+    setLevelId(levels.find((l) => l.slug === 'basic')?.id ?? levels[0]?.id ?? null);
     setIcon(null);
     setColor('#1D9E75');
     setComposerOpen(true);
@@ -1796,6 +1799,10 @@ function FlowCanvas({
     ],
   );
 
+  useEffect(() => {
+    void cardLevelsFacade.list().then(setLevels).catch(() => setLevels([]));
+  }, []);
+
   const createCard = useCallback(async () => {
     if (!front.trim()) return;
     const plain = documentToPlainText(docJson);
@@ -1808,7 +1815,7 @@ function FlowCanvas({
         front,
         back: nextBack,
         document: docJson || null,
-        hint,
+        levelId,
         icon,
         color,
         tag,
@@ -1818,7 +1825,7 @@ function FlowCanvas({
       setFront('');
       setBack('');
       setDocJson('');
-      setHint('');
+      setLevelId(levels.find((l) => l.slug === 'basic')?.id ?? levels[0]?.id ?? null);
       setIcon(null);
       setColor('#1D9E75');
       setTag('Conceito');
@@ -1837,7 +1844,7 @@ function FlowCanvas({
     color,
     docJson,
     front,
-    hint,
+    levelId,
     icon,
     onCardsChange,
     tag,
@@ -2216,7 +2223,8 @@ function FlowCanvas({
         back={back}
         docJson={docJson}
         tag={tag}
-        hint={hint}
+        levelId={levelId}
+        levels={levels}
         icon={icon}
         color={color}
         saving={composerSaving}
@@ -2226,7 +2234,7 @@ function FlowCanvas({
         onBack={setBack}
         onDocJson={setDocJson}
         onTag={setTag}
-        onHint={setHint}
+        onLevelId={setLevelId}
         onIcon={setIcon}
         onColor={setColor}
         onClose={() => setComposerOpen(false)}

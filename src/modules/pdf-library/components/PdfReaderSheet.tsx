@@ -8,7 +8,6 @@ import {
   checkmarkCircleOutline,
   closeOutline,
   documentTextOutline,
-  helpCircleOutline,
   layersOutline,
   readerOutline,
   trashOutline,
@@ -18,6 +17,8 @@ import { pdfLibraryFacade } from '../facades/pdf-library.facade';
 import { subjectsFacade } from '../../subjects/facades/subjects.facade';
 import { topicsFacade } from '../../topics/facades/topics.facade';
 import { cardsFacade } from '../../cards/facades/cards.facade';
+import { cardLevelsFacade } from '../../cards/facades/card-levels.facade';
+import type { CardLevel } from '../../cards/types/card-level.types';
 import type { Subject } from '../../subjects/types/subject.types';
 import type { TopicTreeNode } from '../../topics/types/topic.types';
 import { useAppToast } from '../../../shared/hooks/useAppToast';
@@ -27,7 +28,7 @@ import {
   type PdfViewerHandle,
 } from './PdfSelectableViewer';
 
-type CardField = 'front' | 'back' | 'document' | 'hint';
+type CardField = 'front' | 'back' | 'document';
 
 type Props = {
   pdf: PdfDocument | null;
@@ -58,7 +59,6 @@ const FIELD_OPTIONS: {
   { id: 'front', label: 'Frente', short: 'Título', icon: readerOutline },
   { id: 'back', label: 'Verso', short: 'Resposta', icon: layersOutline },
   { id: 'document', label: 'Documento', short: 'Texto longo', icon: documentTextOutline },
-  { id: 'hint', label: 'Dica', short: 'Opcional', icon: helpCircleOutline },
 ];
 
 const GROUP_COLORS = ['#BA7517', '#378ADD', '#1D9E75', '#7F77DD', '#D4537E', '#888780'];
@@ -97,15 +97,26 @@ export function PdfReaderSheet({ pdf, groupName, onClose }: Props) {
   const [back, setBack] = useState('');
   const [documentPlain, setDocumentPlain] = useState('');
   const [tag, setTag] = useState('Conceito');
-  const [hint, setHint] = useState('');
+  const [levelId, setLevelId] = useState<string | null>(null);
+  const [levels, setLevels] = useState<CardLevel[]>([]);
   const [lastAssigned, setLastAssigned] = useState<CardField | null>(null);
   const pdfViewerRef = useRef<PdfViewerHandle | null>(null);
+
+  useEffect(() => {
+    void cardLevelsFacade
+      .list()
+      .then((list) => {
+        setLevels(list);
+        setLevelId((prev) => prev ?? list.find((l) => l.slug === 'basic')?.id ?? list[0]?.id ?? null);
+      })
+      .catch(() => setLevels([]));
+  }, []);
 
   const resetDraft = useCallback(() => {
     setFront('');
     setBack('');
     setDocumentPlain('');
-    setHint('');
+    setLevelId(levels.find((l) => l.slug === 'basic')?.id ?? levels[0]?.id ?? null);
     setTag('Conceito');
     setPendingText('');
     setLastAssigned(null);
@@ -222,8 +233,6 @@ export function PdfReaderSheet({ pdf, groupName, onClose }: Props) {
       setFront(text.slice(0, 220));
     } else if (field === 'back') {
       setBack((prev) => (prev.trim() ? `${prev.trim()}\n\n${text}` : text));
-    } else if (field === 'hint') {
-      setHint(text.slice(0, 280));
     } else if (field === 'document') {
       setDocumentPlain((prev) =>
         prev.trim() ? `${prev.trim()}\n\n${text}` : text,
@@ -305,7 +314,7 @@ export function PdfReaderSheet({ pdf, groupName, onClose }: Props) {
         front: nextFront,
         back: nextBack,
         document: nextDoc,
-        hint: hint.trim() || undefined,
+        levelId,
         icon: null,
         tag: tag.trim() || 'Conceito',
       });
@@ -322,8 +331,8 @@ export function PdfReaderSheet({ pdf, groupName, onClose }: Props) {
   const canCreate = Boolean(front.trim() && subjectId && !saving);
   const draftFilled = useMemo(
     () =>
-      [front, back, documentPlain, hint].filter((v) => v.trim()).length,
-    [front, back, documentPlain, hint],
+      [front, back, documentPlain].filter((v) => v.trim()).length,
+    [front, back, documentPlain],
   );
 
   return createPortal(
@@ -585,12 +594,18 @@ export function PdfReaderSheet({ pdf, groupName, onClose }: Props) {
                     />
                   </label>
                   <label className="sc-pdf-field">
-                    <span>Dica</span>
-                    <input
-                      value={hint}
-                      onChange={(e) => setHint(e.target.value)}
-                      placeholder="Opcional"
-                    />
+                    <span>Nível</span>
+                    <select
+                      value={levelId ?? ''}
+                      onChange={(e) => setLevelId(e.target.value || null)}
+                    >
+                      <option value="">Sem nível</option>
+                      {levels.map((level) => (
+                        <option key={level.id} value={level.id}>
+                          {level.name}
+                        </option>
+                      ))}
+                    </select>
                   </label>
                 </div>
 

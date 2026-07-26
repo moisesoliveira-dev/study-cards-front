@@ -7,7 +7,7 @@ export type Card = {
   front: string;
   back: string;
   document: string | null;
-  hint: string | null;
+  levelId: string | null;
   icon: string | null;
   color: string | null;
   tag: string;
@@ -25,7 +25,7 @@ export type CreateCardInput = {
   front: string;
   back: string;
   document?: string | null;
-  hint?: string;
+  levelId?: string | null;
   icon?: string | null;
   color?: string | null;
   tag?: string;
@@ -35,7 +35,7 @@ export type UpdateCardInput = {
   front?: string;
   back?: string;
   document?: string | null;
-  hint?: string | null;
+  levelId?: string | null;
   icon?: string | null;
   color?: string | null;
   tag?: string;
@@ -50,7 +50,7 @@ export type MergeCardsInput = {
   front: string;
   back: string;
   document?: string | null;
-  hint?: string;
+  levelId?: string | null;
   icon?: string | null;
   color?: string | null;
   tag?: string;

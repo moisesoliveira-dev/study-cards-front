@@ -15,6 +15,8 @@ import { useHistory } from 'react-router-dom';
 import { subjectsFacade } from '../../modules/subjects/facades/subjects.facade';
 import { topicsFacade } from '../../modules/topics/facades/topics.facade';
 import { cardsFacade } from '../../modules/cards/facades/cards.facade';
+import { cardLevelsFacade } from '../../modules/cards/facades/card-levels.facade';
+import type { CardLevel } from '../../modules/cards/types/card-level.types';
 import type { Subject } from '../../modules/subjects/types/subject.types';
 import type { TopicTreeNode } from '../../modules/topics/types/topic.types';
 import type { Card } from '../../modules/cards/types/card.types';
@@ -121,7 +123,8 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   const [front, setFront] = useState('');
   const [back, setBack] = useState('');
   const [docJson, setDocJson] = useState('');
-  const [hint, setHint] = useState('');
+  const [levelId, setLevelId] = useState<string | null>(null);
+  const [levels, setLevels] = useState<CardLevel[]>([]);
   const [icon, setIcon] = useState<string | null>(null);
   const [color, setColor] = useState<string | null>(CARD_ACCENT_COLORS[0]);
   const [tag, setTag] = useState('Conceito');
@@ -202,7 +205,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     setFront(sources.map((c) => c.front).join(' + '));
     setBack(sources.map((c) => `• ${c.front}: ${c.back}`).join('\n'));
     setDocJson('');
-    setHint('');
+    setLevelId(levels.find((l) => l.slug === 'basic')?.id ?? levels[0]?.id ?? null);
     setIcon(null);
     setColor(CARD_ACCENT_COLORS[3]);
     setTag('Síntese');
@@ -367,7 +370,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         front,
         back: nextBack,
         document: docJson || null,
-        hint,
+        levelId,
         icon,
         color,
         tag,
@@ -376,7 +379,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
       setFront('');
       setBack('');
       setDocJson('');
-      setHint('');
+      setLevelId(levels.find((l) => l.slug === 'basic')?.id ?? levels[0]?.id ?? null);
       setIcon(null);
       setColor(CARD_ACCENT_COLORS[0]);
       setTag('Conceito');
@@ -403,7 +406,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         front,
         back: nextBack,
         document: docJson || null,
-        hint,
+        levelId,
         icon,
         color,
         tag: tag || 'Síntese',
@@ -415,7 +418,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
       setFront('');
       setBack('');
       setDocJson('');
-      setHint('');
+      setLevelId(levels.find((l) => l.slug === 'basic')?.id ?? levels[0]?.id ?? null);
       setIcon(null);
       setColor(CARD_ACCENT_COLORS[0]);
       setTag('Conceito');
@@ -873,7 +876,8 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         back={back}
         docJson={docJson}
         tag={tag}
-        hint={hint}
+        levelId={levelId}
+        levels={levels}
         icon={icon}
         color={color}
         saving={saving}
@@ -881,7 +885,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         onBack={setBack}
         onDocJson={setDocJson}
         onTag={setTag}
-        onHint={setHint}
+        onLevelId={setLevelId}
         onIcon={setIcon}
         onColor={setColor}
         onClose={() => setCardOpen(false)}
@@ -897,7 +901,8 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         back={back}
         docJson={docJson}
         tag={tag || 'Síntese'}
-        hint={hint}
+        levelId={levelId}
+        levels={levels}
         icon={icon}
         color={color}
         saving={saving}
@@ -905,7 +910,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         onBack={setBack}
         onDocJson={setDocJson}
         onTag={setTag}
-        onHint={setHint}
+        onLevelId={setLevelId}
         onIcon={setIcon}
         onColor={setColor}
         onClose={() => {

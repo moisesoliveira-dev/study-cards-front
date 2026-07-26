@@ -14,10 +14,13 @@ import {
   statusClass,
   statusLabel,
 } from '../../modules/cards/types/card.types';
+import type { CardLevel } from '../../modules/cards/types/card-level.types';
 import { cardsFacade } from '../../modules/cards/facades/cards.facade';
+import { cardLevelsFacade } from '../../modules/cards/facades/card-levels.facade';
 import { DocumentEditor, documentToPlainText } from './DocumentEditor';
 import { cardAccent } from './FaceCardComposer';
 import { CardAccentPicker } from './CardAccentPicker';
+import { CardLevelPicker } from './CardLevelPicker';
 import { CardFaceIcon, CardIconPicker } from './CardIcon';
 import { useAppToast } from '../hooks/useAppToast';
 import { docExpand, fadeIn, scaleIn } from '../motion';
@@ -51,7 +54,9 @@ export function CardDocumentSheet({
   const [back, setBack] = useState('');
   const [docJson, setDocJson] = useState('');
   const [tag, setTag] = useState('Conceito');
-  const [hint, setHint] = useState('');
+  const [levelId, setLevelId] = useState<string | null>(null);
+  const [levels, setLevels] = useState<CardLevel[]>([]);
+  const [levelsLoading, setLevelsLoading] = useState(false);
   const [icon, setIcon] = useState<string | null>(null);
   const [color, setColor] = useState<string | null>(CARD_ACCENT_COLORS[0]);
   const [saving, setSaving] = useState(false);
@@ -65,7 +70,7 @@ export function CardDocumentSheet({
     setFront(next.front);
     setBack(next.back);
     setTag(next.tag);
-    setHint(next.hint ?? '');
+    setLevelId(next.levelId ?? null);
     setIcon(next.icon ?? null);
     setColor(next.color ?? CARD_ACCENT_COLORS[0]);
     setDocJson(seedDocument(next));
@@ -79,6 +84,26 @@ export function CardDocumentSheet({
     setConfirmDelete(false);
     setFlipped(false);
     setFlipping(false);
+  }, [card]);
+
+  useEffect(() => {
+    if (!card) return;
+    let cancelled = false;
+    setLevelsLoading(true);
+    void cardLevelsFacade
+      .list()
+      .then((list) => {
+        if (!cancelled) setLevels(list);
+      })
+      .catch(() => {
+        if (!cancelled) setLevels([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLevelsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [card]);
 
   useEffect(() => {
@@ -134,6 +159,11 @@ export function CardDocumentSheet({
   if (!card) return null;
 
   const accent = cardAccent(color, tag);
+  const currentLevel =
+    levels.find((l) => l.id === (editing ? levelId : card.levelId)) ??
+    levels.find((l) => l.id === levelId) ??
+    null;
+
   const hasDocument = Boolean(
     card.document?.trim() && documentToPlainText(card.document),
   );
@@ -153,7 +183,7 @@ export function CardDocumentSheet({
         back: nextBack,
         document: docJson.trim() || null,
         tag: tag.trim() || 'Conceito',
-        hint: hint.trim() || null,
+        levelId,
         icon,
         color,
       });
@@ -384,28 +414,14 @@ export function CardDocumentSheet({
               />
             )}
             {editing ? (
-              <>
-                <label className="sc-doc-hint-row">
-                  <span>Dica rápida</span>
-                  <input
-                    value={hint}
-                    onChange={(e) => setHint(e.target.value)}
-                    placeholder="Opcional"
-                  />
-                </label>
-                <label className="sc-doc-hint-row">
-                  <span>Verso curto (estudo)</span>
-                  <textarea
-                    value={back}
-                    onChange={(e) => setBack(e.target.value)}
-                    rows={2}
-                  />
-                </label>
-              </>
-            ) : hint ? (
-              <p className="sc-doc-hint-view">
-                <span>Dica</span> {hint}
-              </p>
+              <label className="sc-doc-hint-row">
+                <span>Verso curto (estudo)</span>
+                <textarea
+                  value={back}
+                  onChange={(e) => setBack(e.target.value)}
+                  rows={2}
+                />
+              </label>
             ) : null}
           </div>
         </motion.div>
@@ -467,16 +483,6 @@ export function CardDocumentSheet({
                 rows={4}
               />
             </label>
-            <label className="card-compose-field hint">
-              <span className="sr-only">Dica</span>
-              <input
-                className="card-hint-input"
-                value={hint}
-                onChange={(e) => setHint(e.target.value)}
-                placeholder="Dica (opcional)"
-                autoComplete="off"
-              />
-            </label>
             <button
               type="button"
               className="card-expand-doc"
@@ -490,6 +496,12 @@ export function CardDocumentSheet({
               </button>
             </div>
           </div>
+          <CardLevelPicker
+            levels={levels}
+            value={levelId}
+            onChange={setLevelId}
+            loading={levelsLoading}
+          />
           <CardAccentPicker value={color} onChange={setColor} />
         </motion.div>
       ) : (
@@ -590,12 +602,25 @@ export function CardDocumentSheet({
                 <div className="sc-card-face-hero">
                   <CardFaceIcon icon={icon} color={accent} />
                   <div className="card-title">{front}</div>
-                  {hint ? <div className="card-hint-view">{hint}</div> : null}
                 </div>
                 <div className="sc-card-face-footer">
-                  <span className={`card-status ${statusClass(card.status)}`}>
-                    {statusLabel(card.status)}
-                  </span>
+                  <div className="sc-card-face-footer-tags">
+                    <span className={`card-status ${statusClass(card.status)}`}>
+                      {statusLabel(card.status)}
+                    </span>
+                    {currentLevel ? (
+                      <span
+                        className="sc-card-level-badge"
+                        style={
+                          currentLevel.color
+                            ? { color: currentLevel.color, borderColor: currentLevel.color }
+                            : undefined
+                        }
+                      >
+                        {currentLevel.name}
+                      </span>
+                    ) : null}
+                  </div>
                   {card.linkCount > 0 ? (
                     <button
                       type="button"
