@@ -737,49 +737,96 @@ body {
   animation: sc-card-deal 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* Preview: mesma carta, gira de verdade no eixo Y */
-.sc-face-card.sc-face-compose.is-preview:not(.is-editing) {
+/* Preview: mesma carta, gira no eixo Y (Framer Motion) */
+.sc-card-flip-scene {
+  position: relative;
+  perspective: 1600px;
+  perspective-origin: 50% 45%;
+  width: min(94vw, 340px);
+}
+
+.sc-card-flip-toolbar {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sc-card-flip-toolbar .card-compose-close {
+  position: static;
+}
+
+.sc-card-flip-mesh {
+  position: relative;
+  display: block;
+  width: 100%;
   height: min(520px, 78vh);
   min-height: 420px;
   padding: 0;
-  perspective: 1400px;
+  border: 0;
+  background: transparent;
   cursor: pointer;
   transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+  transform-origin: center center;
+  will-change: transform;
+  font: inherit;
+  color: inherit;
+  outline: none;
 }
 
-.sc-face-compose.is-preview:not(.is-editing) .sc-face-flip {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  transform-style: preserve-3d;
-  transition: transform 0.65s cubic-bezier(0.4, 0.05, 0.2, 1);
+.sc-card-flip-mesh:focus-visible {
+  box-shadow: 0 0 0 2px var(--text-accent);
+  border-radius: 14px;
 }
 
-.sc-face-compose.is-preview.is-flipped:not(.is-editing) .sc-face-flip {
-  transform: rotateY(180deg);
-}
-
-.sc-face-compose.is-preview:not(.is-editing) .sc-face-side {
+.sc-card-face {
   position: absolute;
   inset: 0;
   display: flex;
   flex-direction: column;
   padding: 22px 18px 16px;
-  border-radius: inherit;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
+  border-radius: 14px;
+  border: 0.5px solid var(--border-strong);
   background:
     linear-gradient(160deg, var(--surface-1) 0%, var(--surface-2) 55%, var(--bg) 100%);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.85) inset,
     0 28px 64px rgba(26, 25, 23, 0.28);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform-style: preserve-3d;
+  overflow: hidden;
 }
 
-.sc-face-compose.is-preview:not(.is-editing) .sc-face-side.is-back {
-  transform: rotateY(180deg);
+.sc-card-face.is-front {
+  transform: translateZ(1px);
 }
 
-.sc-face-compose.is-preview .card-back-kicker {
+.sc-card-face.is-back {
+  transform: rotateY(180deg) translateZ(1px);
+}
+
+.sc-card-face .card-accent-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--card-accent, var(--border-accent)) 30%,
+    var(--card-accent, var(--border-accent)) 70%,
+    transparent
+  );
+  opacity: 0.85;
+}
+
+.sc-card-face .card-back-kicker {
   margin: 8px 0 10px;
   font-size: 11px;
   font-weight: 650;
@@ -788,7 +835,7 @@ body {
   color: var(--card-accent, var(--text-accent));
 }
 
-.sc-face-compose.is-preview .card-back-body {
+.sc-card-face .card-back-body {
   flex: 1;
   min-height: 0;
   font-size: 16px;
@@ -797,19 +844,39 @@ body {
   color: var(--text-primary);
   overflow: auto;
   white-space: pre-wrap;
+  text-align: left;
 }
 
-.sc-face-compose.is-preview .card-flip-hint {
+.sc-card-face .card-flip-hint {
   margin: 12px 0 0;
   font-size: 11px;
   color: var(--text-muted);
   text-align: center;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .sc-face-compose.is-preview:not(.is-editing) .sc-face-flip {
-    transition: none;
-  }
+.sc-card-face .card-title {
+  flex: 0 0 auto;
+  margin: 8px 0 10px;
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.sc-card-face .card-face-icon {
+  min-height: 120px;
+  margin: 8px 0 12px;
+}
+
+.sc-card-face .card-face-icon ion-icon,
+.sc-card-face .card-face-icon-img {
+  font-size: 104px;
+  width: 104px;
+  height: 104px;
+}
+
+.sc-card-face .card-face-emoji {
+  font-size: 92px;
 }
 
 @keyframes sc-card-deal {

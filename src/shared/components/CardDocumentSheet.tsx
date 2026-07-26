@@ -391,8 +391,8 @@ export function CardDocumentSheet({
               </p>
             ) : (
               <DocumentEditor
-                key={`${card.id}-${editing ? 'edit' : 'view'}`}
-                value={docJson}
+                key={`${card.id}-${editing ? 'edit' : 'view'}-${mode}`}
+                value={docJson || ''}
                 onChange={setDocJson}
                 editable={editing}
                 placeholder="Escreva notas, exemplos, ideias…"
@@ -424,176 +424,205 @@ export function CardDocumentSheet({
             ) : null}
           </div>
         </motion.div>
-      ) : (
+      ) : editing ? (
         <motion.div
-          key="card"
-          className={`sc-face-card sc-face-compose is-preview${editing ? ' is-editing' : ''}${icon ? ' has-icon' : ''}${!editing && flipped ? ' is-flipped' : ''}`}
+          key="edit"
+          className="sc-face-card sc-face-compose is-preview is-editing"
           style={{ '--card-accent': accent } as CSSProperties}
           variants={reduce ? undefined : scaleIn}
           initial={reduce ? false : 'hidden'}
           animate="show"
           exit="exit"
-          onClick={() => {
-            if (!editing) setFlipped((v) => !v);
-          }}
         >
           <button
             type="button"
             className="card-compose-close"
-            onClick={(e) => {
-              e.stopPropagation();
-              onClose();
-            }}
+            onClick={onClose}
             aria-label="Fechar"
           >
             ×
           </button>
-          {!editing ? (
-            <span
-              className="sc-card-edit-actions"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {editButton}
-              {deleteButton}
-            </span>
-          ) : (
-            <span
-              className="sc-card-edit-actions"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {saveButton}
-              {deleteButton}
-            </span>
-          )}
-
-          {editing ? (
-            <>
-              <label className="card-compose-field suit">
-                <span className="sr-only">Tag</span>
-                <input
-                  className="card-suit-input"
-                  value={tag}
-                  onChange={(e) => setTag(e.target.value)}
-                  style={{ color: accent }}
-                  autoComplete="off"
-                />
-              </label>
-              <div className="card-compose-icon-block">
-                <CardIconPicker
-                  value={icon}
-                  onChange={setIcon}
-                  accent={accent}
-                />
-              </div>
-              <fieldset className="card-compose-colors">
-                <legend className="sr-only">Cor da carta</legend>
-                {CARD_ACCENT_COLORS.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    className={`card-color-swatch${
-                      (color ?? '').toUpperCase() === c ? ' is-active' : ''
-                    }`}
-                    style={{ background: c }}
-                    aria-label={`Cor ${c}`}
-                    aria-pressed={(color ?? '').toUpperCase() === c}
-                    onClick={() => setColor(c)}
-                  />
-                ))}
-              </fieldset>
-              <label className="card-compose-field title">
-                <span className="sr-only">Conceito</span>
-                <textarea
-                  className="card-title-input"
-                  value={front}
-                  onChange={(e) => setFront(e.target.value)}
-                  rows={2}
-                  autoFocus
-                />
-              </label>
-              <label className="card-compose-field body">
-                <span className="sr-only">Conceito resumido</span>
-                <textarea
-                  className="card-body-input"
-                  value={back}
-                  onChange={(e) => setBack(e.target.value)}
-                  placeholder="Conceito resumido (verso ao girar)…"
-                  rows={4}
-                />
-              </label>
-              <label className="card-compose-field hint">
-                <span className="sr-only">Dica</span>
-                <input
-                  className="card-hint-input"
-                  value={hint}
-                  onChange={(e) => setHint(e.target.value)}
-                  placeholder="Dica (opcional)"
-                  autoComplete="off"
-                />
-              </label>
+          <span className="sc-card-edit-actions">
+            {saveButton}
+            {deleteButton}
+          </span>
+          <label className="card-compose-field suit">
+            <span className="sr-only">Tag</span>
+            <input
+              className="card-suit-input"
+              value={tag}
+              onChange={(e) => setTag(e.target.value)}
+              style={{ color: accent }}
+              autoComplete="off"
+            />
+          </label>
+          <div className="card-compose-icon-block">
+            <CardIconPicker value={icon} onChange={setIcon} accent={accent} />
+          </div>
+          <fieldset className="card-compose-colors">
+            <legend className="sr-only">Cor da carta</legend>
+            {CARD_ACCENT_COLORS.map((c) => (
               <button
+                key={c}
                 type="button"
-                className="card-expand-doc"
-                onClick={() => setMode('document')}
-              >
-                Documento ↗
-              </button>
-              <div className="card-compose-actions">
-                <button type="button" className="sc-btn" onClick={cancelEdit}>
-                  Cancelar
-                </button>
+                className={`card-color-swatch${
+                  (color ?? '').toUpperCase() === c ? ' is-active' : ''
+                }`}
+                style={{ background: c }}
+                aria-label={`Cor ${c}`}
+                aria-pressed={(color ?? '').toUpperCase() === c}
+                onClick={() => setColor(c)}
+              />
+            ))}
+          </fieldset>
+          <label className="card-compose-field title">
+            <span className="sr-only">Conceito</span>
+            <textarea
+              className="card-title-input"
+              value={front}
+              onChange={(e) => setFront(e.target.value)}
+              rows={2}
+              autoFocus
+            />
+          </label>
+          <label className="card-compose-field body">
+            <span className="sr-only">Conceito resumido</span>
+            <textarea
+              className="card-body-input"
+              value={back}
+              onChange={(e) => setBack(e.target.value)}
+              placeholder="Conceito resumido (verso ao girar)…"
+              rows={4}
+            />
+          </label>
+          <label className="card-compose-field hint">
+            <span className="sr-only">Dica</span>
+            <input
+              className="card-hint-input"
+              value={hint}
+              onChange={(e) => setHint(e.target.value)}
+              placeholder="Dica (opcional)"
+              autoComplete="off"
+            />
+          </label>
+          <button
+            type="button"
+            className="card-expand-doc"
+            onClick={() => setMode('document')}
+          >
+            Documento ↗
+          </button>
+          <div className="card-compose-actions">
+            <button type="button" className="sc-btn" onClick={cancelEdit}>
+              Cancelar
+            </button>
+          </div>
+        </motion.div>
+      ) : (
+        <motion.div
+          key="flip"
+          className="sc-card-flip-scene"
+          initial={reduce ? false : { opacity: 0, y: 40, scale: 0.88 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={reduce ? undefined : { opacity: 0, scale: 0.94, y: 16 }}
+          transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+        >
+          <div className="sc-card-flip-toolbar" onClick={(e) => e.stopPropagation()}>
+            {editButton}
+            {deleteButton}
+            <button
+              type="button"
+              className="card-compose-close"
+              onClick={onClose}
+              aria-label="Fechar"
+            >
+              ×
+            </button>
+          </div>
+
+          <motion.div
+            role="button"
+            tabIndex={0}
+            className="sc-card-flip-mesh"
+            style={
+              {
+                '--card-accent': accent,
+                transformStyle: 'preserve-3d',
+                transformPerspective: 1400,
+              } as CSSProperties
+            }
+            initial={false}
+            animate={{ rotateY: flipped ? 180 : 0 }}
+            transition={
+              reduce
+                ? { duration: 0 }
+                : {
+                    type: 'spring',
+                    stiffness: 70,
+                    damping: 11,
+                    mass: 0.9,
+                  }
+            }
+            onClick={() => setFlipped((v) => !v)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setFlipped((v) => !v);
+              }
+            }}
+            aria-label={
+              flipped ? 'Virar para a frente' : 'Virar para o verso'
+            }
+            aria-pressed={flipped}
+          >
+            <div className="sc-card-face is-front">
+              <span className="card-accent-bar" aria-hidden />
+              <div className="card-suit" style={{ color: accent }}>
+                {tag}
               </div>
-            </>
-          ) : (
-            <div className="sc-face-flip">
-              <div className="sc-face-side is-front">
-                <div className="card-suit" style={{ color: accent }}>
-                  {tag}
-                </div>
-                <CardFaceIcon icon={icon} color={accent} />
-                <div className="card-title">{front}</div>
-                {hint ? <div className="card-hint-view">{hint}</div> : null}
-                <span className={`card-status ${statusClass(card.status)}`}>
-                  {statusLabel(card.status)}
-                </span>
-                {card.linkCount > 0 ? (
-                  <button
-                    type="button"
-                    className="sc-card-links-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setMode('document');
-                    }}
-                  >
-                    → {card.linkCount} links · ver síntese ↗
-                  </button>
-                ) : (
-                  <div className="card-links">→ 0 links</div>
-                )}
-                <div onClick={(e) => e.stopPropagation()}>{linkedSection}</div>
+              <CardFaceIcon icon={icon} color={accent} />
+              <div className="card-title">{front}</div>
+              {hint ? <div className="card-hint-view">{hint}</div> : null}
+              <span className={`card-status ${statusClass(card.status)}`}>
+                {statusLabel(card.status)}
+              </span>
+              {card.linkCount > 0 ? (
                 <button
                   type="button"
-                  className="card-expand-doc"
+                  className="sc-card-links-btn"
                   onClick={(e) => {
                     e.stopPropagation();
                     setMode('document');
                   }}
                 >
-                  Documento ↗
+                  → {card.linkCount} links · ver síntese ↗
                 </button>
-              </div>
-              <div className="sc-face-side is-back" aria-hidden={!flipped}>
-                <div className="card-suit" style={{ color: accent }}>
-                  {tag}
-                </div>
-                <div className="card-back-kicker">Conceito resumido</div>
-                <div className="card-back-body">
-                  {back.trim() || front}
-                </div>
-                <p className="card-flip-hint">Toque para virar de novo</p>
-              </div>
+              ) : (
+                <div className="card-links">→ 0 links</div>
+              )}
+              <div onClick={(e) => e.stopPropagation()}>{linkedSection}</div>
+              <button
+                type="button"
+                className="card-expand-doc"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMode('document');
+                }}
+              >
+                Documento ↗
+              </button>
             </div>
-          )}
+
+            <div className="sc-card-face is-back" aria-hidden={!flipped}>
+              <span className="card-accent-bar" aria-hidden />
+              <div className="card-suit" style={{ color: accent }}>
+                {tag}
+              </div>
+              <div className="card-back-kicker">Conceito resumido</div>
+              <div className="card-back-body">{back.trim() || front}</div>
+              <p className="card-flip-hint">Toque para virar de novo</p>
+            </div>
+          </motion.div>
         </motion.div>
       )}
       </AnimatePresence>
