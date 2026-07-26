@@ -64,6 +64,7 @@ export function CardDocumentSheet({
   const [linked, setLinked] = useState<Card[]>([]);
   const [loadingLinks, setLoadingLinks] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [flipped, setFlipped] = useState(false);
 
   const hydrate = (next: Card) => {
     setFront(next.front);
@@ -81,7 +82,22 @@ export function CardDocumentSheet({
     setMode('card');
     setEditing(false);
     setConfirmDelete(false);
+    setFlipped(false);
   }, [card]);
+
+  // Depois que a carta aparece, gira sozinha para o verso.
+  useEffect(() => {
+    if (!card || editing || mode !== 'card') {
+      setFlipped(false);
+      return;
+    }
+    if (reduce) {
+      setFlipped(true);
+      return;
+    }
+    const t = window.setTimeout(() => setFlipped(true), 520);
+    return () => window.clearTimeout(t);
+  }, [card, editing, mode, reduce]);
 
   useEffect(() => {
     if (!card?.sourceIds?.length) {
@@ -411,28 +427,40 @@ export function CardDocumentSheet({
       ) : (
         <motion.div
           key="card"
-          className={`sc-face-card sc-face-compose is-preview${editing ? ' is-editing' : ''}${icon ? ' has-icon' : ''}`}
+          className={`sc-face-card sc-face-compose is-preview${editing ? ' is-editing' : ''}${icon ? ' has-icon' : ''}${!editing && flipped ? ' is-flipped' : ''}`}
           style={{ '--card-accent': accent } as CSSProperties}
           variants={reduce ? undefined : scaleIn}
           initial={reduce ? false : 'hidden'}
           animate="show"
           exit="exit"
+          onClick={() => {
+            if (!editing) setFlipped((v) => !v);
+          }}
         >
           <button
             type="button"
             className="card-compose-close"
-            onClick={onClose}
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose();
+            }}
             aria-label="Fechar"
           >
             ×
           </button>
           {!editing ? (
-            <span className="sc-card-edit-actions">
+            <span
+              className="sc-card-edit-actions"
+              onClick={(e) => e.stopPropagation()}
+            >
               {editButton}
               {deleteButton}
             </span>
           ) : (
-            <span className="sc-card-edit-actions">
+            <span
+              className="sc-card-edit-actions"
+              onClick={(e) => e.stopPropagation()}
+            >
               {saveButton}
               {deleteButton}
             </span>
@@ -517,37 +545,54 @@ export function CardDocumentSheet({
               </div>
             </>
           ) : (
-            <>
-              <div className="card-suit" style={{ color: accent }}>
-                {tag}
-              </div>
-              <CardFaceIcon icon={icon} color={accent} />
-              <div className="card-title">{front}</div>
-              {!icon ? <div className="card-body">{back}</div> : null}
-              {hint ? <div className="card-hint-view">{hint}</div> : null}
-              <span className={`card-status ${statusClass(card.status)}`}>
-                {statusLabel(card.status)}
-              </span>
-              {card.linkCount > 0 ? (
+            <div className="sc-face-flip">
+              <div className="sc-face-side is-front">
+                <div className="card-suit" style={{ color: accent }}>
+                  {tag}
+                </div>
+                <CardFaceIcon icon={icon} color={accent} />
+                <div className="card-title">{front}</div>
+                {hint ? <div className="card-hint-view">{hint}</div> : null}
+                <span className={`card-status ${statusClass(card.status)}`}>
+                  {statusLabel(card.status)}
+                </span>
+                {card.linkCount > 0 ? (
+                  <button
+                    type="button"
+                    className="sc-card-links-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMode('document');
+                    }}
+                  >
+                    → {card.linkCount} links · ver síntese ↗
+                  </button>
+                ) : (
+                  <div className="card-links">→ 0 links</div>
+                )}
+                <div onClick={(e) => e.stopPropagation()}>{linkedSection}</div>
                 <button
                   type="button"
-                  className="sc-card-links-btn"
-                  onClick={() => setMode('document')}
+                  className="card-expand-doc"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMode('document');
+                  }}
                 >
-                  → {card.linkCount} links · ver síntese ↗
+                  Documento ↗
                 </button>
-              ) : (
-                <div className="card-links">→ 0 links</div>
-              )}
-              {linkedSection}
-              <button
-                type="button"
-                className="card-expand-doc"
-                onClick={() => setMode('document')}
-              >
-                Documento ↗
-              </button>
-            </>
+              </div>
+              <div className="sc-face-side is-back" aria-hidden={!flipped}>
+                <div className="card-suit" style={{ color: accent }}>
+                  {tag}
+                </div>
+                <div className="card-back-kicker">Conceito resumido</div>
+                <div className="card-back-body">
+                  {back.trim() || front}
+                </div>
+                <p className="card-flip-hint">Toque para virar de novo</p>
+              </div>
+            </div>
           )}
         </motion.div>
       )}

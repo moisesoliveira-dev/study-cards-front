@@ -737,6 +737,81 @@ body {
   animation: sc-card-deal 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* Preview: mesma carta, gira de verdade no eixo Y */
+.sc-face-card.sc-face-compose.is-preview:not(.is-editing) {
+  height: min(520px, 78vh);
+  min-height: 420px;
+  padding: 0;
+  perspective: 1400px;
+  cursor: pointer;
+  transform-style: preserve-3d;
+}
+
+.sc-face-compose.is-preview:not(.is-editing) .sc-face-flip {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.65s cubic-bezier(0.4, 0.05, 0.2, 1);
+}
+
+.sc-face-compose.is-preview.is-flipped:not(.is-editing) .sc-face-flip {
+  transform: rotateY(180deg);
+}
+
+.sc-face-compose.is-preview:not(.is-editing) .sc-face-side {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 22px 18px 16px;
+  border-radius: inherit;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  background:
+    linear-gradient(160deg, var(--surface-1) 0%, var(--surface-2) 55%, var(--bg) 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.85) inset,
+    0 28px 64px rgba(26, 25, 23, 0.28);
+}
+
+.sc-face-compose.is-preview:not(.is-editing) .sc-face-side.is-back {
+  transform: rotateY(180deg);
+}
+
+.sc-face-compose.is-preview .card-back-kicker {
+  margin: 8px 0 10px;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--card-accent, var(--text-accent));
+}
+
+.sc-face-compose.is-preview .card-back-body {
+  flex: 1;
+  min-height: 0;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--text-primary);
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+.sc-face-compose.is-preview .card-flip-hint {
+  margin: 12px 0 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sc-face-compose.is-preview:not(.is-editing) .sc-face-flip {
+    transition: none;
+  }
+}
+
 @keyframes sc-card-deal {
   from {
     opacity: 0;
@@ -1721,147 +1796,6 @@ ion-popover {
 
 .card-color-swatch:hover {
   transform: scale(1.08);
-}
-
-/* Carta destacada no centro: entra e depois gira */
-.sc-card-focus {
-  position: fixed;
-  inset: 0;
-  z-index: 12000;
-  display: grid;
-  place-items: center;
-  padding: 24px 16px 32px;
-  background: color-mix(in srgb, var(--backdrop-dim) 88%, transparent);
-  backdrop-filter: blur(8px);
-}
-
-.sc-card-focus-stage {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 18px;
-  max-width: min(100%, 420px);
-}
-
-.sc-face-card.is-simple.is-focus {
-  width: min(240px, 72vw);
-  height: min(332px, 58vh);
-  padding: 0;
-  gap: 0;
-  perspective: 1200px;
-  overflow: visible;
-  cursor: pointer;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.85) inset,
-    0 28px 64px rgba(26, 25, 23, 0.38);
-}
-
-.sc-face-card.is-focus .sc-face-flip {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  transform-style: preserve-3d;
-  transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.sc-face-card.is-focus.is-flipped .sc-face-flip {
-  transform: rotateY(180deg);
-}
-
-.sc-face-card.is-focus .sc-face-side {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 28px 20px 22px;
-  gap: 12px;
-  border-radius: inherit;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  background: inherit;
-  box-shadow: inherit;
-}
-
-.sc-face-card.is-focus .sc-face-side.is-back {
-  transform: rotateY(180deg);
-  justify-content: flex-start;
-  align-items: stretch;
-  text-align: left;
-}
-
-.sc-face-card.is-focus .card-title {
-  font-size: 16px;
-  -webkit-line-clamp: 3;
-}
-
-.sc-face-card.is-focus .card-icon-stage > .card-face-icon {
-  width: 120px;
-  height: 120px;
-}
-
-.sc-face-card.is-focus .card-face-icon ion-icon,
-.sc-face-card.is-focus .card-face-icon-img {
-  font-size: 58px;
-  width: 58px;
-  height: 58px;
-}
-
-.sc-face-card.is-focus .card-face-emoji {
-  font-size: 52px;
-}
-
-.sc-face-card.is-focus .card-back-kicker {
-  margin-top: 6px;
-  font-size: 12px;
-  font-weight: 650;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--card-accent, var(--text-accent));
-}
-
-.sc-face-card.is-focus .card-back-body {
-  flex: 1;
-  min-height: 0;
-  font-size: 15px;
-  font-weight: 500;
-  line-height: 1.45;
-  color: var(--text-primary);
-  overflow: auto;
-  display: block;
-  -webkit-line-clamp: unset;
-}
-
-.sc-card-focus-actions {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-}
-
-.sc-card-focus-hint {
-  margin: 0;
-  font-size: 12px;
-  color: color-mix(in srgb, #fff 72%, transparent);
-  text-align: center;
-}
-
-.sc-card-focus-btns {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-body.sc-card-focus-open {
-  overflow: hidden;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .sc-face-card.is-focus .sc-face-flip {
-    transition: none;
-  }
 }
 
 .sc-face-add.is-simple {
