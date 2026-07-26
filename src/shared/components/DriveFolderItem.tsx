@@ -79,7 +79,11 @@ export function DriveFolderItem({
         >
           {name}
         </div>
-        {subtitle ? <div className="item-sub">{subtitle}</div> : null}
+        {subtitle ? (
+          <div className="item-sub" title={subtitle}>
+            {subtitle}
+          </div>
+        ) : null}
       </div>
     </motion.div>
   );

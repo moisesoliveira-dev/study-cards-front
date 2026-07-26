@@ -236,7 +236,9 @@ export default function SubjectsPage() {
                     <span className="list-icon">📁</span>
                     <span className="list-name">{s.name}</span>
                     <span className="list-tag">Grupo</span>
-                    <span className="list-links">{s.description || '—'}</span>
+                    <span className="list-links" title={s.description || undefined}>
+                      {s.description || '—'}
+                    </span>
                   </motion.button>
                   <button
                     type="button"

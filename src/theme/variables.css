@@ -335,7 +335,11 @@ body {
   overflow: hidden;
 }
 
-.item-meta { padding: 8px 10px; }
+.item-meta {
+  padding: 8px 10px;
+  min-width: 0;
+  overflow: hidden;
+}
 
 .item-name {
   font-size: 12px;
@@ -350,9 +354,10 @@ body {
   font-size: 11px;
   color: var(--text-muted);
   margin-top: 2px;
-  display: flex;
-  align-items: center;
-  gap: 5px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .dot {
@@ -438,7 +443,17 @@ body {
   width: 64px;
   text-align: center;
 }
-.list-links { font-size: 11px; color: var(--text-muted); width: 56px; text-align: right; }
+.list-links {
+  font-size: 11px;
+  color: var(--text-muted);
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 42%;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 .s-ok { background: var(--ok-bg); color: var(--ok-fg); }
 .s-rev { background: var(--rev-bg); color: var(--rev-fg); }
