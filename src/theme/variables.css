@@ -1206,9 +1206,10 @@ ion-popover {
 }
 
 .sc-card-as-modal.is-document {
-  align-items: stretch;
-  justify-content: stretch;
-  padding: 0;
+  /* Mantém centro: stretch/justify inválido jogava o shell no canto no open */
+  align-items: center;
+  justify-content: center;
+  padding: clamp(8px, 2vh, 20px);
   background: var(--modal-scrim);
   backdrop-filter: blur(8px);
 }
@@ -1359,31 +1360,122 @@ ion-popover {
   margin-top: 4px;
 }
 
+.sc-doc-editor.is-readonly {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
+}
+
+.sc-doc-editor.is-readonly .sc-doc-surface {
+  min-height: 0;
+  padding: 8px 4px 20px;
+}
+
 .sc-doc-editor.is-readonly .sc-doc-surface .tiptap {
   cursor: default;
+  min-height: 0;
+  font-size: 16px;
+  line-height: 1.75;
+  letter-spacing: 0.01em;
 }
 
 .sc-doc-editor.is-readonly .sc-doc-surface .tiptap:focus {
   outline: none;
 }
 
+/* Leitura estilo markdown / artigo */
+.sc-doc-editor.is-readonly .sc-doc-surface .tiptap > * + * {
+  margin-top: 0.85em;
+}
+
+.sc-doc-editor.is-readonly .sc-doc-surface .tiptap h1 {
+  font-size: 1.85rem;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  margin: 1.1em 0 0.45em;
+  color: var(--text-primary);
+}
+
+.sc-doc-editor.is-readonly .sc-doc-surface .tiptap h2 {
+  font-size: 1.4rem;
+  font-weight: 650;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+  margin: 1.25em 0 0.4em;
+  padding-bottom: 0.2em;
+  border-bottom: 0.5px solid var(--border);
+}
+
+.sc-doc-editor.is-readonly .sc-doc-surface .tiptap h3 {
+  font-size: 1.15rem;
+  font-weight: 650;
+  margin: 1.1em 0 0.35em;
+}
+
+.sc-doc-editor.is-readonly .sc-doc-surface .tiptap p {
+  margin: 0;
+}
+
+.sc-doc-editor.is-readonly .sc-doc-surface .tiptap ul,
+.sc-doc-editor.is-readonly .sc-doc-surface .tiptap ol {
+  padding-left: 1.35em;
+  margin: 0.35em 0;
+}
+
+.sc-doc-editor.is-readonly .sc-doc-surface .tiptap li + li {
+  margin-top: 0.35em;
+}
+
+.sc-doc-editor.is-readonly .sc-doc-surface .tiptap blockquote {
+  margin: 1em 0;
+  padding: 0.35em 0 0.35em 1em;
+  border-left: 3px solid var(--card-accent, var(--border-accent, var(--border-strong)));
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.sc-doc-editor.is-readonly .sc-doc-surface .tiptap pre {
+  margin: 1em 0;
+  border: 0.5px solid var(--border);
+}
+
+.sc-doc-editor.is-readonly .sc-doc-surface .tiptap hr {
+  margin: 1.6em 0;
+  border: none;
+  border-top: 0.5px solid var(--border);
+}
+
+.sc-doc-editor.is-readonly .sc-doc-surface .tiptap strong {
+  font-weight: 650;
+  color: var(--text-primary);
+}
+
+.sc-doc-editor.is-readonly .sc-doc-surface .tiptap a {
+  color: var(--text-accent, #378add);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .sc-doc-shell {
   width: min(920px, 100%);
-  max-height: 100%;
+  height: min(960px, 100%);
+  max-height: calc(100dvh - 16px);
   margin: 0 auto;
   display: flex;
   flex-direction: column;
   background: var(--surface-1);
   box-shadow: var(--shadow-soft);
   overflow: hidden;
+  border-radius: 14px;
+  border: 0.5px solid var(--border);
+  transform-origin: center center;
 }
 
 @media (min-width: 720px) {
   .sc-doc-shell {
-    margin: 24px auto;
-    max-height: calc(100% - 48px);
-    border-radius: 14px;
-    border: 0.5px solid var(--border);
+    max-height: calc(100dvh - 40px);
   }
 }
 

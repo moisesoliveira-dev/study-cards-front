@@ -63,17 +63,16 @@ export const scaleIn: Variants = {
 };
 
 export const docExpand: Variants = {
-  hidden: { opacity: 0, scale: 0.94, y: 24 },
+  hidden: { opacity: 0, y: 10 },
   show: {
     opacity: 1,
-    scale: 1,
     y: 0,
-    transition: springSoft,
+    transition: tweenMed,
   },
   exit: {
     opacity: 0,
-    scale: 0.97,
-    transition: { duration: 0.2, ease: easeOut },
+    y: 6,
+    transition: { duration: 0.16, ease: easeOut },
   },
 };
 

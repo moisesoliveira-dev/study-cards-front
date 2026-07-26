@@ -10,6 +10,7 @@ import TextAlign from '@tiptap/extension-text-align';
 import Subscript from '@tiptap/extension-subscript';
 import Superscript from '@tiptap/extension-superscript';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
+import { Markdown } from '@tiptap/markdown';
 import { common, createLowlight } from 'lowlight';
 
 const lowlight = createLowlight(common);
@@ -68,49 +69,64 @@ function shortcutLabel(modShortcut: string): string {
     .replace(/-/g, '+');
 }
 
-function parseDoc(value: string) {
-  if (!value?.trim()) return undefined;
+function isTipTapJson(value: string): boolean {
+  const t = value.trim();
+  if (!t.startsWith('{')) return false;
   try {
-    return JSON.parse(value) as object;
+    const parsed = JSON.parse(t) as { type?: string };
+    return parsed?.type === 'doc';
   } catch {
-    return {
-      type: 'doc',
-      content: [
-        {
-          type: 'paragraph',
-          content: value ? [{ type: 'text', text: value }] : [],
-        },
-      ],
-    };
+    return false;
   }
+}
+
+type DocContent = {
+  content: object | string;
+  contentType: 'json' | 'markdown';
+};
+
+/** JSON TipTap ou Markdown — Markdown fica bonito na leitura. */
+function parseDoc(value: string): DocContent | undefined {
+  if (!value?.trim()) return undefined;
+  if (isTipTapJson(value)) {
+    return { content: JSON.parse(value) as object, contentType: 'json' };
+  }
+  return { content: value, contentType: 'markdown' };
 }
 
 export function documentToPlainText(value: string | null | undefined): string {
   if (!value?.trim()) return '';
-  try {
-    const doc = JSON.parse(value) as {
-      content?: Array<{
-        type?: string;
-        content?: Array<{ text?: string; content?: Array<{ text?: string }> }>;
-      }>;
-    };
-    const parts: string[] = [];
-    const walk = (nodes?: typeof doc.content) => {
-      if (!nodes) return;
-      for (const node of nodes) {
-        if (node.content) {
-          for (const child of node.content) {
-            if (child.text) parts.push(child.text);
-            if (child.content) walk(child.content as typeof doc.content);
+  if (isTipTapJson(value)) {
+    try {
+      const doc = JSON.parse(value) as {
+        content?: Array<{
+          type?: string;
+          content?: Array<{ text?: string; content?: Array<{ text?: string }> }>;
+        }>;
+      };
+      const parts: string[] = [];
+      const walk = (nodes?: typeof doc.content) => {
+        if (!nodes) return;
+        for (const node of nodes) {
+          if (node.content) {
+            for (const child of node.content) {
+              if (child.text) parts.push(child.text);
+              if (child.content) walk(child.content as typeof doc.content);
+            }
           }
         }
-      }
-    };
-    walk(doc.content);
-    return parts.join(' ').replace(/\s+/g, ' ').trim();
-  } catch {
-    return value.trim();
+      };
+      walk(doc.content);
+      return parts.join(' ').replace(/\s+/g, ' ').trim();
+    } catch {
+      return value.trim();
+    }
   }
+  return value
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/[*_`~\[\]]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function promptLink(editor: Editor) {
@@ -239,9 +255,11 @@ export function DocumentEditor({
   value,
   onChange,
   editable = true,
-  placeholder = 'Escreva notas, exemplos, ideias… Digite / para pensar como no Notion.',
+  placeholder = 'Markdown: # título, **negrito**, listas, `código`…',
 }: Props) {
   const [tab, setTab] = useState<RibbonTab>('inicio');
+
+  const initialDoc = parseDoc(value);
 
   const editor = useEditor({
     editable,
@@ -265,9 +283,11 @@ export function DocumentEditor({
       Superscript,
       TaskList,
       TaskItem.configure({ nested: true }),
+      Markdown,
       DocumentShortcuts,
     ],
-    content: parseDoc(value),
+    content: initialDoc?.content ?? '',
+    contentType: initialDoc?.contentType ?? 'json',
     onUpdate: ({ editor: ed }) => {
       onChange(JSON.stringify(ed.getJSON()));
     },
@@ -293,9 +313,16 @@ export function DocumentEditor({
       }
       return;
     }
-    if (value !== current) {
-      editor.commands.setContent(parseDoc(value) ?? '', { emitUpdate: false });
+    if (isTipTapJson(value) && value === current) return;
+    const parsed = parseDoc(value);
+    if (!parsed) return;
+    if (parsed.contentType === 'json' && JSON.stringify(parsed.content) === current) {
+      return;
     }
+    editor.commands.setContent(parsed.content, {
+      emitUpdate: false,
+      contentType: parsed.contentType,
+    });
     // only sync when external value identity changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);

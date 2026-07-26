@@ -32,15 +32,8 @@ type Props = {
 
 function seedDocument(card: Card) {
   if (card.document?.trim()) return card.document;
-  return JSON.stringify({
-    type: 'doc',
-    content: [
-      {
-        type: 'paragraph',
-        content: card.back ? [{ type: 'text', text: card.back }] : [],
-      },
-    ],
-  });
+  // Markdown puro: renderiza títulos, listas, negrito etc. na leitura
+  return card.back?.trim() || '';
 }
 
 export function CardDocumentSheet({
@@ -387,7 +380,7 @@ export function CardDocumentSheet({
                 value={docJson || ''}
                 onChange={setDocJson}
                 editable={editing}
-                placeholder="Escreva notas, exemplos, ideias…"
+                placeholder="Markdown: # título, **negrito**, listas…"
               />
             )}
             {editing ? (

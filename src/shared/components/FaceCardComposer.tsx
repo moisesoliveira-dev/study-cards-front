@@ -104,17 +104,7 @@ export function FaceCardComposer({
 
   const openDocument = () => {
     if (!docJson.trim() && back.trim()) {
-      onDocJson(
-        JSON.stringify({
-          type: 'doc',
-          content: [
-            {
-              type: 'paragraph',
-              content: [{ type: 'text', text: back }],
-            },
-          ],
-        }),
-      );
+      onDocJson(back);
     }
     setMode('document');
   };
