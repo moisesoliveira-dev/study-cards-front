@@ -65,16 +65,15 @@ export function DriveCardItem({ card, selected, onClick, view = 'grid' }: Props)
 type FaceProps = {
   card: Card;
   selected?: boolean;
-  flipped?: boolean;
   onClick?: () => void;
   style?: CSSProperties;
   index?: number;
 };
 
+/** Carta compacta na mão — o giro acontece no CardFocusStage (centro da tela). */
 export function FaceCard({
   card,
   selected,
-  flipped = false,
   onClick,
   style,
   index = 0,
@@ -86,9 +85,7 @@ export function FaceCard({
     <motion.div
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
-      className={`sc-face-card is-simple${selected ? ' selected' : ''}${
-        flipped ? ' is-flipped' : ''
-      }`}
+      className={`sc-face-card is-simple${selected ? ' selected' : ''}`}
       onClick={onClick}
       style={
         {
@@ -120,27 +117,16 @@ export function FaceCard({
       whileTap={reduce ? undefined : tapScale}
       layout
     >
-      <div className="sc-face-flip">
-        <div className="sc-face-side is-front">
-          <span className="card-accent-bar" aria-hidden />
-          <div className="card-title">{card.front}</div>
-          <div className="card-icon-stage">
-            {card.icon ? (
-              <CardFaceIcon icon={card.icon} color={accent} />
-            ) : (
-              <div className="card-face-icon is-fallback" aria-hidden>
-                <span className="card-face-fallback">◇</span>
-              </div>
-            )}
+      <span className="card-accent-bar" aria-hidden />
+      <div className="card-title">{card.front}</div>
+      <div className="card-icon-stage">
+        {card.icon ? (
+          <CardFaceIcon icon={card.icon} color={accent} />
+        ) : (
+          <div className="card-face-icon is-fallback" aria-hidden>
+            <span className="card-face-fallback">◇</span>
           </div>
-        </div>
-        <div className="sc-face-side is-back" aria-hidden={!flipped}>
-          <span className="card-accent-bar" aria-hidden />
-          <div className="card-back-kicker">{card.tag || 'Conceito'}</div>
-          <div className="card-back-body">
-            {card.back?.trim() || card.front}
-          </div>
-        </div>
+        )}
       </div>
     </motion.div>
   );

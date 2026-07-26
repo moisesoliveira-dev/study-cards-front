@@ -584,10 +584,6 @@ body {
     border-color 0.2s;
 }
 
-.sc-face-card.is-simple {
-  overflow: visible;
-}
-
 .sc-hand-slot:hover .sc-face-card,
 .sc-hand > .sc-drop-zone.sc-hand-slot:hover .sc-face-card,
 .sc-hand-slot.is-raised .sc-face-card,
@@ -1610,48 +1606,12 @@ ion-popover {
   line-height: 1;
 }
 
-/* Compact face cards: title on top, icon centered — flip to show verso */
+/* Compact face cards: title on top, icon centered */
 .sc-face-card.is-simple {
-  align-items: stretch;
-  text-align: center;
-  padding: 0;
-  gap: 0;
-  perspective: 900px;
-  overflow: visible;
-}
-
-.sc-face-flip {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  transform-style: preserve-3d;
-  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.sc-face-card.is-simple.is-flipped .sc-face-flip {
-  transform: rotateY(180deg);
-}
-
-.sc-face-side {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
   align-items: center;
+  text-align: center;
   padding: 18px 12px 16px;
   gap: 8px;
-  border-radius: inherit;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  background: inherit;
-  box-shadow: inherit;
-}
-
-.sc-face-side.is-back {
-  transform: rotateY(180deg);
-  justify-content: flex-start;
-  text-align: left;
-  padding: 18px 14px 14px;
 }
 
 .sc-face-card.is-simple .card-accent-bar {
@@ -1732,32 +1692,6 @@ ion-popover {
   opacity: 0.7;
 }
 
-.sc-face-card.is-simple .card-back-kicker {
-  flex: 0 0 auto;
-  width: 100%;
-  margin-top: 4px;
-  font-size: 10px;
-  font-weight: 650;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--card-accent, var(--text-accent));
-}
-
-.sc-face-card.is-simple .card-back-body {
-  flex: 1;
-  width: 100%;
-  min-height: 0;
-  margin: 0;
-  font-size: 11.5px;
-  font-weight: 500;
-  line-height: 1.4;
-  color: var(--text-primary);
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 8;
-  -webkit-box-orient: vertical;
-}
-
 .card-compose-colors {
   display: flex;
   flex-wrap: wrap;
@@ -1789,8 +1723,143 @@ ion-popover {
   transform: scale(1.08);
 }
 
+/* Carta destacada no centro: entra e depois gira */
+.sc-card-focus {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px 32px;
+  background: color-mix(in srgb, var(--backdrop-dim) 88%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.sc-card-focus-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  max-width: min(100%, 420px);
+}
+
+.sc-face-card.is-simple.is-focus {
+  width: min(240px, 72vw);
+  height: min(332px, 58vh);
+  padding: 0;
+  gap: 0;
+  perspective: 1200px;
+  overflow: visible;
+  cursor: pointer;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.85) inset,
+    0 28px 64px rgba(26, 25, 23, 0.38);
+}
+
+.sc-face-card.is-focus .sc-face-flip {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sc-face-card.is-focus.is-flipped .sc-face-flip {
+  transform: rotateY(180deg);
+}
+
+.sc-face-card.is-focus .sc-face-side {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 28px 20px 22px;
+  gap: 12px;
+  border-radius: inherit;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  background: inherit;
+  box-shadow: inherit;
+}
+
+.sc-face-card.is-focus .sc-face-side.is-back {
+  transform: rotateY(180deg);
+  justify-content: flex-start;
+  align-items: stretch;
+  text-align: left;
+}
+
+.sc-face-card.is-focus .card-title {
+  font-size: 16px;
+  -webkit-line-clamp: 3;
+}
+
+.sc-face-card.is-focus .card-icon-stage > .card-face-icon {
+  width: 120px;
+  height: 120px;
+}
+
+.sc-face-card.is-focus .card-face-icon ion-icon,
+.sc-face-card.is-focus .card-face-icon-img {
+  font-size: 58px;
+  width: 58px;
+  height: 58px;
+}
+
+.sc-face-card.is-focus .card-face-emoji {
+  font-size: 52px;
+}
+
+.sc-face-card.is-focus .card-back-kicker {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--card-accent, var(--text-accent));
+}
+
+.sc-face-card.is-focus .card-back-body {
+  flex: 1;
+  min-height: 0;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--text-primary);
+  overflow: auto;
+  display: block;
+  -webkit-line-clamp: unset;
+}
+
+.sc-card-focus-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.sc-card-focus-hint {
+  margin: 0;
+  font-size: 12px;
+  color: color-mix(in srgb, #fff 72%, transparent);
+  text-align: center;
+}
+
+.sc-card-focus-btns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+body.sc-card-focus-open {
+  overflow: hidden;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .sc-face-flip {
+  .sc-face-card.is-focus .sc-face-flip {
     transition: none;
   }
 }

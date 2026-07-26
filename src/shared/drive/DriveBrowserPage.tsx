@@ -25,6 +25,7 @@ import { Field, TextArea } from '../components/Field';
 import { DriveCardItem, FaceCard } from '../components/DriveCardItem';
 import { FaceCardComposer } from '../components/FaceCardComposer';
 import { CardDocumentSheet } from '../components/CardDocumentSheet';
+import { CardFocusStage } from '../components/CardFocusStage';
 import { documentToPlainText } from '../components/DocumentEditor';
 import { DragItem, DropZone, useDriveDrop } from '../dnd/DragDrop';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -115,7 +116,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   const [mergeOpen, setMergeOpen] = useState(false);
   const [mergeSources, setMergeSources] = useState<Card[]>([]);
   const [raisedId, setRaisedId] = useState<string | null>(null);
-  const [flippedId, setFlippedId] = useState<string | null>(null);
+  const [focusCard, setFocusCard] = useState<Card | null>(null);
   const [mergePickIds, setMergePickIds] = useState<string[]>([]);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -305,30 +306,10 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         return;
       }
 
-      if (!touchUi) {
-        if (last && last.id === card.id && now - last.at <= DOUBLE_TAP_MS) {
-          lastTapRef.current = null;
-          setFlippedId(null);
-          setDetail(card);
-          return;
-        }
-        lastTapRef.current = { id: card.id, at: now };
-        setRaisedId(card.id);
-        setFlippedId((prev) => (prev === card.id ? null : card.id));
-        return;
-      }
-
-      if (last && last.id === card.id && now - last.at <= DOUBLE_TAP_MS) {
-        lastTapRef.current = null;
-        toggleMergePick(card);
-        return;
-      }
-
-      lastTapRef.current = { id: card.id, at: now };
       setRaisedId(card.id);
-      setFlippedId((prev) => (prev === card.id ? null : card.id));
+      setFocusCard(card);
     },
-    [toggleMergePick, touchUi],
+    [touchUi, toggleMergePick],
   );
 
   const openMergeFromPicks = () => {
@@ -445,7 +426,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         setDetail(null);
         setMergePickIds((prev) => prev.filter((pickId) => pickId !== id));
         setRaisedId((prev) => (prev === id ? null : prev));
-        setFlippedId((prev) => (prev === id ? null : prev));
+        setFocusCard((prev) => (prev?.id === id ? null : prev));
         window.dispatchEvent(
           new CustomEvent('sc-card-deleted', { detail: { id } }),
         );
@@ -642,8 +623,8 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
 
           <p className="sc-dnd-hint">
             {touchUi
-              ? 'Toque para girar · toque duplo para síntese · segure para abrir · arraste para mover'
-              : 'Clique para girar · duplo clique para abrir · arraste card sobre card para unir'}
+              ? 'Toque para destacar no centro e girar · segure ou menu para abrir a ficha'
+              : 'Clique para destacar no centro e girar · botão direito para mais opções'}
           </p>
 
           {!isRoot ? (
@@ -688,7 +669,6 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                       <FaceCard
                         card={card}
                         selected={picked}
-                        flipped={flippedId === card.id}
                         index={index}
                         style={{ ['--card-i' as string]: index } as CSSProperties}
                       />
@@ -925,6 +905,15 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
           setDocJson('');
         }}
         onSubmit={() => void mergeCards()}
+      />
+
+      <CardFocusStage
+        card={focusCard}
+        onClose={() => setFocusCard(null)}
+        onOpenDetail={(card) => {
+          setFocusCard(null);
+          setDetail(card);
+        }}
       />
 
       <CardDocumentSheet
