@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import type { Card } from '../../modules/cards/types/card.types';
-import { suitColor } from './FaceCardComposer';
+import { cardAccent } from './FaceCardComposer';
 import { CardFaceIcon } from './CardIcon';
 import { staggerItem, tapScale } from '../motion';
 
@@ -14,6 +14,7 @@ type Props = {
 
 export function DriveCardItem({ card, selected, onClick, view = 'grid' }: Props) {
   const reduce = useReducedMotion();
+  const accent = cardAccent(card.color, card.tag);
 
   if (view === 'list') {
     return (
@@ -29,7 +30,7 @@ export function DriveCardItem({ card, selected, onClick, view = 'grid' }: Props)
           <CardFaceIcon
             icon={card.icon}
             className="list-face-icon"
-            color={suitColor(card.tag)}
+            color={accent}
           />
         </span>
         <span className="list-name">{card.front}</span>
@@ -51,7 +52,7 @@ export function DriveCardItem({ card, selected, onClick, view = 'grid' }: Props)
         <CardFaceIcon
           icon={card.icon}
           className="thumb-face-icon"
-          color={suitColor(card.tag)}
+          color={accent}
         />
       </div>
       <div className="item-meta">
@@ -64,20 +65,30 @@ export function DriveCardItem({ card, selected, onClick, view = 'grid' }: Props)
 type FaceProps = {
   card: Card;
   selected?: boolean;
+  flipped?: boolean;
   onClick?: () => void;
   style?: CSSProperties;
   index?: number;
 };
 
-export function FaceCard({ card, selected, onClick, style, index = 0 }: FaceProps) {
+export function FaceCard({
+  card,
+  selected,
+  flipped = false,
+  onClick,
+  style,
+  index = 0,
+}: FaceProps) {
   const reduce = useReducedMotion();
-  const accent = suitColor(card.tag);
+  const accent = cardAccent(card.color, card.tag);
 
   return (
     <motion.div
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
-      className={`sc-face-card is-simple${selected ? ' selected' : ''}`}
+      className={`sc-face-card is-simple${selected ? ' selected' : ''}${
+        flipped ? ' is-flipped' : ''
+      }`}
       onClick={onClick}
       style={
         {
@@ -109,16 +120,27 @@ export function FaceCard({ card, selected, onClick, style, index = 0 }: FaceProp
       whileTap={reduce ? undefined : tapScale}
       layout
     >
-      <span className="card-accent-bar" aria-hidden />
-      <div className="card-title">{card.front}</div>
-      <div className="card-icon-stage">
-        {card.icon ? (
-          <CardFaceIcon icon={card.icon} color={accent} />
-        ) : (
-          <div className="card-face-icon is-fallback" aria-hidden>
-            <span className="card-face-fallback">◇</span>
+      <div className="sc-face-flip">
+        <div className="sc-face-side is-front">
+          <span className="card-accent-bar" aria-hidden />
+          <div className="card-title">{card.front}</div>
+          <div className="card-icon-stage">
+            {card.icon ? (
+              <CardFaceIcon icon={card.icon} color={accent} />
+            ) : (
+              <div className="card-face-icon is-fallback" aria-hidden>
+                <span className="card-face-fallback">◇</span>
+              </div>
+            )}
           </div>
-        )}
+        </div>
+        <div className="sc-face-side is-back" aria-hidden={!flipped}>
+          <span className="card-accent-bar" aria-hidden />
+          <div className="card-back-kicker">{card.tag || 'Conceito'}</div>
+          <div className="card-back-body">
+            {card.back?.trim() || card.front}
+          </div>
+        </div>
       </div>
     </motion.div>
   );

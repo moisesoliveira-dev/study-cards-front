@@ -152,6 +152,7 @@ function cardToNodeData(card: Card): CardFlowNodeData {
     back: card.back,
     tag: card.tag,
     icon: card.icon,
+    color: card.color,
     status: card.status,
     linkCount: card.linkCount,
   };
@@ -320,6 +321,7 @@ function FlowCanvas({
   const [tag, setTag] = useState('Conceito');
   const [hint, setHint] = useState('');
   const [icon, setIcon] = useState<string | null>(null);
+  const [color, setColor] = useState<string | null>('#1D9E75');
   const [detail, setDetail] = useState<Card | null>(null);
   const [eraserActive, setEraserActive] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1380,6 +1382,7 @@ function FlowCanvas({
     setTag('Conceito');
     setHint('');
     setIcon(null);
+    setColor('#1D9E75');
     setComposerOpen(true);
     if (compact) {
       setPaletteOpen(false);
@@ -1807,6 +1810,7 @@ function FlowCanvas({
         document: docJson || null,
         hint,
         icon,
+        color,
         tag,
       });
       onCardsChange([created, ...cards]);
@@ -1816,6 +1820,7 @@ function FlowCanvas({
       setDocJson('');
       setHint('');
       setIcon(null);
+      setColor('#1D9E75');
       setTag('Conceito');
       toast.success('Carta criada');
       addCard(created);
@@ -1829,6 +1834,7 @@ function FlowCanvas({
     back,
     board.subjectId,
     cards,
+    color,
     docJson,
     front,
     hint,
@@ -2212,6 +2218,7 @@ function FlowCanvas({
         tag={tag}
         hint={hint}
         icon={icon}
+        color={color}
         saving={composerSaving}
         title="Nova carta no fluxo"
         submitLabel="Criar e colocar no mapa"
@@ -2221,6 +2228,7 @@ function FlowCanvas({
         onTag={setTag}
         onHint={setHint}
         onIcon={setIcon}
+        onColor={setColor}
         onClose={() => setComposerOpen(false)}
         onSubmit={() => void createCard()}
       />

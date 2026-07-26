@@ -3,7 +3,10 @@ import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { IonIcon, IonSpinner } from '@ionic/react';
 import { arrowBackOutline } from 'ionicons/icons';
-import { cardInitials } from '../../modules/cards/types/card.types';
+import {
+  CARD_ACCENT_COLORS,
+  cardInitials,
+} from '../../modules/cards/types/card.types';
 import {
   DocumentEditor,
   documentToPlainText,
@@ -20,6 +23,11 @@ export function suitColor(tag: string) {
   return '#1D9E75';
 }
 
+/** Cor de accent da carta: escolhida pelo usuário ou fallback da tag. */
+export function cardAccent(color: string | null | undefined, tag: string) {
+  return color?.trim() || suitColor(tag);
+}
+
 type Props = {
   open: boolean;
   front: string;
@@ -28,6 +36,7 @@ type Props = {
   tag: string;
   hint: string;
   icon: string | null;
+  color: string | null;
   saving?: boolean;
   title?: string;
   submitLabel?: string;
@@ -38,6 +47,7 @@ type Props = {
   onTag: (value: string) => void;
   onHint: (value: string) => void;
   onIcon: (value: string | null) => void;
+  onColor: (value: string | null) => void;
   onClose: () => void;
   onSubmit: () => void;
   style?: CSSProperties;
@@ -51,6 +61,7 @@ export function FaceCardComposer({
   tag,
   hint,
   icon,
+  color,
   saving = false,
   title = 'Nova carta',
   submitLabel = 'Colocar na mesa',
@@ -61,6 +72,7 @@ export function FaceCardComposer({
   onTag,
   onHint,
   onIcon,
+  onColor,
   onClose,
   onSubmit,
   style,
@@ -69,7 +81,7 @@ export function FaceCardComposer({
   const [mode, setMode] = useState<'card' | 'document'>('card');
   const initials = cardInitials(front.trim() || 'Novo');
   const suit = tag.trim() || 'Conceito';
-  const accent = suitColor(suit);
+  const accent = cardAccent(color, suit);
   const hasBody = Boolean(back.trim() || documentToPlainText(docJson));
   const canSubmit = Boolean(front.trim()) && !saving;
 
@@ -135,7 +147,12 @@ export function FaceCardComposer({
               <motion.div
                 key="compose-card"
                 className={`sc-face-card sc-face-compose${icon ? ' has-icon' : ''}`}
-                style={style}
+                style={
+                  {
+                    ...style,
+                    '--card-accent': accent,
+                  } as CSSProperties
+                }
                 variants={reduce ? undefined : scaleIn}
                 initial={reduce ? false : 'hidden'}
                 animate="show"
@@ -149,9 +166,6 @@ export function FaceCardComposer({
                 >
                   ×
                 </button>
-
-                <span className="card-corner tl">{initials}</span>
-                <span className="card-corner br">{initials}</span>
 
                 <label className="card-compose-field suit">
                   <span className="sr-only">Tag</span>
@@ -173,6 +187,23 @@ export function FaceCardComposer({
                   />
                 </div>
 
+                <fieldset className="card-compose-colors">
+                  <legend className="sr-only">Cor da carta</legend>
+                  {CARD_ACCENT_COLORS.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      className={`card-color-swatch${
+                        (color ?? '').toUpperCase() === c ? ' is-active' : ''
+                      }`}
+                      style={{ background: c }}
+                      aria-label={`Cor ${c}`}
+                      aria-pressed={(color ?? '').toUpperCase() === c}
+                      onClick={() => onColor(c)}
+                    />
+                  ))}
+                </fieldset>
+
                 <label className="card-compose-field title">
                   <span className="sr-only">Conceito</span>
                   <textarea
@@ -186,12 +217,12 @@ export function FaceCardComposer({
                 </label>
 
                 <label className="card-compose-field body">
-                  <span className="sr-only">Explicação</span>
+                  <span className="sr-only">Conceito resumido</span>
                   <textarea
                     className="card-body-input"
                     value={back}
                     onChange={(e) => onBack(e.target.value)}
-                    placeholder="Explicação curta no verso…"
+                    placeholder="Conceito resumido (verso ao girar)…"
                     rows={4}
                   />
                 </label>
@@ -222,7 +253,11 @@ export function FaceCardComposer({
                     </div>
                     <div className="sc-linked-list">
                       {sourceCards.map((src) => (
-                        <span key={src.id} className="sc-linked-chip" style={{ cursor: 'default' }}>
+                        <span
+                          key={src.id}
+                          className="sc-linked-chip"
+                          style={{ cursor: 'default' }}
+                        >
                           <span className="sc-linked-chip-title">{src.front}</span>
                         </span>
                       ))}
@@ -329,11 +364,11 @@ export function FaceCardComposer({
                     />
                   </label>
                   <label className="sc-doc-hint-row">
-                    <span>Verso curto (estudo / face da carta)</span>
+                    <span>Conceito resumido (verso ao girar)</span>
                     <textarea
                       value={back}
                       onChange={(e) => onBack(e.target.value)}
-                      placeholder="Resumo curto usado na revisão"
+                      placeholder="Resumo curto mostrado no verso da carta"
                       rows={2}
                     />
                   </label>

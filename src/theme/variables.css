@@ -584,6 +584,10 @@ body {
     border-color 0.2s;
 }
 
+.sc-face-card.is-simple {
+  overflow: visible;
+}
+
 .sc-hand-slot:hover .sc-face-card,
 .sc-hand > .sc-drop-zone.sc-hand-slot:hover .sc-face-card,
 .sc-hand-slot.is-raised .sc-face-card,
@@ -1606,12 +1610,48 @@ ion-popover {
   line-height: 1;
 }
 
-/* Compact face cards: title on top, icon centered */
+/* Compact face cards: title on top, icon centered — flip to show verso */
 .sc-face-card.is-simple {
-  align-items: center;
+  align-items: stretch;
   text-align: center;
+  padding: 0;
+  gap: 0;
+  perspective: 900px;
+  overflow: visible;
+}
+
+.sc-face-flip {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sc-face-card.is-simple.is-flipped .sc-face-flip {
+  transform: rotateY(180deg);
+}
+
+.sc-face-side {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   padding: 18px 12px 16px;
   gap: 8px;
+  border-radius: inherit;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  background: inherit;
+  box-shadow: inherit;
+}
+
+.sc-face-side.is-back {
+  transform: rotateY(180deg);
+  justify-content: flex-start;
+  text-align: left;
+  padding: 18px 14px 14px;
 }
 
 .sc-face-card.is-simple .card-accent-bar {
@@ -1690,6 +1730,77 @@ ion-popover {
   line-height: 1;
   color: var(--card-accent, var(--text-muted));
   opacity: 0.7;
+}
+
+.sc-face-card.is-simple .card-back-kicker {
+  flex: 0 0 auto;
+  width: 100%;
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--card-accent, var(--text-accent));
+}
+
+.sc-face-card.is-simple .card-back-body {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  margin: 0;
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--text-primary);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 8;
+  -webkit-box-orient: vertical;
+}
+
+.card-compose-colors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  justify-content: center;
+}
+
+.card-color-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  padding: 0;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #000 12%, transparent);
+}
+
+.card-color-swatch.is-active {
+  border-color: var(--text-primary);
+  box-shadow:
+    0 0 0 1px var(--surface-1),
+    inset 0 0 0 1px color-mix(in srgb, #000 12%, transparent);
+}
+
+.card-color-swatch:hover {
+  transform: scale(1.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sc-face-flip {
+    transition: none;
+  }
+}
+
+.sc-face-add.is-simple {
+  padding: 18px 12px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
 }
 
 .sc-face-add.is-simple .card-face-icon {

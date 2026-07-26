@@ -13,7 +13,7 @@ import {
   type NodeProps,
 } from '@xyflow/react';
 import { statusClass, statusLabel } from '../../modules/cards/types/card.types';
-import { suitColor } from '../components/FaceCardComposer';
+import { cardAccent } from '../components/FaceCardComposer';
 import { CardFaceIcon } from '../components/CardIcon';
 
 export type CardFlowNodeData = {
@@ -22,6 +22,7 @@ export type CardFlowNodeData = {
   back: string;
   tag: string;
   icon: string | null;
+  color: string | null;
   status: 'NEW' | 'REVIEW' | 'KNOWN';
   linkCount: number;
   /** Offset 0–1 along each handle side, keyed by handle id */
@@ -180,14 +181,14 @@ function CardFlowNodeComponent({ id, data, selected }: NodeProps) {
         }),
       )}
 
-      <div className="sc-flow-card-tag" style={{ color: suitColor(d.tag) }}>
+      <div className="sc-flow-card-tag" style={{ color: cardAccent(d.color, d.tag) }}>
         {d.tag}
       </div>
       {d.icon ? (
         <CardFaceIcon
           icon={d.icon}
           className="sc-flow-card-icon"
-          color={suitColor(d.tag)}
+          color={cardAccent(d.color, d.tag)}
         />
       ) : null}
       <div className="sc-flow-card-title">{d.front}</div>

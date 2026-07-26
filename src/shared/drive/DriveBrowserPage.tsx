@@ -18,6 +18,7 @@ import { cardsFacade } from '../../modules/cards/facades/cards.facade';
 import type { Subject } from '../../modules/subjects/types/subject.types';
 import type { TopicTreeNode } from '../../modules/topics/types/topic.types';
 import type { Card } from '../../modules/cards/types/card.types';
+import { CARD_ACCENT_COLORS } from '../../modules/cards/types/card.types';
 import { DriveTopBar } from '../components/DriveTopBar';
 import { DriveFolderItem } from '../components/DriveFolderItem';
 import { Field, TextArea } from '../components/Field';
@@ -114,6 +115,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   const [mergeOpen, setMergeOpen] = useState(false);
   const [mergeSources, setMergeSources] = useState<Card[]>([]);
   const [raisedId, setRaisedId] = useState<string | null>(null);
+  const [flippedId, setFlippedId] = useState<string | null>(null);
   const [mergePickIds, setMergePickIds] = useState<string[]>([]);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -122,6 +124,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   const [docJson, setDocJson] = useState('');
   const [hint, setHint] = useState('');
   const [icon, setIcon] = useState<string | null>(null);
+  const [color, setColor] = useState<string | null>(CARD_ACCENT_COLORS[0]);
   const [tag, setTag] = useState('Conceito');
   const [saving, setSaving] = useState(false);
   const [detail, setDetail] = useState<Card | null>(null);
@@ -201,6 +204,8 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     setBack(sources.map((c) => `• ${c.front}: ${c.back}`).join('\n'));
     setDocJson('');
     setHint('');
+    setIcon(null);
+    setColor(CARD_ACCENT_COLORS[3]);
     setTag('Síntese');
     setMergeOpen(true);
   }, []);
@@ -281,14 +286,38 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   }, []);
 
   const handleCardTap = useCallback(
-    (card: Card) => {
-      if (!touchUi) {
+    (card: Card, mode: 'face' | 'list' = 'face') => {
+      const now = Date.now();
+      const last = lastTapRef.current;
+
+      if (mode === 'list') {
+        if (touchUi) {
+          if (last && last.id === card.id && now - last.at <= DOUBLE_TAP_MS) {
+            lastTapRef.current = null;
+            toggleMergePick(card);
+            return;
+          }
+          lastTapRef.current = { id: card.id, at: now };
+          setRaisedId(card.id);
+          return;
+        }
         setDetail(card);
         return;
       }
 
-      const now = Date.now();
-      const last = lastTapRef.current;
+      if (!touchUi) {
+        if (last && last.id === card.id && now - last.at <= DOUBLE_TAP_MS) {
+          lastTapRef.current = null;
+          setFlippedId(null);
+          setDetail(card);
+          return;
+        }
+        lastTapRef.current = { id: card.id, at: now };
+        setRaisedId(card.id);
+        setFlippedId((prev) => (prev === card.id ? null : card.id));
+        return;
+      }
+
       if (last && last.id === card.id && now - last.at <= DOUBLE_TAP_MS) {
         lastTapRef.current = null;
         toggleMergePick(card);
@@ -297,6 +326,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
 
       lastTapRef.current = { id: card.id, at: now };
       setRaisedId(card.id);
+      setFlippedId((prev) => (prev === card.id ? null : card.id));
     },
     [toggleMergePick, touchUi],
   );
@@ -348,6 +378,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         document: docJson || null,
         hint,
         icon,
+        color,
         tag,
       });
       setCardOpen(false);
@@ -356,6 +387,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
       setDocJson('');
       setHint('');
       setIcon(null);
+      setColor(CARD_ACCENT_COLORS[0]);
       setTag('Conceito');
       toast.success('Card criado');
       await load();
@@ -382,6 +414,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         document: docJson || null,
         hint,
         icon,
+        color,
         tag: tag || 'Síntese',
       });
       setMergeOpen(false);
@@ -393,6 +426,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
       setDocJson('');
       setHint('');
       setIcon(null);
+      setColor(CARD_ACCENT_COLORS[0]);
       setTag('Conceito');
       toast.success('Cards unidos');
       await load();
@@ -411,6 +445,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         setDetail(null);
         setMergePickIds((prev) => prev.filter((pickId) => pickId !== id));
         setRaisedId((prev) => (prev === id ? null : prev));
+        setFlippedId((prev) => (prev === id ? null : prev));
         window.dispatchEvent(
           new CustomEvent('sc-card-deleted', { detail: { id } }),
         );
@@ -607,8 +642,8 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
 
           <p className="sc-dnd-hint">
             {touchUi
-              ? 'Toque para destacar · toque duplo para selecionar síntese · segure para abrir · arraste para mover'
-              : 'Arraste card sobre card para unir · card sobre pasta para mover · pasta sobre pasta para aninhar'}
+              ? 'Toque para girar · toque duplo para síntese · segure para abrir · arraste para mover'
+              : 'Clique para girar · duplo clique para abrir · arraste card sobre card para unir'}
           </p>
 
           {!isRoot ? (
@@ -653,6 +688,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                       <FaceCard
                         card={card}
                         selected={picked}
+                        flipped={flippedId === card.id}
                         index={index}
                         style={{ ['--card-i' as string]: index } as CSSProperties}
                       />
@@ -697,7 +733,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                         topicId: card.topicId,
                         label: card.front,
                       }}
-                      onClick={() => handleCardTap(card)}
+                      onClick={() => handleCardTap(card, 'list')}
                       onLongPress={
                         touchUi ? () => setDetail(card) : undefined
                       }
@@ -850,6 +886,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         tag={tag}
         hint={hint}
         icon={icon}
+        color={color}
         saving={saving}
         onFront={setFront}
         onBack={setBack}
@@ -857,6 +894,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         onTag={setTag}
         onHint={setHint}
         onIcon={setIcon}
+        onColor={setColor}
         onClose={() => setCardOpen(false)}
         onSubmit={() => void createCard()}
       />
@@ -872,6 +910,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         tag={tag || 'Síntese'}
         hint={hint}
         icon={icon}
+        color={color}
         saving={saving}
         onFront={setFront}
         onBack={setBack}
@@ -879,6 +918,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         onTag={setTag}
         onHint={setHint}
         onIcon={setIcon}
+        onColor={setColor}
         onClose={() => {
           setMergeOpen(false);
           setMergeSources([]);

@@ -9,6 +9,7 @@ export type Card = {
   document: string | null;
   hint: string | null;
   icon: string | null;
+  color: string | null;
   tag: string;
   status: CardStatus;
   position: number;
@@ -26,6 +27,7 @@ export type CreateCardInput = {
   document?: string | null;
   hint?: string;
   icon?: string | null;
+  color?: string | null;
   tag?: string;
 };
 
@@ -35,6 +37,7 @@ export type UpdateCardInput = {
   document?: string | null;
   hint?: string | null;
   icon?: string | null;
+  color?: string | null;
   tag?: string;
   status?: CardStatus;
   position?: number;
@@ -49,8 +52,19 @@ export type MergeCardsInput = {
   document?: string | null;
   hint?: string;
   icon?: string | null;
+  color?: string | null;
   tag?: string;
 };
+
+export const CARD_ACCENT_COLORS = [
+  '#1D9E75',
+  '#378ADD',
+  '#BA7517',
+  '#7F77DD',
+  '#D4537E',
+  '#D85A30',
+  '#888780',
+] as const;
 
 export function statusLabel(status: CardStatus) {
   if (status === 'KNOWN') return 'Sabido';

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { IonIcon, IonSpinner } from '@ionic/react';
@@ -9,10 +9,14 @@ import {
   trashOutline,
 } from 'ionicons/icons';
 import type { Card } from '../../modules/cards/types/card.types';
-import { statusClass, statusLabel } from '../../modules/cards/types/card.types';
+import {
+  CARD_ACCENT_COLORS,
+  statusClass,
+  statusLabel,
+} from '../../modules/cards/types/card.types';
 import { cardsFacade } from '../../modules/cards/facades/cards.facade';
 import { DocumentEditor, documentToPlainText } from './DocumentEditor';
-import { suitColor } from './FaceCardComposer';
+import { cardAccent } from './FaceCardComposer';
 import { CardFaceIcon, CardIconPicker } from './CardIcon';
 import { useAppToast } from '../hooks/useAppToast';
 import { docExpand, fadeIn, scaleIn } from '../motion';
@@ -55,6 +59,7 @@ export function CardDocumentSheet({
   const [tag, setTag] = useState('Conceito');
   const [hint, setHint] = useState('');
   const [icon, setIcon] = useState<string | null>(null);
+  const [color, setColor] = useState<string | null>(CARD_ACCENT_COLORS[0]);
   const [saving, setSaving] = useState(false);
   const [linked, setLinked] = useState<Card[]>([]);
   const [loadingLinks, setLoadingLinks] = useState(false);
@@ -66,6 +71,7 @@ export function CardDocumentSheet({
     setTag(next.tag);
     setHint(next.hint ?? '');
     setIcon(next.icon ?? null);
+    setColor(next.color ?? CARD_ACCENT_COLORS[0]);
     setDocJson(seedDocument(next));
   };
 
@@ -129,6 +135,7 @@ export function CardDocumentSheet({
 
   if (!card) return null;
 
+  const accent = cardAccent(color, tag);
   const hasDocument = Boolean(
     card.document?.trim() && documentToPlainText(card.document),
   );
@@ -150,6 +157,7 @@ export function CardDocumentSheet({
         tag: tag.trim() || 'Conceito',
         hint: hint.trim() || null,
         icon,
+        color,
       });
       onChanged(updated);
       hydrate(updated);
@@ -297,7 +305,7 @@ export function CardDocumentSheet({
                     className="sc-doc-tag-input"
                     value={tag}
                     onChange={(e) => setTag(e.target.value)}
-                    style={{ color: suitColor(tag) }}
+                    style={{ color: accent }}
                   />
                 </>
               ) : (
@@ -305,7 +313,7 @@ export function CardDocumentSheet({
                   <h1 className="sc-doc-title-view">{front}</h1>
                   <p
                     className="sc-doc-tag-view"
-                    style={{ color: suitColor(tag) }}
+                    style={{ color: accent }}
                   >
                     {tag}
                   </p>
@@ -404,6 +412,7 @@ export function CardDocumentSheet({
         <motion.div
           key="card"
           className={`sc-face-card sc-face-compose is-preview${editing ? ' is-editing' : ''}${icon ? ' has-icon' : ''}`}
+          style={{ '--card-accent': accent } as CSSProperties}
           variants={reduce ? undefined : scaleIn}
           initial={reduce ? false : 'hidden'}
           animate="show"
@@ -437,7 +446,7 @@ export function CardDocumentSheet({
                   className="card-suit-input"
                   value={tag}
                   onChange={(e) => setTag(e.target.value)}
-                  style={{ color: suitColor(tag) }}
+                  style={{ color: accent }}
                   autoComplete="off"
                 />
               </label>
@@ -445,9 +454,25 @@ export function CardDocumentSheet({
                 <CardIconPicker
                   value={icon}
                   onChange={setIcon}
-                  accent={suitColor(tag)}
+                  accent={accent}
                 />
               </div>
+              <fieldset className="card-compose-colors">
+                <legend className="sr-only">Cor da carta</legend>
+                {CARD_ACCENT_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    className={`card-color-swatch${
+                      (color ?? '').toUpperCase() === c ? ' is-active' : ''
+                    }`}
+                    style={{ background: c }}
+                    aria-label={`Cor ${c}`}
+                    aria-pressed={(color ?? '').toUpperCase() === c}
+                    onClick={() => setColor(c)}
+                  />
+                ))}
+              </fieldset>
               <label className="card-compose-field title">
                 <span className="sr-only">Conceito</span>
                 <textarea
@@ -459,11 +484,12 @@ export function CardDocumentSheet({
                 />
               </label>
               <label className="card-compose-field body">
-                <span className="sr-only">Explicação</span>
+                <span className="sr-only">Conceito resumido</span>
                 <textarea
                   className="card-body-input"
                   value={back}
                   onChange={(e) => setBack(e.target.value)}
+                  placeholder="Conceito resumido (verso ao girar)…"
                   rows={4}
                 />
               </label>
@@ -492,10 +518,10 @@ export function CardDocumentSheet({
             </>
           ) : (
             <>
-              <div className="card-suit" style={{ color: suitColor(tag) }}>
+              <div className="card-suit" style={{ color: accent }}>
                 {tag}
               </div>
-              <CardFaceIcon icon={icon} color={suitColor(tag)} />
+              <CardFaceIcon icon={icon} color={accent} />
               <div className="card-title">{front}</div>
               {!icon ? <div className="card-body">{back}</div> : null}
               {hint ? <div className="card-hint-view">{hint}</div> : null}
