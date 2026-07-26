@@ -743,7 +743,11 @@ body {
   width: min(94vw, 340px);
   height: auto;
   min-height: 420px;
-  padding: 22px 18px 16px;
+  padding: 28px 20px 20px;
+  /* reserva canto dos botões editar/fechar */
+  padding-right: 52px;
+  padding-top: 36px;
+  gap: 12px;
   cursor: default;
   overflow: visible;
   box-shadow:
@@ -771,12 +775,12 @@ body {
 
 .sc-card-flip-chrome {
   position: absolute;
-  top: 8px;
-  right: 10px;
+  top: 10px;
+  right: 12px;
   z-index: 5;
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
   transform: translateZ(0);
   pointer-events: auto;
 }
@@ -788,7 +792,7 @@ body {
 .sc-card-flip-chrome .sc-card-edit-actions {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
 }
 
 .sc-card-flip-mesh {
@@ -872,7 +876,10 @@ body {
   inset: 0;
   display: flex;
   flex-direction: column;
-  padding: 22px 18px 16px;
+  gap: 12px;
+  padding: 28px 20px 20px;
+  padding-right: 52px;
+  padding-top: 36px;
   border-radius: 14px;
   border: 0.5px solid var(--border-strong);
   background:
@@ -911,7 +918,7 @@ body {
 }
 
 .sc-card-face .card-back-kicker {
-  margin: 8px 0 10px;
+  margin: 0;
   font-size: 11px;
   font-weight: 650;
   letter-spacing: 0.06em;
@@ -932,7 +939,7 @@ body {
 }
 
 .sc-card-face .card-flip-hint {
-  margin: 12px 0 0;
+  margin: 0;
   font-size: 11px;
   color: var(--text-muted);
   text-align: center;
@@ -940,23 +947,60 @@ body {
 
 .sc-card-face .card-title {
   flex: 0 0 auto;
-  margin: 8px 0 10px;
+  margin: 0;
   font-size: 20px;
   font-weight: 650;
-  line-height: 1.25;
+  line-height: 1.3;
   letter-spacing: -0.01em;
 }
 
+.sc-card-face .card-suit {
+  margin: 0;
+  padding-right: 0;
+}
+
 .sc-card-face .card-face-icon {
-  min-height: 120px;
-  margin: 8px 0 12px;
+  flex: 0 0 auto;
+  min-height: 100px;
+  margin: 0;
 }
 
 .sc-card-face .card-face-icon ion-icon,
 .sc-card-face .card-face-icon-img {
-  font-size: 104px;
-  width: 104px;
-  height: 104px;
+  font-size: 96px;
+  width: 96px;
+  height: 96px;
+}
+
+.sc-card-face .card-hint-view {
+  margin: 0;
+}
+
+.sc-card-face-footer {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 0.5px solid var(--border);
+}
+
+.sc-card-face-footer .card-status,
+.sc-card-face-footer .card-links,
+.sc-card-face-footer .card-expand-doc,
+.sc-card-face-footer .sc-linked-cards,
+.sc-card-face-footer .sc-card-links-btn {
+  margin: 0;
+}
+
+.sc-card-face-footer .sc-linked-cards {
+  width: 100%;
+}
+
+.sc-card-face-footer.is-compose {
+  margin-top: 4px;
+  width: 100%;
 }
 
 .sc-card-face .card-face-emoji {
@@ -982,11 +1026,11 @@ body {
 
 .card-compose-close {
   position: absolute;
-  top: 8px;
-  right: 10px;
+  top: 10px;
+  right: 12px;
   z-index: 2;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border: none;
   border-radius: 50%;
   background: transparent;
@@ -1004,12 +1048,13 @@ body {
 .card-compose-field {
   display: block;
   width: 100%;
+  margin: 0;
 }
 
-.card-compose-field.suit { margin: 14px 0 10px; }
-.card-compose-field.title { flex: 0; margin-bottom: 10px; }
-.card-compose-field.body { flex: 1; margin-bottom: 10px; }
-.card-compose-field.hint { margin-bottom: 8px; }
+.card-compose-field.suit { margin: 0; }
+.card-compose-field.title { flex: 0; }
+.card-compose-field.body { flex: 1; min-height: 0; }
+.card-compose-field.hint { margin: 0; }
 
 .card-suit-input,
 .card-title-input,
@@ -1021,7 +1066,7 @@ body {
   background: transparent;
   font: inherit;
   resize: none;
-  padding: 0;
+  padding: 4px 0;
   color: inherit;
 }
 
@@ -1051,7 +1096,8 @@ body {
   font-size: 12px;
   color: var(--text-muted);
   border-top: 0.5px dashed var(--border);
-  padding-top: 8px;
+  padding-top: 10px;
+  margin-top: 2px;
 }
 
 .card-suit-input::placeholder,
@@ -1065,8 +1111,8 @@ body {
 .card-compose-actions {
   display: flex;
   gap: 8px;
-  margin-top: 14px;
-  padding-top: 12px;
+  margin-top: auto;
+  padding-top: 16px;
   border-top: 0.5px solid var(--border);
 }
 
@@ -1233,7 +1279,7 @@ ion-popover {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  margin: 6px 0 2px;
+  margin: 0;
   padding: 0;
   border: none;
   background: transparent;
@@ -1322,15 +1368,18 @@ ion-popover {
 .sc-face-compose.is-preview > .sc-edit-icon,
 .sc-face-compose.is-preview > .sc-card-edit-actions {
   position: absolute;
-  top: 8px;
-  right: 42px;
+  top: 10px;
+  right: 44px;
   z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .sc-card-edit-actions {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
 }
 
 .sc-doc-title-view {
@@ -1372,7 +1421,7 @@ ion-popover {
   font-size: 12px;
   color: var(--text-muted);
   font-style: italic;
-  margin-top: 4px;
+  margin: 0;
 }
 
 .sc-doc-editor.is-readonly {
@@ -1879,6 +1928,14 @@ ion-popover {
   pointer-events: auto;
 }
 
+.sc-face-compose .card-expand-doc {
+  margin: 2px 0 0;
+}
+
+.sc-face-compose .card-compose-note {
+  margin: 8px 0 0;
+}
+
 .card-corner {
   position: absolute;
   font-size: 10px;
@@ -2036,42 +2093,43 @@ ion-popover {
 
 /* Opened card (click): larger icon */
 .sc-face-compose .card-face-icon {
-  min-height: 110px;
-  margin: 8px 0 12px;
+  min-height: 100px;
+  margin: 0;
 }
 
 .sc-face-compose .card-face-icon ion-icon,
 .sc-face-compose .card-face-icon-img {
+  font-size: 88px;
+  width: 88px;
+  height: 88px;
+}
+
+.sc-face-compose .card-face-emoji {
+  font-size: 76px;
+}
+
+.sc-face-compose.is-preview .card-face-icon {
+  min-height: 100px;
+}
+
+.sc-face-compose.is-preview .card-face-icon ion-icon,
+.sc-face-compose.is-preview .card-face-icon-img {
   font-size: 96px;
   width: 96px;
   height: 96px;
 }
 
-.sc-face-compose .card-face-emoji {
-  font-size: 84px;
-}
-
-.sc-face-compose.is-preview .card-face-icon {
-  min-height: 120px;
-}
-
-.sc-face-compose.is-preview .card-face-icon ion-icon,
-.sc-face-compose.is-preview .card-face-icon-img {
-  font-size: 104px;
-  width: 104px;
-  height: 104px;
-}
-
 .sc-face-compose.is-preview .card-face-emoji {
-  font-size: 92px;
+  font-size: 84px;
 }
 
 .card-compose-icon-block {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 8px;
-  margin: 4px 0 12px;
+  gap: 10px;
+  margin: 0;
+  flex-shrink: 0;
 }
 
 .card-icon-trigger {

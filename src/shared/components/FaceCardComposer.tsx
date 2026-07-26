@@ -220,7 +220,7 @@ export function FaceCardComposer({
                   </button>
 
                   {sourceCards?.length ? (
-                    <div className="sc-linked-cards" style={{ marginTop: 4 }}>
+                    <div className="sc-linked-cards">
                       <div className="sc-linked-cards-label">
                         Ligando {sourceCards.length} cards
                       </div>
@@ -238,9 +238,11 @@ export function FaceCardComposer({
                     </div>
                   ) : null}
 
-                  <span className="card-status s-new">Novo</span>
-                  <div className="card-links">
-                    → {sourceCards?.length ?? 0} links
+                  <div className="sc-card-face-footer is-compose">
+                    <span className="card-status s-new">Novo</span>
+                    <div className="card-links">
+                      → {sourceCards?.length ?? 0} links
+                    </div>
                   </div>
 
                   <div className="card-compose-actions">

@@ -590,34 +590,36 @@ export function CardDocumentSheet({
                 <CardFaceIcon icon={icon} color={accent} />
                 <div className="card-title">{front}</div>
                 {hint ? <div className="card-hint-view">{hint}</div> : null}
-                <span className={`card-status ${statusClass(card.status)}`}>
-                  {statusLabel(card.status)}
-                </span>
-                {card.linkCount > 0 ? (
+                <div className="sc-card-face-footer">
+                  <span className={`card-status ${statusClass(card.status)}`}>
+                    {statusLabel(card.status)}
+                  </span>
+                  {card.linkCount > 0 ? (
+                    <button
+                      type="button"
+                      className="sc-card-links-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMode('document');
+                      }}
+                    >
+                      → {card.linkCount} links · ver síntese ↗
+                    </button>
+                  ) : (
+                    <div className="card-links">→ 0 links</div>
+                  )}
+                  <div onClick={(e) => e.stopPropagation()}>{linkedSection}</div>
                   <button
                     type="button"
-                    className="sc-card-links-btn"
+                    className="card-expand-doc"
                     onClick={(e) => {
                       e.stopPropagation();
                       setMode('document');
                     }}
                   >
-                    → {card.linkCount} links · ver síntese ↗
+                    Documento ↗
                   </button>
-                ) : (
-                  <div className="card-links">→ 0 links</div>
-                )}
-                <div onClick={(e) => e.stopPropagation()}>{linkedSection}</div>
-                <button
-                  type="button"
-                  className="card-expand-doc"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setMode('document');
-                  }}
-                >
-                  Documento ↗
-                </button>
+                </div>
               </div>
 
               <div className="sc-card-face is-back" aria-hidden={!flipped}>
