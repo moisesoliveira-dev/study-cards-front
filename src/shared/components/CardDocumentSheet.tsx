@@ -587,9 +587,11 @@ export function CardDocumentSheet({
                 <div className="card-suit" style={{ color: accent }}>
                   {tag}
                 </div>
-                <CardFaceIcon icon={icon} color={accent} />
-                <div className="card-title">{front}</div>
-                {hint ? <div className="card-hint-view">{hint}</div> : null}
+                <div className="sc-card-face-hero">
+                  <CardFaceIcon icon={icon} color={accent} />
+                  <div className="card-title">{front}</div>
+                  {hint ? <div className="card-hint-view">{hint}</div> : null}
+                </div>
                 <div className="sc-card-face-footer">
                   <span className={`card-status ${statusClass(card.status)}`}>
                     {statusLabel(card.status)}

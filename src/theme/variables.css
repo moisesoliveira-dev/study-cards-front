@@ -877,9 +877,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 28px 20px 20px;
-  padding-right: 52px;
-  padding-top: 36px;
+  padding: 36px 20px 20px;
   border-radius: 14px;
   border: 0.5px solid var(--border-strong);
   background:
@@ -956,7 +954,42 @@ body {
 
 .sc-card-face .card-suit {
   margin: 0;
-  padding-right: 0;
+  max-width: calc(100% - 112px);
+  align-self: flex-start;
+}
+
+.sc-card-face-hero {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  text-align: center;
+}
+
+.sc-card-face-hero .card-face-icon {
+  flex: 0 0 auto;
+  min-height: 0;
+  margin: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sc-card-face-hero .card-title {
+  width: 100%;
+  max-width: 100%;
+  text-align: center;
+}
+
+.sc-card-face-hero .card-hint-view {
+  margin: 0;
+  text-align: center;
+  max-width: 100%;
 }
 
 .sc-card-face .card-face-icon {
