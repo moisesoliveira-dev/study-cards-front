@@ -3,14 +3,12 @@ import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { IonIcon, IonSpinner } from '@ionic/react';
 import { arrowBackOutline } from 'ionicons/icons';
-import {
-  CARD_ACCENT_COLORS,
-  cardInitials,
-} from '../../modules/cards/types/card.types';
+import { cardInitials } from '../../modules/cards/types/card.types';
 import {
   DocumentEditor,
   documentToPlainText,
 } from './DocumentEditor';
+import { CardAccentPicker } from './CardAccentPicker';
 import { CardIconPicker } from './CardIcon';
 import { docExpand, fadeIn, scaleIn, tapScale } from '../motion';
 
@@ -146,151 +144,138 @@ export function FaceCardComposer({
             {mode === 'card' ? (
               <motion.div
                 key="compose-card"
-                className={`sc-face-card sc-face-compose${icon ? ' has-icon' : ''}`}
-                style={
-                  {
-                    ...style,
-                    '--card-accent': accent,
-                  } as CSSProperties
-                }
+                className="sc-card-compose-stage"
                 variants={reduce ? undefined : scaleIn}
                 initial={reduce ? false : 'hidden'}
                 animate="show"
                 exit="exit"
               >
-                <button
-                  type="button"
-                  className="card-compose-close"
-                  aria-label="Fechar"
-                  onClick={onClose}
+                <div
+                  className={`sc-face-card sc-face-compose${icon ? ' has-icon' : ''}`}
+                  style={
+                    {
+                      ...style,
+                      '--card-accent': accent,
+                    } as CSSProperties
+                  }
                 >
-                  ×
-                </button>
-
-                <label className="card-compose-field suit">
-                  <span className="sr-only">Tag</span>
-                  <input
-                    className="card-suit-input"
-                    value={tag}
-                    onChange={(e) => onTag(e.target.value)}
-                    placeholder="Tag"
-                    style={{ color: accent }}
-                    autoComplete="off"
-                  />
-                </label>
-
-                <div className="card-compose-icon-block">
-                  <CardIconPicker
-                    value={icon}
-                    onChange={onIcon}
-                    accent={accent}
-                  />
-                </div>
-
-                <fieldset className="card-compose-colors">
-                  <legend className="sr-only">Cor da carta</legend>
-                  {CARD_ACCENT_COLORS.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      className={`card-color-swatch${
-                        (color ?? '').toUpperCase() === c ? ' is-active' : ''
-                      }`}
-                      style={{ background: c }}
-                      aria-label={`Cor ${c}`}
-                      aria-pressed={(color ?? '').toUpperCase() === c}
-                      onClick={() => onColor(c)}
-                    />
-                  ))}
-                </fieldset>
-
-                <label className="card-compose-field title">
-                  <span className="sr-only">Conceito</span>
-                  <textarea
-                    className="card-title-input"
-                    value={front}
-                    onChange={(e) => onFront(e.target.value)}
-                    placeholder="Conceito (título)"
-                    rows={2}
-                    autoFocus
-                  />
-                </label>
-
-                <label className="card-compose-field body">
-                  <span className="sr-only">Conceito resumido</span>
-                  <textarea
-                    className="card-body-input"
-                    value={back}
-                    onChange={(e) => onBack(e.target.value)}
-                    placeholder="Conceito resumido (verso ao girar)…"
-                    rows={4}
-                  />
-                </label>
-
-                <label className="card-compose-field hint">
-                  <span className="sr-only">Dica</span>
-                  <input
-                    className="card-hint-input"
-                    value={hint}
-                    onChange={(e) => onHint(e.target.value)}
-                    placeholder="Dica (opcional)"
-                    autoComplete="off"
-                  />
-                </label>
-
-                <button
-                  type="button"
-                  className="card-expand-doc"
-                  onClick={openDocument}
-                >
-                  Documento ↗
-                </button>
-
-                {sourceCards?.length ? (
-                  <div className="sc-linked-cards" style={{ marginTop: 4 }}>
-                    <div className="sc-linked-cards-label">
-                      Ligando {sourceCards.length} cards
-                    </div>
-                    <div className="sc-linked-list">
-                      {sourceCards.map((src) => (
-                        <span
-                          key={src.id}
-                          className="sc-linked-chip"
-                          style={{ cursor: 'default' }}
-                        >
-                          <span className="sc-linked-chip-title">{src.front}</span>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-
-                <span className="card-status s-new">Novo</span>
-                <div className="card-links">
-                  → {sourceCards?.length ?? 0} links
-                </div>
-
-                <div className="card-compose-actions">
-                  <button type="button" className="sc-btn" onClick={onClose}>
-                    Cancelar
-                  </button>
-                  <motion.button
+                  <button
                     type="button"
-                    className="sc-btn primary"
-                    disabled={!canSubmit}
-                    onClick={onSubmit}
-                    whileTap={reduce ? undefined : tapScale}
+                    className="card-compose-close"
+                    aria-label="Fechar"
+                    onClick={onClose}
                   >
-                    {saving ? <IonSpinner name="crescent" /> : submitLabel}
-                  </motion.button>
+                    ×
+                  </button>
+                  <label className="card-compose-field suit">
+                    <span className="sr-only">Tag</span>
+                    <input
+                      className="card-suit-input"
+                      value={tag}
+                      onChange={(e) => onTag(e.target.value)}
+                      placeholder="Tag"
+                      style={{ color: accent }}
+                      autoComplete="off"
+                    />
+                  </label>
+
+                  <div className="card-compose-icon-block">
+                    <CardIconPicker
+                      value={icon}
+                      onChange={onIcon}
+                      accent={accent}
+                    />
+                  </div>
+
+                  <label className="card-compose-field title">
+                    <span className="sr-only">Conceito</span>
+                    <textarea
+                      className="card-title-input"
+                      value={front}
+                      onChange={(e) => onFront(e.target.value)}
+                      placeholder="Conceito (título)"
+                      rows={2}
+                      autoFocus
+                    />
+                  </label>
+
+                  <label className="card-compose-field body">
+                    <span className="sr-only">Conceito resumido</span>
+                    <textarea
+                      className="card-body-input"
+                      value={back}
+                      onChange={(e) => onBack(e.target.value)}
+                      placeholder="Conceito resumido (verso ao girar)…"
+                      rows={4}
+                    />
+                  </label>
+
+                  <label className="card-compose-field hint">
+                    <span className="sr-only">Dica</span>
+                    <input
+                      className="card-hint-input"
+                      value={hint}
+                      onChange={(e) => onHint(e.target.value)}
+                      placeholder="Dica (opcional)"
+                      autoComplete="off"
+                    />
+                  </label>
+
+                  <button
+                    type="button"
+                    className="card-expand-doc"
+                    onClick={openDocument}
+                  >
+                    Documento ↗
+                  </button>
+
+                  {sourceCards?.length ? (
+                    <div className="sc-linked-cards" style={{ marginTop: 4 }}>
+                      <div className="sc-linked-cards-label">
+                        Ligando {sourceCards.length} cards
+                      </div>
+                      <div className="sc-linked-list">
+                        {sourceCards.map((src) => (
+                          <span
+                            key={src.id}
+                            className="sc-linked-chip"
+                            style={{ cursor: 'default' }}
+                          >
+                            <span className="sc-linked-chip-title">{src.front}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <span className="card-status s-new">Novo</span>
+                  <div className="card-links">
+                    → {sourceCards?.length ?? 0} links
+                  </div>
+
+                  <div className="card-compose-actions">
+                    <button type="button" className="sc-btn" onClick={onClose}>
+                      Cancelar
+                    </button>
+                    <motion.button
+                      type="button"
+                      className="sc-btn primary"
+                      disabled={!canSubmit}
+                      onClick={onSubmit}
+                      whileTap={reduce ? undefined : tapScale}
+                    >
+                      {saving ? <IonSpinner name="crescent" /> : submitLabel}
+                    </motion.button>
+                  </div>
+                  <p className="card-compose-note">
+                    {!front.trim()
+                      ? 'Dê um título (frente) para criar a carta.'
+                      : hasBody
+                        ? 'Pronto para salvar.'
+                        : 'Sem verso/documento, o título será usado como verso.'}
+                  </p>
                 </div>
-                <p className="card-compose-note">
-                  {!front.trim()
-                    ? 'Dê um título (frente) para criar a carta.'
-                    : hasBody
-                      ? 'Pronto para salvar.'
-                      : 'Sem verso/documento, o título será usado como verso.'}
-                </p>
+                <CardAccentPicker value={color} onChange={onColor} />
               </motion.div>
             ) : (
               <motion.div
