@@ -909,9 +909,9 @@ body {
 }
 
 .sc-card-level-chip {
-  border: 1px solid color-mix(in srgb, var(--level-color, var(--border-strong)) 55%, var(--border));
-  background: color-mix(in srgb, var(--level-color, var(--surface-2)) 14%, var(--surface-1));
-  color: var(--level-color, var(--text-secondary));
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
+  color: var(--text-secondary);
   border-radius: 999px;
   padding: 6px 12px;
   font: inherit;
@@ -922,14 +922,14 @@ body {
 }
 
 .sc-card-level-chip:hover {
-  border-color: var(--level-color, var(--text-primary));
+  border-color: var(--text-primary);
+  color: var(--text-primary);
 }
 
 .sc-card-level-chip.is-active {
-  background: color-mix(in srgb, var(--level-color, var(--text-accent)) 22%, var(--surface-1));
-  border-color: var(--level-color, var(--text-accent));
-  color: var(--text-primary);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--level-color, var(--text-accent)) 35%, transparent);
+  background: var(--bg-accent);
+  border-color: var(--border-accent);
+  color: var(--text-accent);
 }
 
 .sc-card-level-empty {
@@ -6809,13 +6809,6 @@ ion-toast.sc-toast--info::part(container) {
   padding: 12px;
 }
 
-.sc-cadastro-swatches {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: flex-start;
-}
-
 .sc-cadastro-levels-loading {
   display: flex;
   justify-content: center;
@@ -6869,14 +6862,6 @@ ion-toast.sc-toast--info::part(container) {
   gap: 10px;
   min-width: 0;
   flex: 1;
-}
-
-.sc-cadastro-level-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  margin-top: 5px;
-  flex-shrink: 0;
 }
 
 .sc-cadastro-level-copy {

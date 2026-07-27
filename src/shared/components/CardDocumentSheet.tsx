@@ -609,14 +609,7 @@ export function CardDocumentSheet({
                       {statusLabel(card.status)}
                     </span>
                     {currentLevel ? (
-                      <span
-                        className="sc-card-level-badge"
-                        style={
-                          currentLevel.color
-                            ? { color: currentLevel.color, borderColor: currentLevel.color }
-                            : undefined
-                        }
-                      >
+                      <span className="sc-card-level-badge">
                         {currentLevel.name}
                       </span>
                     ) : null}

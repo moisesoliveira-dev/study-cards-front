@@ -11,51 +11,17 @@ import {
 import { layersOutline } from 'ionicons/icons';
 import { cardLevelsFacade } from '../../cards/facades/card-levels.facade';
 import type { CardLevel } from '../../cards/types/card-level.types';
-import { CARD_ACCENT_COLORS } from '../../cards/types/card.types';
 import { useAppToast } from '../../../shared/hooks/useAppToast';
 
 type Draft = {
   name: string;
   description: string;
-  color: string;
 };
 
 const emptyDraft = (): Draft => ({
   name: '',
   description: '',
-  color: CARD_ACCENT_COLORS[0],
 });
-
-function ColorSwatches({
-  value,
-  disabled,
-  onChange,
-}: {
-  value: string;
-  disabled?: boolean;
-  onChange: (color: string) => void;
-}) {
-  const current = value.toUpperCase();
-  return (
-    <div className="sc-cadastro-swatches" role="group" aria-label="Cor">
-      {CARD_ACCENT_COLORS.map((c) => {
-        const active = current === c;
-        return (
-          <button
-            key={c}
-            type="button"
-            className={`sc-card-accent-swatch${active ? ' is-active' : ''}`}
-            style={{ background: c }}
-            aria-label={`Cor ${c}`}
-            aria-pressed={active}
-            disabled={disabled}
-            onClick={() => onChange(c)}
-          />
-        );
-      })}
-    </div>
-  );
-}
 
 export default function CardLevelsCadastroPage() {
   const toast = useAppToast();
@@ -98,7 +64,6 @@ export default function CardLevelsCadastroPage() {
       const created = await cardLevelsFacade.create({
         name,
         description: draft.description.trim() || null,
-        color: draft.color || null,
         position: levels.length,
       });
       setLevels((prev) =>
@@ -120,7 +85,6 @@ export default function CardLevelsCadastroPage() {
     setEditDraft({
       name: level.name,
       description: level.description ?? '',
-      color: (level.color ?? CARD_ACCENT_COLORS[0]).toUpperCase(),
     });
   };
 
@@ -139,7 +103,6 @@ export default function CardLevelsCadastroPage() {
       const updated = await cardLevelsFacade.update(editingId, {
         name,
         description: editDraft.description.trim() || null,
-        color: editDraft.color || null,
       });
       setLevels((prev) =>
         prev
@@ -193,7 +156,7 @@ export default function CardLevelsCadastroPage() {
               <section className="sc-gh-box">
                 <div className="sc-gh-box-head">
                   <h2>Novo nível</h2>
-                  <p>Nome obrigatório; descrição e cor são opcionais.</p>
+                  <p>Nome obrigatório; descrição é opcional.</p>
                 </div>
                 <form onSubmit={(e) => void createLevel(e)}>
                   <div className="sc-gh-fields">
@@ -225,16 +188,6 @@ export default function CardLevelsCadastroPage() {
                         disabled={creating}
                       />
                     </label>
-                    <div className="sc-field">
-                      <span className="sc-field-label">Cor</span>
-                      <ColorSwatches
-                        value={draft.color}
-                        disabled={creating}
-                        onChange={(color) =>
-                          setDraft((d) => ({ ...d, color }))
-                        }
-                      />
-                    </div>
                   </div>
                   <div className="sc-gh-box-foot">
                     <button
@@ -251,7 +204,7 @@ export default function CardLevelsCadastroPage() {
               <section className="sc-gh-box">
                 <div className="sc-gh-box-head">
                   <h2>Níveis cadastrados</h2>
-                  <p>Edite nome, descrição ou cor de um nível existente.</p>
+                  <p>Edite nome ou descrição de um nível existente.</p>
                 </div>
 
                 <div className="sc-cadastro-list-wrap">
@@ -310,16 +263,6 @@ export default function CardLevelsCadastroPage() {
                                   disabled={savingId === level.id}
                                 />
                               </label>
-                              <div className="sc-field">
-                                <span className="sc-field-label">Cor</span>
-                                <ColorSwatches
-                                  value={editDraft.color}
-                                  disabled={savingId === level.id}
-                                  onChange={(color) =>
-                                    setEditDraft((d) => ({ ...d, color }))
-                                  }
-                                />
-                              </div>
                               <div className="sc-cadastro-level-row-actions">
                                 <button
                                   type="button"
@@ -346,14 +289,6 @@ export default function CardLevelsCadastroPage() {
                           ) : (
                             <>
                               <div className="sc-cadastro-level-meta">
-                                <span
-                                  className="sc-cadastro-level-dot"
-                                  style={{
-                                    background:
-                                      level.color || 'var(--text-secondary)',
-                                  }}
-                                  aria-hidden
-                                />
                                 <div className="sc-cadastro-level-copy">
                                   <strong>{level.name}</strong>
                                   {level.description ? (

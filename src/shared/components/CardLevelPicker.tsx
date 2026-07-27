@@ -1,4 +1,3 @@
-import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import type { CardLevel } from '../../modules/cards/types/card-level.types';
 
@@ -36,11 +35,6 @@ export function CardLevelPicker({
               key={level.id}
               type="button"
               className={`sc-card-level-chip${active ? ' is-active' : ''}`}
-              style={
-                level.color
-                  ? ({ '--level-color': level.color } as CSSProperties)
-                  : undefined
-              }
               aria-pressed={active}
               title={level.description ?? level.name}
               onClick={() => onChange(level.id)}
