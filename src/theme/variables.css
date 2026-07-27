@@ -563,7 +563,8 @@ body {
 .sc-hand-slot.is-raised,
 .sc-hand > .sc-drop-zone.sc-hand-slot.is-raised {
   z-index: 40;
-  transform: translateY(-28px) scale(1.08);
+  /* Só translateY — scale embaca o texto no Chrome */
+  transform: translateY(-28px);
   margin-right: 10px;
 }
 
@@ -597,6 +598,8 @@ body {
     transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
     box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1),
     border-color 0.2s;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
 }
 
 .sc-hand-slot:hover .sc-face-card,
@@ -653,7 +656,7 @@ body {
   .sc-hand-slot.is-raised,
   .sc-hand > .sc-drop-zone.sc-hand-slot.is-raised {
     z-index: 40;
-    transform: translateY(-28px) scale(1.08);
+    transform: translateY(-28px);
     margin-right: 10px;
   }
 
@@ -808,10 +811,15 @@ body {
   transform-style: preserve-3d;
   -webkit-transform-style: preserve-3d;
   transform-origin: center center;
-  will-change: transform;
   font: inherit;
   color: inherit;
   outline: none;
+  /* Evita texto embaçado: will-change só enquanto gira */
+  will-change: auto;
+}
+
+.sc-card-flip-mesh.is-flipping {
+  will-change: transform;
 }
 
 .sc-card-accent-picker {
@@ -1108,16 +1116,27 @@ body {
     0 28px 64px rgba(26, 25, 23, 0.28);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-  transform-style: preserve-3d;
+  /* Sem translateZ(1px): no Chrome isso deixa o texto embaçado */
+  transform-style: flat;
   overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
 }
 
 .sc-card-face.is-front {
-  transform: translateZ(1px);
+  transform: rotateY(0deg);
 }
 
 .sc-card-face.is-back {
-  transform: rotateY(180deg) translateZ(1px);
+  transform: rotateY(180deg);
+}
+
+.sc-card-face .card-title,
+.sc-card-face .card-back-body,
+.sc-card-face .card-suit,
+.sc-card-face .card-hint-view {
+  /* Camada própria sem escala fracionária = glyphs nítidos */
+  transform: translateZ(0);
 }
 
 .sc-card-face .card-accent-bar {
@@ -2304,7 +2323,7 @@ ion-popover {
 }
 
 .sc-face-card.is-simple:hover .card-icon-stage > .card-face-icon {
-  transform: translateY(-2px) scale(1.05);
+  transform: translateY(-2px);
 }
 
 .sc-face-card.is-simple .card-face-icon ion-icon,

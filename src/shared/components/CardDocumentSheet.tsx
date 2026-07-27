@@ -475,10 +475,10 @@ export function CardDocumentSheet({
         <motion.div
           key="flip"
           className="sc-card-flip-scene"
-          initial={reduce ? false : { opacity: 0, y: 24 }}
+          initial={reduce ? false : { opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={reduce ? undefined : { opacity: 0, y: 12 }}
-          transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+          exit={reduce ? undefined : { opacity: 0, y: 10 }}
+          transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
         >
           <div className="sc-card-flip-stage">
             <motion.div
@@ -516,7 +516,7 @@ export function CardDocumentSheet({
             <motion.div
               role="button"
               tabIndex={0}
-              className="sc-card-flip-mesh"
+              className={`sc-card-flip-mesh${flipping ? ' is-flipping' : ''}`}
               style={
                 {
                   '--card-accent': accent,
@@ -530,10 +530,9 @@ export function CardDocumentSheet({
                 reduce
                   ? { duration: 0 }
                   : {
-                      type: 'spring',
-                      stiffness: 70,
-                      damping: 11,
-                      mass: 0.9,
+                      // Tween (sem spring): evita overshoot fracionário que embaca o texto
+                      duration: 0.55,
+                      ease: [0.22, 1, 0.36, 1],
                     }
               }
               onAnimationComplete={() => setFlipping(false)}

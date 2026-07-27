@@ -99,23 +99,19 @@ export function FaceCard({
         reduce
           ? undefined
           : {
-              hidden: { opacity: 0, y: 28, rotate: -4, scale: 0.9 },
+              hidden: { opacity: 0, y: 20 },
               show: {
                 opacity: 1,
                 y: 0,
-                rotate: 0,
-                scale: 1,
                 transition: {
-                  type: 'spring',
-                  stiffness: 380,
-                  damping: 28,
-                  delay: index * 0.04,
+                  duration: 0.32,
+                  ease: [0.22, 1, 0.36, 1],
+                  delay: index * 0.035,
                 },
               },
             }
       }
       whileTap={reduce ? undefined : tapScale}
-      layout
     >
       <span className="card-accent-bar" aria-hidden />
       <div className="card-title">{card.front}</div>

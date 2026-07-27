@@ -47,17 +47,16 @@ export const fadeIn: Variants = {
 };
 
 export const scaleIn: Variants = {
-  hidden: { opacity: 0, scale: 0.92, y: 18 },
+  hidden: { opacity: 0, y: 16 },
   show: {
     opacity: 1,
-    scale: 1,
     y: 0,
-    transition: springSoft,
+    // Sem scale: scale fracionário (e overshoot de spring) embaca tipografia no Chrome
+    transition: tweenMed,
   },
   exit: {
     opacity: 0,
-    scale: 0.96,
-    y: 10,
+    y: 8,
     transition: { duration: 0.18, ease: easeOut },
   },
 };
@@ -88,23 +87,20 @@ export const staggerContainer: Variants = {
 };
 
 export const staggerItem: Variants = {
-  hidden: { opacity: 0, y: 14, scale: 0.97 },
+  hidden: { opacity: 0, y: 12 },
   show: {
     opacity: 1,
     y: 0,
-    scale: 1,
-    transition: springSoft,
+    transition: tweenMed,
   },
 };
 
 export const cardDeal: Variants = {
-  hidden: { opacity: 0, y: 28, rotate: -4, scale: 0.9 },
+  hidden: { opacity: 0, y: 20 },
   show: {
     opacity: 1,
     y: 0,
-    rotate: 0,
-    scale: 1,
-    transition: springSoft,
+    transition: tweenMed,
   },
 };
 
@@ -112,18 +108,15 @@ export const studySlide: Variants = {
   enter: (dir: number) => ({
     x: dir > 0 ? 56 : -56,
     opacity: 0,
-    scale: 0.98,
   }),
   center: {
     x: 0,
     opacity: 1,
-    scale: 1,
     transition: springSnappy,
   },
   exit: (dir: number) => ({
     x: dir > 0 ? -48 : 48,
     opacity: 0,
-    scale: 0.98,
     transition: { duration: 0.2, ease: easeOut },
   }),
 };
