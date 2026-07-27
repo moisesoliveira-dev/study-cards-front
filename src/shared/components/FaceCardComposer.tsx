@@ -48,7 +48,6 @@ type Props = {
   onDocJson: (value: string) => void;
   onTag: (value: string) => void;
   onLevelId: (value: string | null) => void;
-  onLevelsChange?: (levels: CardLevel[]) => void;
   onIcon: (value: string | null) => void;
   onColor: (value: string | null) => void;
   onClose: () => void;
@@ -76,7 +75,6 @@ export function FaceCardComposer({
   onDocJson,
   onTag,
   onLevelId,
-  onLevelsChange,
   onIcon,
   onColor,
   onClose,
@@ -268,7 +266,6 @@ export function FaceCardComposer({
                   levels={levels}
                   value={levelId}
                   onChange={onLevelId}
-                  onLevelsChange={onLevelsChange}
                   loading={levelsLoading}
                 />
                 <CardAccentPicker value={color} onChange={onColor} />

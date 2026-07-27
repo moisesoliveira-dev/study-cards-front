@@ -880,49 +880,26 @@ body {
   gap: 8px;
 }
 
-.sc-card-level-add {
-  border: none;
-  background: transparent;
-  color: var(--text-accent, var(--text-secondary));
-  font: inherit;
+.sc-card-level-label {
   font-size: 12px;
   font-weight: 600;
-  cursor: pointer;
-  padding: 0;
+  color: var(--text-secondary);
 }
 
-.sc-card-level-add:hover {
+.sc-card-level-manage {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-accent, var(--text-secondary));
+  text-decoration: none;
+}
+
+.sc-card-level-manage:hover {
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
-.sc-card-level-form {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 4px;
-}
-
-.sc-card-level-input {
-  width: 100%;
-  border: 0.5px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface-2);
-  color: var(--text-primary);
-  font: inherit;
-  font-size: 13px;
-  padding: 8px 10px;
-  outline: none;
-}
-
-.sc-card-level-input:focus {
-  border-color: var(--border-strong);
-}
-
-.sc-card-level-form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
+.sc-card-level-empty a {
+  color: var(--text-accent, var(--text-secondary));
 }
 
 .sc-card-level-options {
@@ -4139,6 +4116,79 @@ body.sc-dragging .sc-hand > .sc-drop-zone.sc-hand-slot:hover {
   color: var(--text-accent);
 }
 
+.sc-sidebar-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sc-sidebar-group-toggle {
+  width: 100%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+
+.sc-sidebar-chevron {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 14px !important;
+  opacity: 0.65;
+  transition: transform 0.15s ease;
+}
+
+.sc-sidebar-group.is-open .sc-sidebar-chevron {
+  transform: rotate(180deg);
+}
+
+.sc-sidebar-subnav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px 0 4px 10px;
+  min-width: 0;
+}
+
+.sc-sidebar-sublink {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  box-sizing: border-box;
+}
+
+.sc-sidebar-sublink span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sc-sidebar-sublink ion-icon {
+  flex-shrink: 0;
+  font-size: 16px;
+}
+
+.sc-sidebar-sublink:hover {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+
+.sc-sidebar-sublink.is-active {
+  background: var(--bg-accent);
+  color: var(--text-accent);
+}
+
 .sc-sidebar-foot {
   display: flex;
   flex-direction: column;
@@ -6731,6 +6781,117 @@ ion-toast.sc-toast--info::part(container) {
   .sc-gh-box-foot .sc-btn {
     width: 100%;
     justify-content: center;
+  }
+}
+
+/* Cadastros — níveis */
+.sc-cadastro-levels {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 720px;
+}
+
+.sc-cadastro-level-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sc-cadastro-level-form.is-edit {
+  width: 100%;
+}
+
+.sc-cadastro-level-colors {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sc-cadastro-level-colors-label {
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--text-secondary);
+}
+
+.sc-cadastro-levels-loading {
+  display: flex;
+  justify-content: center;
+  padding: 24px;
+}
+
+.sc-cadastro-levels-empty {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.sc-cadastro-level-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sc-cadastro-level-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 0.5px solid var(--border);
+  background: var(--surface-2);
+}
+
+.sc-cadastro-level-meta {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.sc-cadastro-level-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+
+.sc-cadastro-level-meta strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.sc-cadastro-level-meta p {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.sc-cadastro-level-meta p.is-muted {
+  color: var(--text-muted);
+}
+
+.sc-cadastro-level-row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .sc-cadastro-level-row {
+    flex-direction: column;
+  }
+
+  .sc-cadastro-level-row > .sc-btn {
+    align-self: stretch;
   }
 }
 

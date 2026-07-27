@@ -4,8 +4,11 @@ import { IonAlert, IonIcon } from '@ionic/react';
 import {
   albumsOutline,
   chatbubbleEllipsesOutline,
+  chevronDownOutline,
   closeOutline,
+  fileTrayFullOutline,
   gitNetworkOutline,
+  layersOutline,
   libraryOutline,
   logOutOutline,
   menuOutline,
@@ -19,7 +22,22 @@ type Props = {
   children: React.ReactNode;
 };
 
-const NAV = [
+type NavChild = {
+  to: string;
+  label: string;
+  icon: string;
+  match: (path: string) => boolean;
+};
+
+type NavItem = {
+  to: string;
+  label: string;
+  icon: string;
+  match: (path: string) => boolean;
+  children?: NavChild[];
+};
+
+const NAV: NavItem[] = [
   {
     to: '/home',
     label: 'Cartas',
@@ -49,6 +67,20 @@ const NAV = [
     match: (path: string) => path.startsWith('/chat'),
   },
   {
+    to: '/cadastros/niveis',
+    label: 'Cadastros',
+    icon: fileTrayFullOutline,
+    match: (path: string) => path.startsWith('/cadastros'),
+    children: [
+      {
+        to: '/cadastros/niveis',
+        label: 'Níveis',
+        icon: layersOutline,
+        match: (path: string) => path.startsWith('/cadastros/niveis'),
+      },
+    ],
+  },
+  {
     to: '/settings',
     label: 'Configurações',
     icon: settingsOutline,
@@ -62,9 +94,18 @@ export function AppShell({ children }: Props) {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
+  const [cadastrosOpen, setCadastrosOpen] = useState(() =>
+    location.pathname.startsWith('/cadastros'),
+  );
 
   useEffect(() => {
     setMenuOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (location.pathname.startsWith('/cadastros')) {
+      setCadastrosOpen(true);
+    }
   }, [location.pathname]);
 
   useEffect(() => {
@@ -132,19 +173,72 @@ export function AppShell({ children }: Props) {
           </button>
         </div>
         <nav className="sc-sidebar-nav">
-          {NAV.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className="sc-sidebar-link"
-              isActive={(_, loc) => item.match(loc.pathname)}
-              activeClassName="is-active"
-              onClick={closeMenu}
-            >
-              <IonIcon icon={item.icon} />
-              <span>{item.label}</span>
-            </NavLink>
-          ))}
+          {NAV.map((item) => {
+            if (item.children?.length) {
+              const groupOpen =
+                item.to.startsWith('/cadastros') ? cadastrosOpen : true;
+              const groupActive = item.match(location.pathname);
+              return (
+                <div
+                  key={item.to}
+                  className={`sc-sidebar-group${groupOpen ? ' is-open' : ''}${groupActive ? ' is-active' : ''}`}
+                >
+                  <button
+                    type="button"
+                    className={`sc-sidebar-link sc-sidebar-group-toggle${groupActive ? ' is-active' : ''}`}
+                    aria-expanded={groupOpen}
+                    onClick={() => {
+                      const next = !groupOpen;
+                      setCadastrosOpen(next);
+                      if (next && !groupActive) {
+                        history.push(item.to);
+                        closeMenu();
+                      }
+                    }}
+                  >
+                    <IonIcon icon={item.icon} />
+                    <span>{item.label}</span>
+                    <IonIcon
+                      icon={chevronDownOutline}
+                      className="sc-sidebar-chevron"
+                      aria-hidden
+                    />
+                  </button>
+                  {groupOpen ? (
+                    <div className="sc-sidebar-subnav" role="group">
+                      {item.children.map((child) => (
+                        <NavLink
+                          key={child.to}
+                          to={child.to}
+                          className="sc-sidebar-sublink"
+                          isActive={(_, loc) => child.match(loc.pathname)}
+                          activeClassName="is-active"
+                          onClick={closeMenu}
+                        >
+                          <IonIcon icon={child.icon} />
+                          <span>{child.label}</span>
+                        </NavLink>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            }
+
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className="sc-sidebar-link"
+                isActive={(_, loc) => item.match(loc.pathname)}
+                activeClassName="is-active"
+                onClick={closeMenu}
+              >
+                <IonIcon icon={item.icon} />
+                <span>{item.label}</span>
+              </NavLink>
+            );
+          })}
         </nav>
         <div className="sc-sidebar-foot">
           <NavLink

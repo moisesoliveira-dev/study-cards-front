@@ -13,6 +13,7 @@ import FlowsListPage from './modules/flows/pages/FlowsListPage';
 import FlowEditorPage from './modules/flows/pages/FlowEditorPage';
 import PdfLibraryPage from './modules/pdf-library/pages/PdfLibraryPage';
 import ChatPage from './modules/chat/pages/ChatPage';
+import CardLevelsCadastroPage from './modules/cadastros/pages/CardLevelsCadastroPage';
 import { AuthProvider, useAuth } from './modules/auth/context/AuthContext';
 import { SessionExpiredAlert } from './modules/auth/components/SessionExpiredAlert';
 import { ThemeProvider } from './shared/theme/ThemeContext';
@@ -61,6 +62,10 @@ function AuthenticatedShell() {
         <Route exact path="/study/:topicId" component={StudyPage} />
         <Route exact path="/profile" component={ProfilePage} />
         <Route exact path="/settings" component={SettingsPage} />
+        <Route exact path="/cadastros/niveis" component={CardLevelsCadastroPage} />
+        <Route exact path="/cadastros">
+          <Redirect to="/cadastros/niveis" />
+        </Route>
         <Route exact path="/">
           <Redirect to="/home" />
         </Route>

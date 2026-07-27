@@ -2235,7 +2235,6 @@ function FlowCanvas({
         onDocJson={setDocJson}
         onTag={setTag}
         onLevelId={setLevelId}
-        onLevelsChange={setLevels}
         onIcon={setIcon}
         onColor={setColor}
         onClose={() => setComposerOpen(false)}
