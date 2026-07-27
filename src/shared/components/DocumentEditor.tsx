@@ -14,10 +14,12 @@ import { TaskItem, TaskList } from '@tiptap/extension-list';
 import { Markdown } from '@tiptap/markdown';
 import { common, createLowlight } from 'lowlight';
 import {
+  Annotation,
   Indent,
   ParagraphLineHeight,
   ParagraphSpacing,
 } from './document-editor-extensions';
+import { DocumentNotes } from './DocumentNotes';
 
 const lowlight = createLowlight(common);
 
@@ -450,6 +452,29 @@ function IconEraser() {
   );
 }
 
+function IconNote() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+      <path
+        d="M3.5 2.5h7.2L13 4.8V13.5H3.5z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M10.5 2.5V5H13"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      <line x1="5.5" y1="7.5" x2="10.5" y2="7.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      <line x1="5.5" y1="10" x2="9" y2="10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function ToolButton({
   title,
   shortcut,
@@ -545,6 +570,7 @@ export function DocumentEditor({
       Superscript,
       TaskList,
       TaskItem.configure({ nested: true }),
+      Annotation,
       Markdown,
       DocumentShortcuts,
     ],
@@ -1052,6 +1078,32 @@ export function DocumentEditor({
 
             {tab === 'marcar' ? (
               <>
+                <Group label="Notas">
+                  <ToolButton
+                    title="Adicionar nota à seleção"
+                    shortcut="Mod-Alt-n"
+                    caption="Nota"
+                    active={editor.isActive('annotation')}
+                    onClick={() => {
+                      if (editor.state.selection.empty) return;
+                      editor.view.dom.dispatchEvent(
+                        new CustomEvent('sc-open-note'),
+                      );
+                    }}
+                  >
+                    <IconNote />
+                  </ToolButton>
+                  <ToolButton
+                    title="Remover nota"
+                    disabled={!editor.isActive('annotation')}
+                    onClick={() =>
+                      editor.chain().focus().unsetAnnotation().run()
+                    }
+                  >
+                    <IconEraser />
+                  </ToolButton>
+                </Group>
+
                 <Group label="Marca-texto">
                   {HIGHLIGHT_COLORS.map(({ color, label, shortcut }) => (
                     <ToolButton
@@ -1106,7 +1158,10 @@ export function DocumentEditor({
           </div>
         </div>
       ) : null}
-      <EditorContent editor={editor} className="sc-doc-surface" />
+      <div className="sc-doc-surface-wrap">
+        <EditorContent editor={editor} className="sc-doc-surface" />
+        <DocumentNotes editor={editor} editable={editable} />
+      </div>
     </div>
   );
 }

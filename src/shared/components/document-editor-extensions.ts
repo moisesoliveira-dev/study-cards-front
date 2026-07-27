@@ -1,4 +1,4 @@
-import { Extension } from '@tiptap/core';
+import { Extension, Mark, mergeAttributes } from '@tiptap/core';
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
@@ -14,6 +14,11 @@ declare module '@tiptap/core' {
       increaseIndent: () => ReturnType;
       decreaseIndent: () => ReturnType;
       setIndent: (value: number) => ReturnType;
+    };
+    annotation: {
+      setAnnotation: (attrs: { note: string; id?: string }) => ReturnType;
+      unsetAnnotation: () => ReturnType;
+      updateAnnotation: (attrs: { note: string; id?: string }) => ReturnType;
     };
   }
 }
@@ -215,6 +220,80 @@ export const Indent = Extension.create({
     return {
       Tab: () => this.editor.commands.increaseIndent(),
       'Shift-Tab': () => this.editor.commands.decreaseIndent(),
+    };
+  },
+});
+
+function newAnnotationId() {
+  return `note_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
+/**
+ * Anotação estilo Edge: marca o texto selecionado com uma nota.
+ * Hover / clique mostram o conteúdo (UI no DocumentEditor).
+ */
+export const Annotation = Mark.create({
+  name: 'annotation',
+  inclusive: false,
+  excludes: '',
+  keepOnSplit: false,
+
+  addAttributes() {
+    return {
+      note: {
+        default: '',
+        parseHTML: (element) => element.getAttribute('data-note') ?? '',
+        renderHTML: (attributes) => {
+          if (!attributes.note) return {};
+          return { 'data-note': attributes.note };
+        },
+      },
+      id: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-annotation-id'),
+        renderHTML: (attributes) => {
+          if (!attributes.id) return {};
+          return { 'data-annotation-id': attributes.id };
+        },
+      },
+    };
+  },
+
+  parseHTML() {
+    return [{ tag: 'span[data-annotation]' }];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    return [
+      'span',
+      mergeAttributes(HTMLAttributes, {
+        'data-annotation': '',
+        class: 'sc-doc-annotation',
+      }),
+      0,
+    ];
+  },
+
+  addCommands() {
+    return {
+      setAnnotation:
+        (attrs) =>
+        ({ commands }) =>
+          commands.setMark(this.name, {
+            note: attrs.note,
+            id: attrs.id || newAnnotationId(),
+          }),
+      unsetAnnotation:
+        () =>
+        ({ commands }) =>
+          commands.unsetMark(this.name),
+      updateAnnotation:
+        (attrs) =>
+        ({ commands }) =>
+          commands.updateAttributes(this.name, {
+            note: attrs.note,
+            id: attrs.id || newAnnotationId(),
+          }),
     };
   },
 });
