@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import {
+  IonAlert,
   IonContent,
   IonHeader,
   IonIcon,
@@ -8,7 +9,12 @@ import {
   IonTitle,
   IonToolbar,
 } from '@ionic/react';
-import { layersOutline, searchOutline } from 'ionicons/icons';
+import {
+  createOutline,
+  layersOutline,
+  searchOutline,
+  trashOutline,
+} from 'ionicons/icons';
 import { cardLevelsFacade } from '../../cards/facades/card-levels.facade';
 import type { CardLevel } from '../../cards/types/card-level.types';
 import { useAppToast } from '../../../shared/hooks/useAppToast';
@@ -33,6 +39,8 @@ export default function CardLevelsCadastroPage() {
   const [editDraft, setEditDraft] = useState<Draft>(emptyDraft);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [listFilter, setListFilter] = useState('');
+  const [pendingDelete, setPendingDelete] = useState<CardLevel | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const filteredLevels = useMemo(() => {
     const q = listFilter.trim().toLocaleLowerCase('pt-BR');
@@ -129,6 +137,23 @@ export default function CardLevelsCadastroPage() {
       toast.error(error);
     } finally {
       setSavingId(null);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDelete || deleting) return;
+    const target = pendingDelete;
+    setDeleting(true);
+    try {
+      await cardLevelsFacade.delete(target.id);
+      setLevels((prev) => prev.filter((l) => l.id !== target.id));
+      if (editingId === target.id) cancelEdit();
+      toast.success(`Nível “${target.name}” excluído`);
+    } catch (error) {
+      toast.error(error);
+    } finally {
+      setDeleting(false);
+      setPendingDelete(null);
     }
   };
 
@@ -328,13 +353,27 @@ export default function CardLevelsCadastroPage() {
                                   )}
                                 </div>
                               </div>
-                              <button
-                                type="button"
-                                className="sc-btn sc-cadastro-edit-btn"
-                                onClick={() => startEdit(level)}
-                              >
-                                Editar
-                              </button>
+                              <div className="sc-cadastro-row-actions">
+                                <button
+                                  type="button"
+                                  className="sc-edit-icon"
+                                  aria-label={`Editar ${level.name}`}
+                                  title="Editar"
+                                  onClick={() => startEdit(level)}
+                                >
+                                  <IonIcon icon={createOutline} />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="sc-edit-icon sc-delete-icon"
+                                  aria-label={`Excluir ${level.name}`}
+                                  title="Excluir"
+                                  disabled={deleting}
+                                  onClick={() => setPendingDelete(level)}
+                                >
+                                  <IonIcon icon={trashOutline} />
+                                </button>
+                              </div>
                             </>
                           )}
                         </li>
@@ -346,6 +385,30 @@ export default function CardLevelsCadastroPage() {
             </div>
           </div>
         </div>
+
+        <IonAlert
+          isOpen={Boolean(pendingDelete)}
+          header="Excluir nível?"
+          message={
+            pendingDelete
+              ? `O nível “${pendingDelete.name}” será removido. Cartas que o usam ficam sem nível.`
+              : undefined
+          }
+          onDidDismiss={() => {
+            if (!deleting) setPendingDelete(null);
+          }}
+          buttons={[
+            { text: 'Cancelar', role: 'cancel' },
+            {
+              text: deleting ? 'Excluindo…' : 'Excluir',
+              role: 'destructive',
+              handler: () => {
+                void confirmDelete();
+                return false;
+              },
+            },
+          ]}
+        />
       </IonContent>
     </IonPage>
   );

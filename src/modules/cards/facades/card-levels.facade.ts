@@ -4,4 +4,5 @@ export const cardLevelsFacade = {
   list: cardLevelsApi.list,
   create: cardLevelsApi.create,
   update: cardLevelsApi.update,
+  delete: cardLevelsApi.delete,
 };

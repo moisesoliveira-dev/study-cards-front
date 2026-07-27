@@ -7073,7 +7073,10 @@ ion-toast.sc-toast--info::part(container) {
   color: var(--text-muted);
 }
 
-.sc-cadastro-edit-btn {
+.sc-cadastro-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
   flex-shrink: 0;
 }
 
@@ -7090,9 +7093,8 @@ ion-toast.sc-toast--info::part(container) {
     flex-wrap: wrap;
   }
 
-  .sc-cadastro-edit-btn {
-    width: 100%;
-    justify-content: center;
+  .sc-cadastro-row-actions {
+    margin-left: auto;
   }
 }
 

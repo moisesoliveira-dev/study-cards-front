@@ -14,4 +14,8 @@ export const cardLevelsApi = {
       `/card-levels/${encodeURIComponent(id)}`,
       input,
     ),
+  delete: (id: string) =>
+    httpClient.delete<{ ok: boolean }>(
+      `/card-levels/${encodeURIComponent(id)}`,
+    ),
 };
