@@ -2701,20 +2701,21 @@ ion-popover {
 .sc-doc-note-float {
   position: fixed;
   z-index: 10050;
-  width: min(288px, calc(100vw - 24px));
+  width: min(360px, calc(100vw - 24px));
+  max-height: min(480px, calc(100dvh - 32px));
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px 12px 10px;
-  border-radius: 12px;
+  gap: 10px;
+  padding: 14px 14px 12px;
+  border-radius: 14px;
   border: 0.5px solid var(--border);
-  background: color-mix(in srgb, var(--surface-1) 94%, transparent);
+  background: color-mix(in srgb, var(--surface-1) 96%, transparent);
   color: var(--text-secondary);
-  box-shadow: 0 14px 36px color-mix(in srgb, var(--text-primary) 16%, transparent);
+  box-shadow: 0 16px 40px color-mix(in srgb, var(--text-primary) 18%, transparent);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   opacity: 0;
-  transform: translateX(8px) scale(0.98);
+  transform: translateX(10px) scale(0.985);
   pointer-events: none;
   transition:
     opacity 0.22s ease,
@@ -2731,6 +2732,7 @@ ion-popover {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex: 0 0 auto;
   font-size: 11px;
   font-weight: 650;
   letter-spacing: 0.03em;
@@ -2738,31 +2740,55 @@ ion-popover {
   color: var(--text-muted);
 }
 
+.sc-doc-note-float-scroll {
+  flex: 1 1 auto;
+  min-height: 160px;
+  max-height: min(360px, calc(100dvh - 160px));
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.sc-doc-note-float-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sc-doc-note-float-scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--text-muted) 45%, transparent);
+  border-radius: 999px;
+}
+
 .sc-doc-note-float-body {
   margin: 0;
-  font-size: 13.5px;
-  line-height: 1.5;
+  font-size: 15px;
+  line-height: 1.55;
   color: var(--text-primary);
   white-space: pre-wrap;
 }
 
 .sc-doc-note-float textarea {
+  display: block;
   width: 100%;
-  resize: vertical;
-  min-height: 88px;
+  min-height: 220px;
+  height: 100%;
+  resize: none;
   border: 0.5px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--surface-2);
   color: var(--text-primary);
   font: inherit;
-  font-size: 13px;
-  line-height: 1.45;
-  padding: 8px 10px;
+  font-size: 15px;
+  line-height: 1.5;
+  padding: 12px 12px;
   outline: none;
 }
 
 .sc-doc-note-float textarea:focus {
   border-color: var(--border-strong);
+}
+
+.sc-doc-note-float .sc-doc-note-composer-actions {
+  flex: 0 0 auto;
 }
 
 .sc-doc-surface .tiptap .sc-doc-annotation {

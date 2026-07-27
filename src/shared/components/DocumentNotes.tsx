@@ -2,6 +2,9 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { createPortal } from 'react-dom';
 import type { Editor } from '@tiptap/core';
 
+const PANEL_W = 360;
+const FADE_MS = 220;
+
 type Panel = {
   mode: 'create' | 'edit' | 'view';
   note: string;
@@ -21,7 +24,6 @@ function placeBeside(
   editor: Editor,
   from: number,
 ): { top: number; left: number } {
-  const panelW = 288;
   const gap = 14;
   let anchorTop = 80;
   let anchorBottom = 120;
@@ -39,19 +41,31 @@ function placeBeside(
     editor.view.dom.getBoundingClientRect();
 
   let left = shell.right + gap;
-  if (left + panelW > window.innerWidth - 10) {
-    left = shell.left - panelW - gap;
+  if (left + PANEL_W > window.innerWidth - 10) {
+    left = shell.left - PANEL_W - gap;
   }
   if (left < 10) {
-    left = Math.max(10, Math.min(window.innerWidth - panelW - 10, shell.right - panelW));
+    left = Math.max(
+      10,
+      Math.min(window.innerWidth - PANEL_W - 10, shell.right - PANEL_W),
+    );
   }
 
   const top = Math.max(
     10,
-    Math.min(window.innerHeight - 220, (anchorTop + anchorBottom) / 2 - 24),
+    Math.min(window.innerHeight - 360, (anchorTop + anchorBottom) / 2 - 40),
   );
 
   return { top, left };
+}
+
+function sameNote(
+  a: Panel | null,
+  b: Omit<Panel, 'top' | 'left'>,
+): boolean {
+  if (!a) return false;
+  if (a.id && b.id) return a.id === b.id;
+  return a.from === b.from && a.to === b.to && a.note === b.note;
 }
 
 /** Nota flutuante fora do modal — só aparece ao criar ou ao clicar no trecho. */
@@ -60,27 +74,84 @@ export function DocumentNotes({ editor, editable }: Props) {
   const [visible, setVisible] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-
-  const closePanel = useCallback(() => {
-    setVisible(false);
-    window.setTimeout(() => setPanel(null), 180);
-  }, []);
-
-  const openAt = useCallback(
-    (next: Omit<Panel, 'top' | 'left'>) => {
-      const pos = placeBeside(editor, next.from);
-      setPanel({ ...next, ...pos });
-      setVisible(false);
-      window.requestAnimationFrame(() => setVisible(true));
-    },
-    [editor],
-  );
+  const panelSnap = useRef<Panel | null>(null);
+  const visibleSnap = useRef(false);
+  const fadeTimer = useRef<number | null>(null);
+  const gen = useRef(0);
 
   useEffect(() => {
-    if (!panel || panel.mode === 'view') return;
-    const t = window.setTimeout(() => textareaRef.current?.focus(), 50);
+    panelSnap.current = panel;
+  }, [panel]);
+
+  useEffect(() => {
+    visibleSnap.current = visible;
+  }, [visible]);
+
+  useEffect(
+    () => () => {
+      if (fadeTimer.current != null) window.clearTimeout(fadeTimer.current);
+    },
+    [],
+  );
+
+  const clearFade = () => {
+    if (fadeTimer.current != null) {
+      window.clearTimeout(fadeTimer.current);
+      fadeTimer.current = null;
+    }
+  };
+
+  const closePanel = useCallback(() => {
+    clearFade();
+    const token = ++gen.current;
+    setVisible(false);
+    fadeTimer.current = window.setTimeout(() => {
+      if (gen.current !== token) return;
+      setPanel(null);
+      fadeTimer.current = null;
+    }, FADE_MS);
+  }, []);
+
+  const openAt = useCallback((next: Omit<Panel, 'top' | 'left'>) => {
+    clearFade();
+    const pos = placeBeside(editor, next.from);
+    const current = panelSnap.current;
+    const isShowing = visibleSnap.current;
+    const token = ++gen.current;
+
+    if (current && isShowing && sameNote(current, next)) {
+      setPanel({ ...next, ...pos });
+      setVisible(true);
+      return;
+    }
+
+    if (current && isShowing) {
+      setVisible(false);
+      fadeTimer.current = window.setTimeout(() => {
+        if (gen.current !== token) return;
+        setPanel({ ...next, ...placeBeside(editor, next.from) });
+        window.requestAnimationFrame(() => {
+          if (gen.current !== token) return;
+          setVisible(true);
+        });
+        fadeTimer.current = null;
+      }, FADE_MS);
+      return;
+    }
+
+    setPanel({ ...next, ...pos });
+    setVisible(false);
+    window.requestAnimationFrame(() => {
+      if (gen.current !== token) return;
+      setVisible(true);
+    });
+  }, [editor]);
+
+  useEffect(() => {
+    if (!panel || panel.mode === 'view' || !visible) return;
+    const t = window.setTimeout(() => textareaRef.current?.focus(), FADE_MS + 40);
     return () => window.clearTimeout(t);
-  }, [panel?.mode, panel?.from]);
+  }, [panel?.mode, panel?.from, panel?.id, visible]);
 
   useLayoutEffect(() => {
     if (!panel) return;
@@ -267,12 +338,12 @@ export function DocumentNotes({ editor, editable }: Props) {
         </button>
       </div>
 
-      {editing ? (
-        <>
+      <div className="sc-doc-note-float-scroll">
+        {editing ? (
           <textarea
             ref={textareaRef}
             value={panel.note}
-            rows={4}
+            rows={10}
             placeholder="Escreva a nota…"
             onChange={(e) =>
               setPanel((p) => (p ? { ...p, note: e.target.value } : p))
@@ -288,36 +359,39 @@ export function DocumentNotes({ editor, editable }: Props) {
               }
             }}
           />
-          <div className="sc-doc-note-composer-actions">
-            {panel.mode === 'edit' ? (
-              <button
-                type="button"
-                className="sc-btn sc-doc-note-danger"
-                onClick={deleteNote}
-              >
-                Excluir
-              </button>
-            ) : (
-              <span />
-            )}
-            <div className="sc-doc-note-composer-right">
-              <button type="button" className="sc-btn" onClick={closePanel}>
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className="sc-btn primary"
-                onClick={saveDraft}
-                disabled={!panel.note.trim()}
-              >
-                Salvar
-              </button>
-            </div>
+        ) : (
+          <p className="sc-doc-note-float-body">{panel.note}</p>
+        )}
+      </div>
+
+      {editing ? (
+        <div className="sc-doc-note-composer-actions">
+          {panel.mode === 'edit' ? (
+            <button
+              type="button"
+              className="sc-btn sc-doc-note-danger"
+              onClick={deleteNote}
+            >
+              Excluir
+            </button>
+          ) : (
+            <span />
+          )}
+          <div className="sc-doc-note-composer-right">
+            <button type="button" className="sc-btn" onClick={closePanel}>
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="sc-btn primary"
+              onClick={saveDraft}
+              disabled={!panel.note.trim()}
+            >
+              Salvar
+            </button>
           </div>
-        </>
-      ) : (
-        <p className="sc-doc-note-float-body">{panel.note}</p>
-      )}
+        </div>
+      ) : null}
     </div>,
     document.body,
   );
