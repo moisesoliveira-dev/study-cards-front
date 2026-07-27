@@ -1,20 +1,15 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { Editor } from '@tiptap/core';
 
-type Draft = {
-  mode: 'create' | 'edit';
+type Panel = {
+  mode: 'create' | 'edit' | 'view';
   note: string;
   from: number;
   to: number;
   id?: string | null;
-};
-
-type SideNote = {
-  id: string;
-  note: string;
-  from: number;
-  to: number;
   top: number;
+  left: number;
 };
 
 type Props = {
@@ -22,89 +17,84 @@ type Props = {
   editable: boolean;
 };
 
-function collectAnnotations(editor: Editor): Omit<SideNote, 'top'>[] {
-  const byId = new Map<string, Omit<SideNote, 'top'>>();
-  editor.state.doc.descendants((node, pos) => {
-    if (!node.isText) return;
-    for (const mark of node.marks) {
-      if (mark.type.name !== 'annotation') continue;
-      const note = String(mark.attrs.note ?? '').trim();
-      if (!note) continue;
-      const id =
-        (mark.attrs.id as string | null | undefined) ||
-        `anon_${pos}_${node.nodeSize}`;
-      const existing = byId.get(id);
-      const to = pos + node.nodeSize;
-      if (existing) {
-        existing.from = Math.min(existing.from, pos);
-        existing.to = Math.max(existing.to, to);
-      } else {
-        byId.set(id, { id, note, from: pos, to });
-      }
-    }
-  });
-  return [...byId.values()];
+function placeBeside(
+  editor: Editor,
+  from: number,
+): { top: number; left: number } {
+  const panelW = 288;
+  const gap = 14;
+  let anchorTop = 80;
+  let anchorBottom = 120;
+
+  try {
+    const coords = editor.view.coordsAtPos(from);
+    anchorTop = coords.top;
+    anchorBottom = coords.bottom;
+  } catch {
+    // ignore
+  }
+
+  const shell =
+    editor.view.dom.closest('.sc-doc-shell')?.getBoundingClientRect() ??
+    editor.view.dom.getBoundingClientRect();
+
+  let left = shell.right + gap;
+  if (left + panelW > window.innerWidth - 10) {
+    left = shell.left - panelW - gap;
+  }
+  if (left < 10) {
+    left = Math.max(10, Math.min(window.innerWidth - panelW - 10, shell.right - panelW));
+  }
+
+  const top = Math.max(
+    10,
+    Math.min(window.innerHeight - 220, (anchorTop + anchorBottom) / 2 - 24),
+  );
+
+  return { top, left };
 }
 
-/** Painel lateral de notas alinhadas ao trecho (estilo documento). */
+/** Nota flutuante fora do modal — só aparece ao criar ou ao clicar no trecho. */
 export function DocumentNotes({ editor, editable }: Props) {
-  const [draft, setDraft] = useState<Draft | null>(null);
-  const [notes, setNotes] = useState<SideNote[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [hasSelection, setHasSelection] = useState(false);
+  const [panel, setPanel] = useState<Panel | null>(null);
+  const [visible, setVisible] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  const closePanel = useCallback(() => {
+    setVisible(false);
+    window.setTimeout(() => setPanel(null), 180);
+  }, []);
+
+  const openAt = useCallback(
+    (next: Omit<Panel, 'top' | 'left'>) => {
+      const pos = placeBeside(editor, next.from);
+      setPanel({ ...next, ...pos });
+      setVisible(false);
+      window.requestAnimationFrame(() => setVisible(true));
+    },
+    [editor],
+  );
 
   useEffect(() => {
-    if (!draft) return;
-    const t = window.setTimeout(() => textareaRef.current?.focus(), 40);
+    if (!panel || panel.mode === 'view') return;
+    const t = window.setTimeout(() => textareaRef.current?.focus(), 50);
     return () => window.clearTimeout(t);
-  }, [draft]);
-
-  const refreshNotes = useCallback(() => {
-    const collected = collectAnnotations(editor);
-    const next: SideNote[] = collected.map((item) => {
-      let top = 8;
-      try {
-        const coords = editor.view.coordsAtPos(item.from);
-        const root = editor.view.dom.getBoundingClientRect();
-        top = Math.max(0, coords.top - root.top + editor.view.dom.scrollTop);
-      } catch {
-        // ignore
-      }
-      return { ...item, top };
-    });
-
-    const sorted = [...next].sort((a, b) => a.top - b.top);
-    let lastBottom = -12;
-    for (const n of sorted) {
-      if (n.top < lastBottom + 12) n.top = lastBottom + 12;
-      lastBottom = n.top + 64;
-    }
-    setNotes(sorted);
-
-    const { empty, from, to } = editor.state.selection;
-    setHasSelection(!empty && from !== to);
-  }, [editor]);
+  }, [panel?.mode, panel?.from]);
 
   useLayoutEffect(() => {
-    refreshNotes();
-    const onUpdate = () => {
-      window.requestAnimationFrame(refreshNotes);
+    if (!panel) return;
+    const reposition = () => {
+      const pos = placeBeside(editor, panel.from);
+      setPanel((p) => (p ? { ...p, ...pos } : p));
     };
-    editor.on('update', onUpdate);
-    editor.on('selectionUpdate', onUpdate);
-    editor.on('transaction', onUpdate);
-    window.addEventListener('resize', onUpdate);
-    const surface = editor.view.dom.closest('.sc-doc-surface');
-    surface?.addEventListener('scroll', onUpdate, true);
+    window.addEventListener('resize', reposition);
+    window.addEventListener('scroll', reposition, true);
     return () => {
-      editor.off('update', onUpdate);
-      editor.off('selectionUpdate', onUpdate);
-      editor.off('transaction', onUpdate);
-      window.removeEventListener('resize', onUpdate);
-      surface?.removeEventListener('scroll', onUpdate, true);
+      window.removeEventListener('resize', reposition);
+      window.removeEventListener('scroll', reposition, true);
     };
-  }, [editor, refreshNotes]);
+  }, [editor, panel?.from, panel?.id]);
 
   const openCreate = useCallback(() => {
     if (!editable || !editor.isEditable) return;
@@ -116,41 +106,21 @@ export function DocumentNotes({ editor, editable }: Props) {
     const id = editor.isActive('annotation')
       ? ((editor.getAttributes('annotation').id as string | null) ?? null)
       : null;
-    setDraft({
+    openAt({
       mode: existing ? 'edit' : 'create',
       note: existing,
       from,
       to,
       id,
     });
-  }, [editable, editor]);
-
-  const openEdit = useCallback(
-    (item: SideNote) => {
-      if (!editable || !editor.isEditable) return;
-      editor
-        .chain()
-        .focus()
-        .setTextSelection({ from: item.from, to: item.to })
-        .run();
-      setActiveId(item.id);
-      setDraft({
-        mode: 'edit',
-        note: item.note,
-        from: item.from,
-        to: item.to,
-        id: item.id,
-      });
-    },
-    [editable, editor],
-  );
+  }, [editable, editor, openAt]);
 
   const saveDraft = () => {
-    if (!draft) return;
-    const note = draft.note.trim();
-    const { from, to } = draft;
+    if (!panel || panel.mode === 'view') return;
+    const note = panel.note.trim();
+    const { from, to } = panel;
     if (from >= to) {
-      setDraft(null);
+      closePanel();
       return;
     }
     if (!note) {
@@ -160,29 +130,27 @@ export function DocumentNotes({ editor, editable }: Props) {
         .setTextSelection({ from, to })
         .unsetAnnotation()
         .run();
-      setDraft(null);
+      closePanel();
       return;
     }
     const chain = editor.chain().focus().setTextSelection({ from, to });
-    if (draft.mode === 'edit') {
-      chain.updateAnnotation({ note, id: draft.id ?? undefined }).run();
+    if (panel.mode === 'edit') {
+      chain.updateAnnotation({ note, id: panel.id ?? undefined }).run();
     } else {
       chain.setAnnotation({ note }).run();
     }
-    setDraft(null);
-    window.requestAnimationFrame(refreshNotes);
+    closePanel();
   };
 
   const deleteNote = () => {
-    if (!draft) return;
+    if (!panel) return;
     editor
       .chain()
       .focus()
-      .setTextSelection({ from: draft.from, to: draft.to })
+      .setTextSelection({ from: panel.from, to: panel.to })
       .unsetAnnotation()
       .run();
-    setDraft(null);
-    window.requestAnimationFrame(refreshNotes);
+    closePanel();
   };
 
   useEffect(() => {
@@ -192,7 +160,7 @@ export function DocumentNotes({ editor, editable }: Props) {
       const target = (e.target as HTMLElement | null)?.closest?.(
         '[data-annotation]',
       ) as HTMLElement | null;
-      if (!target || !editable || !editor.isEditable) return;
+      if (!target) return;
       e.preventDefault();
       e.stopPropagation();
       try {
@@ -203,14 +171,16 @@ export function DocumentNotes({ editor, editable }: Props) {
           .extendMarkRange('annotation')
           .run();
         const attrs = editor.getAttributes('annotation');
-        setDraft({
-          mode: 'edit',
-          note: String(attrs.note ?? ''),
-          from: editor.state.selection.from,
-          to: editor.state.selection.to,
-          id: (attrs.id as string | null) ?? null,
+        const note = String(attrs.note ?? '');
+        const id = (attrs.id as string | null) ?? null;
+        const { from, to } = editor.state.selection;
+        openAt({
+          mode: editable && editor.isEditable ? 'edit' : 'view',
+          note,
+          from,
+          to,
+          id,
         });
-        setActiveId((attrs.id as string | null) ?? null);
       } catch {
         // ignore
       }
@@ -224,7 +194,7 @@ export function DocumentNotes({ editor, editable }: Props) {
       root.removeEventListener('click', onClick);
       root.removeEventListener('sc-open-note', onOpenNote as EventListener);
     };
-  }, [editable, editor, openCreate]);
+  }, [editable, editor, openAt, openCreate]);
 
   useEffect(() => {
     if (!editable) return;
@@ -239,53 +209,78 @@ export function DocumentNotes({ editor, editable }: Props) {
     return () => window.removeEventListener('keydown', onKey);
   }, [editable, editor, openCreate]);
 
-  return (
-    <aside className="sc-doc-notes-rail" aria-label="Notas">
-      <div className="sc-doc-notes-rail-head">Notas</div>
+  useEffect(() => {
+    if (!panel) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closePanel();
+      }
+    };
+    const onPointer = (e: MouseEvent) => {
+      const t = e.target as Node | null;
+      if (!t) return;
+      if (panelRef.current?.contains(t)) return;
+      if (editor.view.dom.contains(t)) {
+        const el = (t as HTMLElement).closest?.('[data-annotation]');
+        if (el) return;
+      }
+      closePanel();
+    };
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('mousedown', onPointer);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('mousedown', onPointer);
+    };
+  }, [panel, closePanel, editor]);
 
-      {editable && hasSelection && !draft ? (
+  if (!panel || typeof document === 'undefined') return null;
+
+  const editing = panel.mode === 'create' || panel.mode === 'edit';
+
+  return createPortal(
+    <div
+      ref={panelRef}
+      className={`sc-doc-note-float${visible ? ' is-visible' : ''}${
+        editing ? ' is-editing' : ''
+      }`}
+      style={{ top: panel.top, left: panel.left }}
+      role="dialog"
+      aria-label={editing ? 'Nota' : 'Ver nota'}
+    >
+      <div className="sc-doc-note-float-head">
+        <span>
+          {panel.mode === 'create'
+            ? 'Nova nota'
+            : panel.mode === 'edit'
+              ? 'Editar nota'
+              : 'Nota'}
+        </span>
         <button
           type="button"
-          className="sc-doc-notes-add"
-          onMouseDown={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-          onClick={openCreate}
+          className="sc-doc-note-composer-x"
+          aria-label="Fechar"
+          onClick={closePanel}
         >
-          + Nota na seleção
+          ×
         </button>
-      ) : null}
+      </div>
 
-      {draft ? (
-        <div
-          className="sc-doc-note-card is-editing"
-          role="dialog"
-          aria-label="Editar nota"
-        >
-          <div className="sc-doc-note-card-head">
-            <span>{draft.mode === 'edit' ? 'Editar nota' : 'Nova nota'}</span>
-            <button
-              type="button"
-              className="sc-doc-note-composer-x"
-              aria-label="Fechar"
-              onClick={() => setDraft(null)}
-            >
-              ×
-            </button>
-          </div>
+      {editing ? (
+        <>
           <textarea
             ref={textareaRef}
-            value={draft.note}
+            value={panel.note}
             rows={4}
             placeholder="Escreva a nota…"
             onChange={(e) =>
-              setDraft((d) => (d ? { ...d, note: e.target.value } : d))
+              setPanel((p) => (p ? { ...p, note: e.target.value } : p))
             }
             onKeyDown={(e) => {
               if (e.key === 'Escape') {
                 e.preventDefault();
-                setDraft(null);
+                closePanel();
               }
               if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                 e.preventDefault();
@@ -294,7 +289,7 @@ export function DocumentNotes({ editor, editable }: Props) {
             }}
           />
           <div className="sc-doc-note-composer-actions">
-            {draft.mode === 'edit' ? (
+            {panel.mode === 'edit' ? (
               <button
                 type="button"
                 className="sc-btn sc-doc-note-danger"
@@ -306,45 +301,24 @@ export function DocumentNotes({ editor, editable }: Props) {
               <span />
             )}
             <div className="sc-doc-note-composer-right">
-              <button
-                type="button"
-                className="sc-btn"
-                onClick={() => setDraft(null)}
-              >
+              <button type="button" className="sc-btn" onClick={closePanel}>
                 Cancelar
               </button>
               <button
                 type="button"
                 className="sc-btn primary"
                 onClick={saveDraft}
-                disabled={!draft.note.trim()}
+                disabled={!panel.note.trim()}
               >
                 Salvar
               </button>
             </div>
           </div>
-        </div>
-      ) : null}
-
-      <div className="sc-doc-notes-track">
-        {notes.length === 0 && !draft ? (
-          <p className="sc-doc-notes-empty">
-            Selecione um trecho e adicione uma nota.
-          </p>
-        ) : null}
-        {notes.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            className={`sc-doc-note-card is-soft${activeId === item.id ? ' is-active' : ''}`}
-            style={{ top: item.top }}
-            onClick={() => openEdit(item)}
-            title={item.note}
-          >
-            <span className="sc-doc-note-card-text">{item.note}</span>
-          </button>
-        ))}
-      </div>
-    </aside>
+        </>
+      ) : (
+        <p className="sc-doc-note-float-body">{panel.note}</p>
+      )}
+    </div>,
+    document.body,
   );
 }
