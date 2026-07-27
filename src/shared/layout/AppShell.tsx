@@ -175,35 +175,40 @@ export function AppShell({ children }: Props) {
         <nav className="sc-sidebar-nav">
           {NAV.map((item) => {
             if (item.children?.length) {
-              const groupOpen =
-                item.to.startsWith('/cadastros') ? cadastrosOpen : true;
-              const groupActive = item.match(location.pathname);
+              const groupOpen = cadastrosOpen;
               return (
                 <div
-                  key={item.to}
-                  className={`sc-sidebar-group${groupOpen ? ' is-open' : ''}${groupActive ? ' is-active' : ''}`}
+                  key={item.label}
+                  className={`sc-sidebar-group${groupOpen ? ' is-open' : ''}`}
                 >
-                  <button
-                    type="button"
-                    className={`sc-sidebar-link sc-sidebar-group-toggle${groupActive ? ' is-active' : ''}`}
-                    aria-expanded={groupOpen}
-                    onClick={() => {
-                      const next = !groupOpen;
-                      setCadastrosOpen(next);
-                      if (next && !groupActive) {
-                        history.push(item.to);
+                  <div className="sc-sidebar-group-row">
+                    <NavLink
+                      to={item.to}
+                      className="sc-sidebar-link sc-sidebar-group-link"
+                      isActive={(_, loc) => item.match(loc.pathname)}
+                      activeClassName="is-active"
+                      onClick={() => {
+                        setCadastrosOpen(true);
                         closeMenu();
+                      }}
+                    >
+                      <IonIcon icon={item.icon} />
+                      <span>{item.label}</span>
+                    </NavLink>
+                    <button
+                      type="button"
+                      className="sc-sidebar-group-chevron"
+                      aria-label={
+                        groupOpen
+                          ? 'Recolher Cadastros'
+                          : 'Expandir Cadastros'
                       }
-                    }}
-                  >
-                    <IonIcon icon={item.icon} />
-                    <span>{item.label}</span>
-                    <IonIcon
-                      icon={chevronDownOutline}
-                      className="sc-sidebar-chevron"
-                      aria-hidden
-                    />
-                  </button>
+                      aria-expanded={groupOpen}
+                      onClick={() => setCadastrosOpen((v) => !v)}
+                    >
+                      <IonIcon icon={chevronDownOutline} aria-hidden />
+                    </button>
+                  </div>
                   {groupOpen ? (
                     <div className="sc-sidebar-subnav" role="group">
                       {item.children.map((child) => (
