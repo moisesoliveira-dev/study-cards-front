@@ -450,19 +450,6 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     })();
   };
 
-  const setCardStatus = useCallback(
-    async (card: Card, status: Card['status']) => {
-      try {
-        await cardsFacade.update(card.id, { status });
-        toast.success('Status atualizado');
-        await load();
-      } catch (error) {
-        toast.error(error);
-      }
-    },
-    [load, toast],
-  );
-
   const openCardContextMenu = useCallback(
     (e: MouseEvent, card: Card) => {
       const items: ContextMenuItem[] = [
@@ -480,22 +467,6 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
           onSelect: () => toggleMergePick(card),
         },
         {
-          id: 'known',
-          label: 'Marcar como Sabido',
-          separator: true,
-          onSelect: () => void setCardStatus(card, 'KNOWN'),
-        },
-        {
-          id: 'review',
-          label: 'Marcar como Revisar',
-          onSelect: () => void setCardStatus(card, 'REVIEW'),
-        },
-        {
-          id: 'new',
-          label: 'Marcar como Novo',
-          onSelect: () => void setCardStatus(card, 'NEW'),
-        },
-        {
           id: 'delete',
           label: 'Excluir carta',
           icon: trashOutline,
@@ -506,7 +477,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
       ];
       openCtx(e, items, card.front);
     },
-    [mergePickIds, openCtx, setCardStatus, toggleMergePick],
+    [mergePickIds, openCtx, toggleMergePick],
   );
 
   const openFolderContextMenu = useCallback(
@@ -583,8 +554,8 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   };
 
   const studyHref = isRoot
-    ? `/study/${subjectId}?subjectId=${subjectId}&scope=subject&filter=REVIEW`
-    : `/study/${topicId}?subjectId=${subjectId}&filter=REVIEW`;
+    ? `/study/${subjectId}?subjectId=${subjectId}&scope=subject`
+    : `/study/${topicId}?subjectId=${subjectId}`;
 
   const reduce = useReducedMotion();
 
@@ -827,7 +798,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
               onClick={() => history.push(studyHref)}
               whileTap={reduce ? undefined : tapScale}
             >
-              Revisar pendentes ↗
+              Estudar ↗
             </motion.button>
           </div>
         </MotionShell>

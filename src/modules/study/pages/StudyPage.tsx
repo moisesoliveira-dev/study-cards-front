@@ -15,7 +15,6 @@ import { cardsFacade } from '../../cards/facades/cards.facade';
 import { cardLevelsFacade } from '../../cards/facades/card-levels.facade';
 import type { Card } from '../../cards/types/card.types';
 import type { CardLevel } from '../../cards/types/card-level.types';
-import { statusClass, statusLabel } from '../../cards/types/card.types';
 import { useAppToast } from '../../../shared/hooks/useAppToast';
 import {
   MotionShell,
@@ -27,12 +26,11 @@ function useQuery() {
   return new URLSearchParams(useLocation().search);
 }
 
-/** Revisão em ficha aberta — sem flip/reveal. */
+/** Estudo em ficha aberta — sem flip/reveal. */
 export default function StudyPage() {
   const { topicId } = useParams<{ topicId: string }>();
   const query = useQuery();
   const subjectId = query.get('subjectId');
-  const filter = query.get('filter');
   const scope = query.get('scope');
   const toast = useAppToast();
   const reduce = useReducedMotion();
@@ -45,13 +43,10 @@ export default function StudyPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      let deck =
+      const deck =
         scope === 'subject' && subjectId
           ? await cardsFacade.studyBySubject(subjectId)
           : await cardsFacade.studyDeck(topicId);
-      if (filter === 'REVIEW') {
-        deck = deck.filter((c) => c.status === 'REVIEW');
-      }
       setCards(deck);
       setIndex(0);
     } catch (error) {
@@ -60,7 +55,7 @@ export default function StudyPage() {
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [topicId, subjectId, filter, scope]);
+  }, [topicId, subjectId, scope]);
 
   useEffect(() => {
     void load();
@@ -80,15 +75,10 @@ export default function StudyPage() {
     return Math.min(index / cards.length, 1) * 100;
   }, [cards.length, index]);
 
-  const mark = async (status: Card['status']) => {
+  const next = () => {
     if (!current) return;
-    try {
-      await cardsFacade.update(current.id, { status });
-      setDir(1);
-      setIndex((i) => i + 1);
-    } catch (error) {
-      toast.error(error);
-    }
+    setDir(1);
+    setIndex((i) => i + 1);
   };
 
   return (
@@ -98,29 +88,36 @@ export default function StudyPage() {
           <IonButtons slot="start">
             <IonBackButton
               defaultHref={
-                subjectId ? `/subjects/${subjectId}` : `/topics/${topicId}`
+                subjectId ? `/subjects/${subjectId}` : '/home'
               }
             />
           </IonButtons>
-          <IonTitle>Revisão</IonTitle>
+          <IonTitle>Estudar</IonTitle>
         </IonToolbar>
       </IonHeader>
       <IonContent>
         <MotionShell className="sc-shell">
           {loading ? (
-            <div className="sc-empty">
+            <div style={{ display: 'grid', placeItems: 'center', padding: 48 }}>
               <IonSpinner name="crescent" />
             </div>
           ) : done ? (
             <motion.div
-              className="sc-empty"
-              initial={reduce ? false : { opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
+              initial={reduce ? false : { opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 16,
+                padding: '48px 16px',
+                textAlign: 'center',
+              }}
             >
               <p style={{ fontSize: 15, color: 'var(--text-primary)' }}>
                 {cards.length
-                  ? 'Revisão concluída.'
-                  : 'Nenhum card para revisar neste filtro.'}
+                  ? 'Sessão concluída.'
+                  : 'Nenhum card neste escopo.'}
               </p>
               <motion.button
                 type="button"
@@ -140,9 +137,6 @@ export default function StudyPage() {
                     {index + 1} / {cards.length}
                   </span>
                 </div>
-                <span className={`card-status ${statusClass(current.status)}`}>
-                  {statusLabel(current.status)}
-                </span>
               </div>
               <div
                 style={{
@@ -206,19 +200,11 @@ export default function StudyPage() {
               >
                 <motion.button
                   type="button"
-                  className="sc-btn"
-                  onClick={() => void mark('REVIEW')}
-                  whileTap={reduce ? undefined : tapScale}
-                >
-                  Ainda revisar
-                </motion.button>
-                <motion.button
-                  type="button"
                   className="sc-btn primary"
-                  onClick={() => void mark('KNOWN')}
+                  onClick={next}
                   whileTap={reduce ? undefined : tapScale}
                 >
-                  Sabia
+                  Próximo
                 </motion.button>
               </div>
             </>

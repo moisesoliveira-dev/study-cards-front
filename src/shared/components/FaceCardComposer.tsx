@@ -234,7 +234,6 @@ export function FaceCardComposer({
                   ) : null}
 
                   <div className="sc-card-face-footer is-compose">
-                    <span className="card-status s-new">Novo</span>
                     <div className="card-links">
                       → {sourceCards?.length ?? 0} links
                     </div>

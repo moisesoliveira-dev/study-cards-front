@@ -9,11 +9,7 @@ import {
   trashOutline,
 } from 'ionicons/icons';
 import type { Card } from '../../modules/cards/types/card.types';
-import {
-  CARD_ACCENT_COLORS,
-  statusClass,
-  statusLabel,
-} from '../../modules/cards/types/card.types';
+import { CARD_ACCENT_COLORS } from '../../modules/cards/types/card.types';
 import type { CardLevel } from '../../modules/cards/types/card-level.types';
 import { cardsFacade } from '../../modules/cards/facades/cards.facade';
 import { cardLevelsFacade } from '../../modules/cards/facades/card-levels.facade';
@@ -203,16 +199,6 @@ export function CardDocumentSheet({
     setEditing(false);
   };
 
-  const updateStatus = async (status: Card['status']) => {
-    try {
-      const updated = await cardsFacade.update(card.id, { status });
-      onChanged(updated);
-      toast.success('Status atualizado');
-    } catch (error) {
-      toast.error(error);
-    }
-  };
-
   const editButton = (
     <button
       type="button"
@@ -380,25 +366,6 @@ export function CardDocumentSheet({
             </button>
           </header>
           <div className="sc-doc-body">
-            <div className="sc-doc-meta">
-              <span className={`card-status ${statusClass(card.status)}`}>
-                {statusLabel(card.status)}
-              </span>
-              <button
-                type="button"
-                className="sc-btn"
-                onClick={() => void updateStatus('KNOWN')}
-              >
-                Sabido
-              </button>
-              <button
-                type="button"
-                className="sc-btn"
-                onClick={() => void updateStatus('REVIEW')}
-              >
-                Revisar
-              </button>
-            </div>
             {linkedSection}
             {!editing && !hasDocument && !documentToPlainText(docJson) ? (
               <p className="sc-doc-empty">
@@ -605,9 +572,6 @@ export function CardDocumentSheet({
                 </div>
                 <div className="sc-card-face-footer">
                   <div className="sc-card-face-footer-tags">
-                    <span className={`card-status ${statusClass(card.status)}`}>
-                      {statusLabel(card.status)}
-                    </span>
                     {currentLevel ? (
                       <span className="sc-card-level-badge">
                         {currentLevel.name}

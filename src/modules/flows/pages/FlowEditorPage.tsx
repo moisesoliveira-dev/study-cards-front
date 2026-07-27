@@ -155,7 +155,6 @@ function cardToNodeData(card: Card): CardFlowNodeData {
     tag: card.tag,
     icon: card.icon,
     color: card.color,
-    status: card.status,
     linkCount: card.linkCount,
   };
 }
@@ -555,7 +554,7 @@ function FlowCanvas({
           data.front === card.front &&
           data.tag === card.tag &&
           data.icon === card.icon &&
-          data.status === card.status &&
+          data.color === card.color &&
           data.linkCount === card.linkCount
         ) {
           return n;

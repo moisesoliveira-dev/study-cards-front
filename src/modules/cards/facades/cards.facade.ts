@@ -74,14 +74,6 @@ export class CardsFacade {
   remove(id: string) {
     return cardsApi.remove(id);
   }
-
-  countByStatus(cards: Card[]) {
-    return {
-      known: cards.filter((c) => c.status === 'KNOWN').length,
-      review: cards.filter((c) => c.status === 'REVIEW').length,
-      neu: cards.filter((c) => c.status === 'NEW').length,
-    };
-  }
 }
 
 export const cardsFacade = new CardsFacade();

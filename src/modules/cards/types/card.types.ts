@@ -39,7 +39,6 @@ export type UpdateCardInput = {
   icon?: string | null;
   color?: string | null;
   tag?: string;
-  status?: CardStatus;
   position?: number;
 };
 
@@ -65,24 +64,6 @@ export const CARD_ACCENT_COLORS = [
   '#D85A30',
   '#888780',
 ] as const;
-
-export function statusLabel(status: CardStatus) {
-  if (status === 'KNOWN') return 'Sabido';
-  if (status === 'REVIEW') return 'Revisar';
-  return 'Novo';
-}
-
-export function statusClass(status: CardStatus) {
-  if (status === 'KNOWN') return 's-ok';
-  if (status === 'REVIEW') return 's-rev';
-  return 's-new';
-}
-
-export function statusDot(status: CardStatus) {
-  if (status === 'KNOWN') return 'dot-ok';
-  if (status === 'REVIEW') return 'dot-rev';
-  return 'dot-new';
-}
 
 export function cardInitials(front: string) {
   return front
