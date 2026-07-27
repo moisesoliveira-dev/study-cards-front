@@ -1007,7 +1007,8 @@ body {
   margin: 0;
   padding: 4px;
   list-style: none;
-  max-height: 200px;
+  /* ~2 resultados; a partir do 3º rola */
+  max-height: 118px;
   overflow-x: hidden;
   overflow-y: auto;
   border-radius: 10px;
@@ -6992,15 +6993,20 @@ ion-toast.sc-toast--info::part(container) {
 .sc-cadastro-level-list {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 0 2px 0 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: min(420px, 52vh);
+  /* ~2 linhas visíveis; a partir do 3º item aparece scroll */
+  max-height: 148px;
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-gutter: stable;
+}
+
+.sc-cadastro-level-list:has(.is-editing) {
+  max-height: min(360px, 55vh);
 }
 
 .sc-cadastro-level-row {
