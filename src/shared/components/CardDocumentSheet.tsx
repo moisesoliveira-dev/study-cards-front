@@ -15,8 +15,7 @@ import { cardsFacade } from '../../modules/cards/facades/cards.facade';
 import { cardLevelsFacade } from '../../modules/cards/facades/card-levels.facade';
 import { DocumentEditor, documentToPlainText } from './DocumentEditor';
 import { cardAccent } from './FaceCardComposer';
-import { CardAccentPicker } from './CardAccentPicker';
-import { CardLevelPicker } from './CardLevelPicker';
+import { CardLoadoutPanel } from './CardLoadoutPanel';
 import { CardFaceIcon, CardIconPicker } from './CardIcon';
 import { useAppToast } from '../hooks/useAppToast';
 import { docExpand, fadeIn, scaleIn } from '../motion';
@@ -405,6 +404,14 @@ export function CardDocumentSheet({
             className="sc-face-card sc-face-compose is-preview is-editing"
             style={{ '--card-accent': accent } as CSSProperties}
           >
+            <CardLoadoutPanel
+              color={color}
+              onColor={setColor}
+              levelId={levelId}
+              onLevelId={setLevelId}
+              levels={levels}
+              levelsLoading={levelsLoading}
+            />
             <span className="sc-card-edit-actions">
               {saveButton}
               {deleteButton}
@@ -463,13 +470,6 @@ export function CardDocumentSheet({
               </button>
             </div>
           </div>
-          <CardLevelPicker
-            levels={levels}
-            value={levelId}
-            onChange={setLevelId}
-            loading={levelsLoading}
-          />
-          <CardAccentPicker value={color} onChange={setColor} />
         </motion.div>
       ) : (
         <motion.div

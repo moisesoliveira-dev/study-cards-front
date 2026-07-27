@@ -9,8 +9,7 @@ import {
   documentToPlainText,
 } from './DocumentEditor';
 import type { CardLevel } from '../../modules/cards/types/card-level.types';
-import { CardAccentPicker } from './CardAccentPicker';
-import { CardLevelPicker } from './CardLevelPicker';
+import { CardLoadoutPanel } from './CardLoadoutPanel';
 import { CardIconPicker } from './CardIcon';
 import { docExpand, fadeIn, scaleIn, tapScale } from '../motion';
 
@@ -155,6 +154,14 @@ export function FaceCardComposer({
                     } as CSSProperties
                   }
                 >
+                  <CardLoadoutPanel
+                    color={color}
+                    onColor={onColor}
+                    levelId={levelId}
+                    onLevelId={onLevelId}
+                    levels={levels}
+                    levelsLoading={levelsLoading}
+                  />
                   <button
                     type="button"
                     className="card-compose-close"
@@ -261,13 +268,6 @@ export function FaceCardComposer({
                         : 'Sem verso/documento, o título será usado como verso.'}
                   </p>
                 </div>
-                <CardLevelPicker
-                  levels={levels}
-                  value={levelId}
-                  onChange={onLevelId}
-                  loading={levelsLoading}
-                />
-                <CardAccentPicker value={color} onChange={onColor} />
               </motion.div>
             ) : (
               <motion.div
