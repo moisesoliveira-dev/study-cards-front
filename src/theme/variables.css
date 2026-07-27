@@ -873,12 +873,56 @@ body {
   border: 1px solid var(--border-subtle, var(--border-strong));
 }
 
-.sc-card-level-label {
-  font-size: 11px;
+.sc-card-level-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sc-card-level-add {
+  border: none;
+  background: transparent;
+  color: var(--text-accent, var(--text-secondary));
+  font: inherit;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+}
+
+.sc-card-level-add:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.sc-card-level-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.sc-card-level-input {
+  width: 100%;
+  border: 0.5px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 10px;
+  outline: none;
+}
+
+.sc-card-level-input:focus {
+  border-color: var(--border-strong);
+}
+
+.sc-card-level-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .sc-card-level-options {

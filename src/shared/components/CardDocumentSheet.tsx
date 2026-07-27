@@ -500,6 +500,7 @@ export function CardDocumentSheet({
             levels={levels}
             value={levelId}
             onChange={setLevelId}
+            onLevelsChange={setLevels}
             loading={levelsLoading}
           />
           <CardAccentPicker value={color} onChange={setColor} />
