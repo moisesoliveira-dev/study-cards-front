@@ -2040,6 +2040,10 @@ ion-popover {
   color: var(--text-primary);
 }
 
+.sc-doc-surface .tiptap [style*='text-align: justify'] {
+  text-align: justify;
+}
+
 .sc-doc-surface .tiptap p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   float: left;

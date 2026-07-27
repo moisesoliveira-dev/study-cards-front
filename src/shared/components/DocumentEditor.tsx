@@ -9,9 +9,15 @@ import Highlight from '@tiptap/extension-highlight';
 import TextAlign from '@tiptap/extension-text-align';
 import Subscript from '@tiptap/extension-subscript';
 import Superscript from '@tiptap/extension-superscript';
+import { TextStyle, Color, FontSize } from '@tiptap/extension-text-style';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
 import { Markdown } from '@tiptap/markdown';
 import { common, createLowlight } from 'lowlight';
+import {
+  Indent,
+  ParagraphLineHeight,
+  ParagraphSpacing,
+} from './document-editor-extensions';
 
 const lowlight = createLowlight(common);
 
@@ -38,11 +44,55 @@ const HIGHLIGHT_COLORS = [
   { color: '#93c5fd', label: 'Azul', shortcut: 'Mod-Shift-4' },
 ] as const;
 
-type RibbonTab = 'inicio' | 'inserir' | 'marcar';
+const TEXT_COLORS = [
+  { color: '#111827', label: 'Preto' },
+  { color: '#dc2626', label: 'Vermelho' },
+  { color: '#2563eb', label: 'Azul' },
+  { color: '#16a34a', label: 'Verde' },
+  { color: '#ca8a04', label: 'Amarelo' },
+  { color: '#9333ea', label: 'Roxo' },
+  { color: '#ea580c', label: 'Laranja' },
+  { color: '#6b7280', label: 'Cinza' },
+] as const;
+
+const FONT_SIZES = [
+  { value: '', label: 'Padrão' },
+  { value: '12px', label: '12' },
+  { value: '14px', label: '14' },
+  { value: '16px', label: '16' },
+  { value: '18px', label: '18' },
+  { value: '20px', label: '20' },
+  { value: '24px', label: '24' },
+  { value: '28px', label: '28' },
+  { value: '32px', label: '32' },
+  { value: '36px', label: '36' },
+] as const;
+
+const LINE_HEIGHTS = [
+  { value: '', label: 'Padrão' },
+  { value: '1', label: 'Simples' },
+  { value: '1.15', label: '1,15' },
+  { value: '1.5', label: '1,5' },
+  { value: '2', label: 'Duplo' },
+  { value: '2.5', label: '2,5' },
+  { value: '3', label: 'Triplo' },
+] as const;
+
+const PARAGRAPH_SPACINGS = [
+  { value: '', label: 'Padrão' },
+  { value: '0', label: 'Nenhum' },
+  { value: '6px', label: '6 pt' },
+  { value: '12px', label: '12 pt' },
+  { value: '18px', label: '18 pt' },
+  { value: '24px', label: '24 pt' },
+] as const;
+
+type RibbonTab = 'inicio' | 'inserir' | 'layout' | 'marcar';
 
 const RIBBON_TABS: { id: RibbonTab; label: string }[] = [
   { id: 'inicio', label: 'Início' },
   { id: 'inserir', label: 'Inserir' },
+  { id: 'layout', label: 'Layout' },
   { id: 'marcar', label: 'Marcar' },
 ];
 
@@ -152,6 +202,13 @@ function toggleHighlightColor(editor: Editor, color: string) {
   return editor.chain().focus().setHighlight({ color }).run();
 }
 
+function currentBlockAttr(editor: Editor, key: string): string {
+  if (editor.isActive('heading')) {
+    return String(editor.getAttributes('heading')[key] ?? '');
+  }
+  return String(editor.getAttributes('paragraph')[key] ?? '');
+}
+
 /**
  * Atalhos extras só disparam com o TipTap focado (ProseMirror keymap).
  * Não afetam o verso curto nem outros campos fora do documento.
@@ -170,6 +227,7 @@ const DocumentShortcuts = Extension.create({
       'Mod-Shift-l': () => this.editor.commands.toggleTextAlign('left'),
       'Mod-Shift-e': () => this.editor.commands.toggleTextAlign('center'),
       'Mod-Shift-r': () => this.editor.commands.toggleTextAlign('right'),
+      'Mod-Shift-j': () => this.editor.commands.toggleTextAlign('justify'),
       'Mod-\\': () =>
         this.editor.chain().focus().unsetAllMarks().clearNodes().run(),
       'Mod-Shift-1': () =>
@@ -185,7 +243,22 @@ const DocumentShortcuts = Extension.create({
   },
 });
 
-function AlignIcon({ align }: { align: 'left' | 'center' | 'right' }) {
+function AlignIcon({
+  align,
+}: {
+  align: 'left' | 'center' | 'right' | 'justify';
+}) {
+  if (align === 'justify') {
+    return (
+      <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+        <g stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+          <line x1="2" y1="3.5" x2="14" y2="3.5" />
+          <line x1="2" y1="8" x2="14" y2="8" />
+          <line x1="2" y1="12.5" x2="14" y2="12.5" />
+        </g>
+      </svg>
+    );
+  }
   const short =
     align === 'left'
       ? { x1: 2, x2: 10 }
@@ -278,7 +351,16 @@ export function DocumentEditor({
         defaultLanguage: 'typescript',
       }),
       Highlight.configure({ multicolor: true }),
-      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+        alignments: ['left', 'center', 'right', 'justify'],
+      }),
+      TextStyle,
+      Color,
+      FontSize,
+      ParagraphLineHeight,
+      ParagraphSpacing,
+      Indent,
       Subscript,
       Superscript,
       TaskList,
@@ -323,7 +405,6 @@ export function DocumentEditor({
       emitUpdate: false,
       contentType: parsed.contentType,
     });
-    // only sync when external value identity changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
@@ -336,6 +417,13 @@ export function DocumentEditor({
   const setCodeLanguage = (language: string) => {
     editor.chain().focus().updateAttributes('codeBlock', { language }).run();
   };
+
+  const currentFontSize =
+    (editor.getAttributes('textStyle').fontSize as string | undefined) ?? '';
+  const currentLineHeight = currentBlockAttr(editor, 'paragraphLineHeight');
+  const currentParagraphSpacing = currentBlockAttr(editor, 'paragraphSpacing');
+  const currentColor =
+    (editor.getAttributes('textStyle').color as string | undefined) ?? '';
 
   return (
     <div className={`sc-doc-editor${editable ? '' : ' is-readonly'}`}>
@@ -383,6 +471,23 @@ export function DocumentEditor({
                 </Group>
 
                 <Group label="Fonte">
+                  <select
+                    className="sc-doc-lang"
+                    value={currentFontSize}
+                    aria-label="Tamanho da fonte"
+                    title="Tamanho da fonte"
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (!v) editor.chain().focus().unsetFontSize().run();
+                      else editor.chain().focus().setFontSize(v).run();
+                    }}
+                  >
+                    {FONT_SIZES.map((size) => (
+                      <option key={size.value || 'default'} value={size.value}>
+                        {size.label}
+                      </option>
+                    ))}
+                  </select>
                   <ToolButton
                     title="Negrito"
                     shortcut="Mod-b"
@@ -433,6 +538,31 @@ export function DocumentEditor({
                     }
                   >
                     Limpar
+                  </ToolButton>
+                </Group>
+
+                <Group label="Cor do texto">
+                  {TEXT_COLORS.map(({ color, label }) => (
+                    <ToolButton
+                      key={color}
+                      title={`Cor ${label.toLowerCase()}`}
+                      className="sc-doc-swatch"
+                      active={currentColor.toLowerCase() === color.toLowerCase()}
+                      onClick={() =>
+                        editor.chain().focus().setColor(color).run()
+                      }
+                    >
+                      <span
+                        className="sc-doc-swatch-dot"
+                        style={{ background: color }}
+                      />
+                    </ToolButton>
+                  ))}
+                  <ToolButton
+                    title="Remover cor"
+                    onClick={() => editor.chain().focus().unsetColor().run()}
+                  >
+                    Auto
                   </ToolButton>
                 </Group>
 
@@ -528,6 +658,16 @@ export function DocumentEditor({
                   >
                     <AlignIcon align="right" />
                   </ToolButton>
+                  <ToolButton
+                    title="Justificar"
+                    shortcut="Mod-Shift-j"
+                    active={editor.isActive({ textAlign: 'justify' })}
+                    onClick={() =>
+                      editor.chain().focus().toggleTextAlign('justify').run()
+                    }
+                  >
+                    <AlignIcon align="justify" />
+                  </ToolButton>
                 </Group>
               </>
             ) : null}
@@ -593,6 +733,12 @@ export function DocumentEditor({
                   >
                     —
                   </ToolButton>
+                  <ToolButton
+                    title="Quebra de linha"
+                    onClick={() => editor.chain().focus().setHardBreak().run()}
+                  >
+                    ↵
+                  </ToolButton>
                 </Group>
 
                 <Group label="Listas">
@@ -605,6 +751,116 @@ export function DocumentEditor({
                     }
                   >
                     ✓ Tarefas
+                  </ToolButton>
+                </Group>
+              </>
+            ) : null}
+
+            {tab === 'layout' ? (
+              <>
+                <Group label="Espaçamento entre linhas">
+                  <select
+                    className="sc-doc-lang"
+                    value={currentLineHeight}
+                    aria-label="Espaçamento entre linhas"
+                    title="Espaçamento entre linhas"
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (!v) {
+                        editor.chain().focus().unsetParagraphLineHeight().run();
+                      } else {
+                        editor.chain().focus().setParagraphLineHeight(v).run();
+                      }
+                    }}
+                  >
+                    {LINE_HEIGHTS.map((opt) => (
+                      <option key={opt.value || 'default'} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </Group>
+
+                <Group label="Espaçamento após parágrafo">
+                  <select
+                    className="sc-doc-lang"
+                    value={currentParagraphSpacing}
+                    aria-label="Espaçamento após o parágrafo"
+                    title="Espaçamento após o parágrafo"
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (!v) {
+                        editor.chain().focus().unsetParagraphSpacing().run();
+                      } else {
+                        editor.chain().focus().setParagraphSpacing(v).run();
+                      }
+                    }}
+                  >
+                    {PARAGRAPH_SPACINGS.map((opt) => (
+                      <option key={opt.value || 'default'} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </Group>
+
+                <Group label="Recuo">
+                  <ToolButton
+                    title="Diminuir recuo"
+                    shortcut="Shift-Tab"
+                    onClick={() =>
+                      editor.chain().focus().decreaseIndent().run()
+                    }
+                  >
+                    ← Recuo
+                  </ToolButton>
+                  <ToolButton
+                    title="Aumentar recuo"
+                    shortcut="Tab"
+                    onClick={() =>
+                      editor.chain().focus().increaseIndent().run()
+                    }
+                  >
+                    Recuo →
+                  </ToolButton>
+                </Group>
+
+                <Group label="Alinhamento">
+                  <ToolButton
+                    title="Alinhar à esquerda"
+                    active={editor.isActive({ textAlign: 'left' })}
+                    onClick={() =>
+                      editor.chain().focus().toggleTextAlign('left').run()
+                    }
+                  >
+                    <AlignIcon align="left" />
+                  </ToolButton>
+                  <ToolButton
+                    title="Centralizar"
+                    active={editor.isActive({ textAlign: 'center' })}
+                    onClick={() =>
+                      editor.chain().focus().toggleTextAlign('center').run()
+                    }
+                  >
+                    <AlignIcon align="center" />
+                  </ToolButton>
+                  <ToolButton
+                    title="Alinhar à direita"
+                    active={editor.isActive({ textAlign: 'right' })}
+                    onClick={() =>
+                      editor.chain().focus().toggleTextAlign('right').run()
+                    }
+                  >
+                    <AlignIcon align="right" />
+                  </ToolButton>
+                  <ToolButton
+                    title="Justificar"
+                    active={editor.isActive({ textAlign: 'justify' })}
+                    onClick={() =>
+                      editor.chain().focus().toggleTextAlign('justify').run()
+                    }
+                  >
+                    <AlignIcon align="justify" />
                   </ToolButton>
                 </Group>
               </>
