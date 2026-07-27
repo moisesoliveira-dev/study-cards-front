@@ -276,6 +276,180 @@ function AlignIcon({
   );
 }
 
+function IconBulletList() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+      <circle cx="3" cy="4" r="1.3" fill="currentColor" />
+      <circle cx="3" cy="8" r="1.3" fill="currentColor" />
+      <circle cx="3" cy="12" r="1.3" fill="currentColor" />
+      <g stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+        <line x1="6.5" y1="4" x2="14" y2="4" />
+        <line x1="6.5" y1="8" x2="14" y2="8" />
+        <line x1="6.5" y1="12" x2="14" y2="12" />
+      </g>
+    </svg>
+  );
+}
+
+function IconOrderedList() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+      <text x="1" y="5.2" fontSize="5.5" fill="currentColor" fontFamily="system-ui">
+        1
+      </text>
+      <text x="1" y="9.2" fontSize="5.5" fill="currentColor" fontFamily="system-ui">
+        2
+      </text>
+      <text x="1" y="13.2" fontSize="5.5" fill="currentColor" fontFamily="system-ui">
+        3
+      </text>
+      <g stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+        <line x1="6.5" y1="4" x2="14" y2="4" />
+        <line x1="6.5" y1="8" x2="14" y2="8" />
+        <line x1="6.5" y1="12" x2="14" y2="12" />
+      </g>
+    </svg>
+  );
+}
+
+function IconTaskList() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+      <rect
+        x="1.5"
+        y="2.5"
+        width="5"
+        height="5"
+        rx="1"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+      />
+      <path
+        d="M2.8 5l1.3 1.3 2.2-2.4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <g stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+        <line x1="9" y1="5" x2="14" y2="5" />
+        <line x1="9" y1="11.5" x2="14" y2="11.5" />
+      </g>
+      <rect
+        x="1.5"
+        y="9"
+        width="5"
+        height="5"
+        rx="1"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+      />
+    </svg>
+  );
+}
+
+function IconLink() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+      <path
+        d="M6.2 9.8a3.2 3.2 0 0 1 0-4.5l1.4-1.4a3.2 3.2 0 0 1 4.5 4.5l-.7.7"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <path
+        d="M9.8 6.2a3.2 3.2 0 0 1 0 4.5l-1.4 1.4a3.2 3.2 0 1 1-4.5-4.5l.7-.7"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function IconCode() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+      <path
+        d="M5.5 3.5 2 8l3.5 4.5M10.5 3.5 14 8l-3.5 4.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function IconQuote() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+      <path
+        d="M3 11.5c1.8 0 3-1.2 3-3V4H2.5v4.2H5c0 1.4-.8 2.3-2 3.3zm7 0c1.8 0 3-1.2 3-3V4H9.5v4.2H12c0 1.4-.8 2.3-2 3.3z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function IconClear() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+      <path
+        d="M3 4.5h10M5.5 4.5V3.2A1.2 1.2 0 0 1 6.7 2h2.6A1.2 1.2 0 0 1 10.5 3.2v1.3M6.2 7v5M9.8 7v5M4.2 4.5l.7 8.2A1.2 1.2 0 0 0 6.1 14h3.8a1.2 1.2 0 0 0 1.2-1.3l.7-8.2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function IconIndent({ dir }: { dir: 'in' | 'out' }) {
+  const mirror = dir === 'out' ? 'scale(-1,1) translate(-16,0)' : undefined;
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+      <g transform={mirror} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+        <line x1="2" y1="3.5" x2="14" y2="3.5" />
+        <line x1="7" y1="8" x2="14" y2="8" />
+        <line x1="2" y1="12.5" x2="14" y2="12.5" />
+        <path d="M2 6.2 4.8 8 2 9.8" fill="none" strokeLinejoin="round" />
+      </g>
+    </svg>
+  );
+}
+
+function IconEraser() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+      <path
+        d="M3.2 9.8 8.6 4.4a1.4 1.4 0 0 1 2 0l1.2 1.2a1.4 1.4 0 0 1 0 2L6.4 13H3.2z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      <line
+        x1="2"
+        y1="14"
+        x2="14"
+        y2="14"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 function ToolButton({
   title,
   shortcut,
@@ -283,6 +457,7 @@ function ToolButton({
   disabled,
   onClick,
   children,
+  caption,
   className = '',
 }: {
   title: string;
@@ -291,6 +466,8 @@ function ToolButton({
   disabled?: boolean;
   onClick: () => void;
   children: ReactNode;
+  /** Rótulo curto embaixo do ícone (estilo Word). */
+  caption?: string;
   className?: string;
 }) {
   const tip = shortcut ? `${title} (${shortcutLabel(shortcut)})` : title;
@@ -301,10 +478,13 @@ function ToolButton({
       aria-label={tip}
       aria-pressed={active}
       disabled={disabled}
-      className={`${className}${active ? ' active' : ''}`.trim()}
+      className={`sc-doc-tool${caption ? ' has-caption' : ''} ${className}${
+        active ? ' active' : ''
+      }`.trim()}
       onClick={onClick}
     >
-      {children}
+      <span className="sc-doc-tool-icon">{children}</span>
+      {caption ? <span className="sc-doc-tool-caption">{caption}</span> : null}
     </button>
   );
 }
@@ -528,16 +708,17 @@ export function DocumentEditor({
                     active={editor.isActive('code')}
                     onClick={() => editor.chain().focus().toggleCode().run()}
                   >
-                    `code`
+                    <IconCode />
                   </ToolButton>
                   <ToolButton
                     title="Limpar formatação"
                     shortcut="Mod-\\"
+                    caption="Limpar"
                     onClick={() =>
                       editor.chain().focus().unsetAllMarks().clearNodes().run()
                     }
                   >
-                    Limpar
+                    <IconClear />
                   </ToolButton>
                 </Group>
 
@@ -613,7 +794,7 @@ export function DocumentEditor({
                       editor.chain().focus().toggleBulletList().run()
                     }
                   >
-                    • Lista
+                    <IconBulletList />
                   </ToolButton>
                   <ToolButton
                     title="Lista numerada"
@@ -623,7 +804,7 @@ export function DocumentEditor({
                       editor.chain().focus().toggleOrderedList().run()
                     }
                   >
-                    1. Lista
+                    <IconOrderedList />
                   </ToolButton>
                 </Group>
 
@@ -679,9 +860,10 @@ export function DocumentEditor({
                     title="Inserir/editar link"
                     shortcut="Mod-Shift-k"
                     active={editor.isActive('link')}
+                    caption="Link"
                     onClick={() => promptLink(editor)}
                   >
-                    Link
+                    <IconLink />
                   </ToolButton>
                 </Group>
 
@@ -694,17 +876,18 @@ export function DocumentEditor({
                       editor.chain().focus().toggleBlockquote().run()
                     }
                   >
-                    “ ”
+                    <IconQuote />
                   </ToolButton>
                   <ToolButton
                     title="Bloco de código"
                     shortcut="Mod-Alt-c"
                     active={editor.isActive('codeBlock')}
+                    caption="Código"
                     onClick={() =>
                       editor.chain().focus().toggleCodeBlock().run()
                     }
                   >
-                    {'</>'} Bloco
+                    <IconCode />
                   </ToolButton>
                   <select
                     className="sc-doc-lang"
@@ -746,11 +929,12 @@ export function DocumentEditor({
                     title="Lista de tarefas"
                     shortcut="Mod-Shift-t"
                     active={editor.isActive('taskList')}
+                    caption="Tarefas"
                     onClick={() =>
                       editor.chain().focus().toggleTaskList().run()
                     }
                   >
-                    ✓ Tarefas
+                    <IconTaskList />
                   </ToolButton>
                 </Group>
               </>
@@ -812,7 +996,7 @@ export function DocumentEditor({
                       editor.chain().focus().decreaseIndent().run()
                     }
                   >
-                    ← Recuo
+                    <IconIndent dir="out" />
                   </ToolButton>
                   <ToolButton
                     title="Aumentar recuo"
@@ -821,7 +1005,7 @@ export function DocumentEditor({
                       editor.chain().focus().increaseIndent().run()
                     }
                   >
-                    Recuo →
+                    <IconIndent dir="in" />
                   </ToolButton>
                 </Group>
 
@@ -891,7 +1075,7 @@ export function DocumentEditor({
                       editor.chain().focus().unsetHighlight().run()
                     }
                   >
-                    Sem marca
+                    <IconEraser />
                   </ToolButton>
                 </Group>
 
