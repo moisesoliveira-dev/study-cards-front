@@ -152,10 +152,10 @@ export function CardLoadoutPanel({
       <button
         type="button"
         className={`sc-loadout-trigger${open ? ' is-open' : ''}`}
-        aria-label="Personalizar cor e nível"
+        aria-label="Aparência da carta"
         aria-expanded={open}
         aria-controls={panelId}
-        title="Personalizar"
+        title="Aparência"
         onClick={(e) => {
           e.stopPropagation();
           setOpen((v) => !v);
@@ -186,7 +186,7 @@ export function CardLoadoutPanel({
                 id={panelId}
                 role="dialog"
                 aria-modal="true"
-                aria-label="Personalizar carta"
+                aria-label="Aparência da carta"
                 className="sc-loadout-panel"
                 variants={reduce ? undefined : scaleIn}
                 initial={reduce ? false : 'hidden'}
@@ -195,10 +195,7 @@ export function CardLoadoutPanel({
                 onMouseDown={(e) => e.stopPropagation()}
               >
                 <header className="sc-loadout-head">
-                  <div className="sc-loadout-head-copy">
-                    <span className="sc-loadout-kicker">Inventário</span>
-                    <h3>Personalizar</h3>
-                  </div>
+                  <h3>Aparência</h3>
                   <button
                     type="button"
                     className="sc-loadout-close"
@@ -227,11 +224,6 @@ export function CardLoadoutPanel({
                     onClick={() => setTab('nivel')}
                   >
                     Nível
-                    {selectedLevel ? (
-                      <span className="sc-loadout-tab-chip">
-                        {selectedLevel.name}
-                      </span>
-                    ) : null}
                   </button>
                 </div>
 
@@ -239,7 +231,7 @@ export function CardLoadoutPanel({
                   <div className="sc-loadout-body" role="tabpanel">
                     <div className="sc-loadout-section">
                       <div className="sc-loadout-section-head">
-                        <span>Paleta ativa</span>
+                        <span>Paleta</span>
                       </div>
                       <div className="sc-loadout-palette-row">
                         <select
@@ -352,21 +344,18 @@ export function CardLoadoutPanel({
                       </div>
                     ) : (
                       <p className="sc-loadout-hint">
-                        A paleta Padrão é fixa. Crie a sua para guardar cores
-                        personalizadas.
+                        A paleta Padrão não pode ser editada. Salve uma nova para
+                        guardar cores suas.
                       </p>
                     )}
 
-                    <div className="sc-loadout-section">
-                      <div className="sc-loadout-section-head">
-                        <span>Nova paleta</span>
-                      </div>
+                    <div className="sc-loadout-section is-quiet">
                       <div className="sc-loadout-hex-row">
                         <input
                           type="text"
                           className="sc-loadout-hex-input"
                           value={newPaletteName}
-                          placeholder="Ex.: Floresta, Neon…"
+                          placeholder="Nome da nova paleta"
                           aria-label="Nome da nova paleta"
                           onChange={(e) => setNewPaletteName(e.target.value)}
                           onKeyDown={(e) => {
@@ -381,7 +370,7 @@ export function CardLoadoutPanel({
                           className="sc-btn sc-loadout-mini-btn"
                           onClick={handleCreatePalette}
                         >
-                          Salvar
+                          Salvar paleta
                         </button>
                       </div>
                     </div>
@@ -390,7 +379,7 @@ export function CardLoadoutPanel({
                   <div className="sc-loadout-body" role="tabpanel">
                     <div className="sc-loadout-section">
                       <div className="sc-loadout-section-head">
-                        <span>Rank / nível</span>
+                        <span>Nível</span>
                         <Link
                           to="/cadastros/niveis"
                           className="sc-loadout-manage"
@@ -401,10 +390,12 @@ export function CardLoadoutPanel({
 
                       {selectedLevel ? (
                         <div className="sc-loadout-level-chosen">
-                          <strong>{selectedLevel.name}</strong>
-                          {selectedLevel.description ? (
-                            <span>{selectedLevel.description}</span>
-                          ) : null}
+                          <div className="sc-loadout-level-chosen-copy">
+                            <strong>{selectedLevel.name}</strong>
+                            {selectedLevel.description ? (
+                              <span>{selectedLevel.description}</span>
+                            ) : null}
+                          </div>
                           <button
                             type="button"
                             className="sc-btn sc-loadout-mini-btn"

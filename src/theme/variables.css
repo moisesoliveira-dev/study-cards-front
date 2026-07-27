@@ -872,7 +872,7 @@ body {
     inset 0 0 0 1px color-mix(in srgb, #000 14%, transparent);
 }
 
-/* —— Loadout (inventário cor + nível) —— */
+/* —— Aparência (cor + nível) —— */
 .sc-loadout {
   position: relative;
   display: inline-flex;
@@ -883,14 +883,14 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border: 0.5px solid var(--border);
-  border-radius: 50%;
+  border-radius: 8px;
   background: var(--surface-1);
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 16px;
+  font-size: 15px;
   padding: 0;
   transition:
     border-color 0.15s ease,
@@ -899,26 +899,25 @@ body {
 }
 
 .sc-loadout-trigger ion-icon {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
 }
 
 .sc-loadout-trigger:hover,
 .sc-loadout-trigger.is-open {
-  border-color: var(--border-accent);
-  color: var(--text-accent);
-  background: var(--bg-accent);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+  background: var(--surface-2);
 }
 
 .sc-loadout-trigger-orb {
   position: absolute;
-  right: -1px;
-  bottom: -1px;
-  width: 10px;
-  height: 10px;
+  right: -2px;
+  bottom: -2px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   border: 1.5px solid var(--surface-1);
-  box-shadow: 0 0 0 0.5px color-mix(in srgb, #000 20%, transparent);
 }
 
 .sc-loadout-backdrop {
@@ -928,67 +927,48 @@ body {
   display: grid;
   place-items: center;
   padding: 20px 16px;
-  background: color-mix(in srgb, var(--text-primary) 38%, transparent);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: color-mix(in srgb, var(--text-primary) 28%, transparent);
 }
 
 .sc-loadout-panel {
-  width: min(100%, 380px);
-  max-height: min(82vh, 560px);
+  width: min(100%, 340px);
+  max-height: min(78vh, 520px);
   display: flex;
   flex-direction: column;
-  border-radius: 16px;
-  border: 1px solid color-mix(in srgb, var(--border-accent) 45%, var(--border));
-  background:
-    linear-gradient(
-      165deg,
-      color-mix(in srgb, var(--surface-1) 92%, var(--bg-accent)) 0%,
-      var(--surface-1) 45%,
-      var(--surface-2) 100%
-    );
-  box-shadow:
-    0 1px 0 color-mix(in srgb, #fff 12%, transparent) inset,
-    0 24px 64px color-mix(in srgb, var(--text-primary) 28%, transparent);
+  border-radius: 12px;
+  border: 0.5px solid var(--border);
+  background: var(--surface-1);
+  box-shadow: 0 16px 40px color-mix(in srgb, var(--text-primary) 16%, transparent);
   overflow: hidden;
 }
 
 .sc-loadout-head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px 16px 10px;
-}
-
-.sc-loadout-kicker {
-  display: block;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text-accent);
-  margin-bottom: 2px;
+  padding: 14px 14px 0;
 }
 
 .sc-loadout-head h3 {
   margin: 0;
-  font-size: 1.15rem;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 600;
   color: var(--text-primary);
+  letter-spacing: -0.01em;
 }
 
 .sc-loadout-close {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border: none;
-  border-radius: 50%;
+  border-radius: 6px;
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
   display: grid;
   place-items: center;
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .sc-loadout-close:hover {
@@ -998,52 +978,38 @@ body {
 
 .sc-loadout-tabs {
   display: flex;
-  gap: 4px;
-  padding: 0 12px 10px;
+  gap: 0;
+  margin: 10px 14px 0;
   border-bottom: 0.5px solid var(--border);
 }
 
 .sc-loadout-tabs button {
-  flex: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  border: 0.5px solid transparent;
-  border-radius: 10px;
+  flex: 0 0 auto;
+  border: none;
+  border-bottom: 1.5px solid transparent;
+  margin-bottom: -0.5px;
+  border-radius: 0;
   background: transparent;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   font: inherit;
   font-size: 13px;
-  font-weight: 650;
-  padding: 8px 10px;
+  font-weight: 500;
+  padding: 8px 12px 9px;
   cursor: pointer;
 }
 
 .sc-loadout-tabs button.active {
-  background: var(--bg-accent);
-  color: var(--text-accent);
-  border-color: var(--border-accent);
-}
-
-.sc-loadout-tab-chip {
-  max-width: 72px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 10px;
-  font-weight: 600;
-  padding: 2px 6px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--surface-1) 70%, transparent);
+  color: var(--text-primary);
+  border-bottom-color: var(--text-primary);
+  background: transparent;
 }
 
 .sc-loadout-body {
-  padding: 12px 14px 16px;
+  padding: 14px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 
 .sc-loadout-section {
@@ -1052,23 +1018,26 @@ body {
   gap: 8px;
 }
 
+.sc-loadout-section.is-quiet {
+  padding-top: 4px;
+  border-top: 0.5px solid var(--border);
+}
+
 .sc-loadout-section-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 500;
   color: var(--text-muted);
 }
 
 .sc-loadout-preview-orb {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  border: 1px solid color-mix(in srgb, #000 18%, transparent);
+  border: 1px solid color-mix(in srgb, #000 14%, transparent);
 }
 
 .sc-loadout-palette-row,
@@ -1085,33 +1054,33 @@ body {
   font: inherit;
   font-size: 13px;
   border: 0.5px solid var(--border);
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--surface-2);
   color: var(--text-primary);
-  padding: 8px 10px;
+  padding: 7px 10px;
 }
 
 .sc-loadout-hex-row input[type='color'] {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   border: 0.5px solid var(--border);
-  border-radius: 10px;
+  border-radius: 8px;
   background: transparent;
   cursor: pointer;
 }
 
 .sc-loadout-mini-btn {
   flex: 0 0 auto;
-  padding: 8px 12px;
+  padding: 7px 10px;
   font-size: 12px;
 }
 
 .sc-loadout-icon-btn {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border: 0.5px solid var(--border);
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--surface-2);
   color: var(--text-secondary);
   display: grid;
@@ -1127,7 +1096,7 @@ body {
 .sc-loadout-orbs {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
 }
 
@@ -1136,41 +1105,38 @@ body {
 }
 
 .sc-loadout-orb {
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  border: 2px solid transparent;
+  border: 1.5px solid transparent;
   padding: 0;
   cursor: pointer;
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, #000 16%, transparent),
-    0 4px 10px color-mix(in srgb, var(--text-primary) 12%, transparent);
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #000 12%, transparent);
+  transition: border-color 0.12s ease;
 }
 
 .sc-loadout-orb:hover {
-  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--text-primary) 35%, transparent);
 }
 
 .sc-loadout-orb.is-active {
   border-color: var(--text-primary);
   box-shadow:
-    0 0 0 2px var(--surface-1),
-    0 0 0 4px color-mix(in srgb, var(--text-accent) 55%, transparent),
-    inset 0 0 0 1px color-mix(in srgb, #000 16%, transparent);
+    0 0 0 1.5px var(--surface-1),
+    inset 0 0 0 1px color-mix(in srgb, #000 12%, transparent);
 }
 
 .sc-loadout-orb-remove {
   position: absolute;
-  top: -6px;
-  right: -6px;
-  width: 16px;
-  height: 16px;
+  top: -5px;
+  right: -5px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   border: none;
   background: var(--surface-1);
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 10px;
   line-height: 1;
   cursor: pointer;
   box-shadow: 0 0 0 0.5px var(--border);
@@ -1185,46 +1151,58 @@ body {
   margin: 0;
   font-size: 12px;
   color: var(--text-muted);
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 .sc-loadout-empty a,
 .sc-loadout-manage {
-  color: var(--text-accent);
-  font-weight: 600;
+  color: var(--text-secondary);
+  font-weight: 500;
   text-decoration: none;
 }
 
-.sc-loadout-manage:hover {
+.sc-loadout-manage:hover,
+.sc-loadout-empty a:hover {
+  color: var(--text-primary);
   text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .sc-loadout-level-chosen {
   display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 0.5px solid var(--border);
+  background: var(--surface-2);
+}
+
+.sc-loadout-level-chosen-copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 0.5px solid var(--border-accent);
-  background: var(--bg-accent);
+  gap: 2px;
 }
 
 .sc-loadout-level-chosen strong {
-  font-size: 14px;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
 .sc-loadout-level-chosen span {
   font-size: 12px;
-  color: var(--text-secondary);
+  color: var(--text-muted);
 }
 
 .sc-loadout-level-search {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 10px;
-  border-radius: 10px;
+  padding: 7px 10px;
+  border-radius: 8px;
   border: 0.5px solid var(--border);
   background: var(--surface-2);
 }
@@ -1246,9 +1224,9 @@ body {
 }
 
 .sc-loadout-level-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .sc-loadout-level-slot {
@@ -1257,22 +1235,19 @@ body {
   align-items: flex-start;
   gap: 2px;
   text-align: left;
-  padding: 10px 11px;
-  border-radius: 12px;
-  border: 0.5px solid var(--border);
-  background: var(--surface-2);
+  padding: 9px 11px;
+  border-radius: 8px;
+  border: 0.5px solid transparent;
+  background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
   font: inherit;
-  min-height: 56px;
-  transition:
-    border-color 0.12s ease,
-    background 0.12s ease,
-    transform 0.12s ease;
+  transition: background 0.12s ease, border-color 0.12s ease;
 }
 
 .sc-loadout-level-slot strong {
   font-size: 13px;
+  font-weight: 550;
   color: var(--text-primary);
 }
 
@@ -1280,21 +1255,18 @@ body {
   font-size: 11px;
   color: var(--text-muted);
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
 .sc-loadout-level-slot:hover {
-  border-color: var(--border-strong);
-  transform: translateY(-1px);
+  background: var(--surface-2);
 }
 
 .sc-loadout-level-slot.is-active {
-  border-color: var(--border-accent);
-  background: var(--bg-accent);
-  color: var(--text-accent);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--border-accent) 40%, transparent);
+  border-color: var(--border);
+  background: var(--surface-2);
 }
 
 /* Trigger placement on compose / edit card */
