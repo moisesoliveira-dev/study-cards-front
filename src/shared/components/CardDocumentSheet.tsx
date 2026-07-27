@@ -607,9 +607,6 @@ export function CardDocumentSheet({
 
               <div className="sc-card-face is-back" aria-hidden={!flipped}>
                 <span className="card-accent-bar" aria-hidden />
-                <div className="card-suit" style={{ color: accent }}>
-                  {tag}
-                </div>
                 <div className="card-back-kicker">Conceito resumido</div>
                 <div className="card-back-body">{back.trim() || front}</div>
                 <p className="card-flip-hint">Toque para virar de novo</p>
