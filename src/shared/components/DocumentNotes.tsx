@@ -1,74 +1,58 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/core';
 
 type Draft = {
   mode: 'create' | 'edit';
   note: string;
-  x: number;
-  y: number;
   from: number;
   to: number;
+  id?: string | null;
 };
 
-type HoverTip = {
+type SideNote = {
+  id: string;
   note: string;
-  x: number;
-  y: number;
+  from: number;
+  to: number;
+  top: number;
 };
-
-type BubblePos = { x: number; y: number };
 
 type Props = {
   editor: Editor;
   editable: boolean;
 };
 
-function clamp(n: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, n));
+function collectAnnotations(editor: Editor): Omit<SideNote, 'top'>[] {
+  const byId = new Map<string, Omit<SideNote, 'top'>>();
+  editor.state.doc.descendants((node, pos) => {
+    if (!node.isText) return;
+    for (const mark of node.marks) {
+      if (mark.type.name !== 'annotation') continue;
+      const note = String(mark.attrs.note ?? '').trim();
+      if (!note) continue;
+      const id =
+        (mark.attrs.id as string | null | undefined) ||
+        `anon_${pos}_${node.nodeSize}`;
+      const existing = byId.get(id);
+      const to = pos + node.nodeSize;
+      if (existing) {
+        existing.from = Math.min(existing.from, pos);
+        existing.to = Math.max(existing.to, to);
+      } else {
+        byId.set(id, { id, note, from: pos, to });
+      }
+    }
+  });
+  return [...byId.values()];
 }
 
-function placeNearRect(rect: DOMRect, heightGuess = 180) {
-  const width = 280;
-  const pad = 10;
-  const x = clamp(
-    rect.left + rect.width / 2 - width / 2,
-    pad,
-    window.innerWidth - width - pad,
-  );
-  const below = rect.bottom + 10;
-  const y =
-    below + heightGuess > window.innerHeight
-      ? Math.max(pad, rect.top - heightGuess)
-      : below;
-  return { x, y };
-}
-
-function selectionRect(editor: Editor): DOMRect | null {
-  const { from, to, empty } = editor.state.selection;
-  if (empty || from === to) return null;
-  try {
-    const start = editor.view.coordsAtPos(from);
-    const end = editor.view.coordsAtPos(to);
-    const top = Math.min(start.top, end.top);
-    const bottom = Math.max(start.bottom, end.bottom);
-    const left = Math.min(start.left, end.left);
-    const right = Math.max(start.right, end.right);
-    return new DOMRect(left, top, Math.max(right - left, 8), Math.max(bottom - top, 16));
-  } catch {
-    return null;
-  }
-}
-
-/** Menu de seleção + compositor/hover de notas (estilo Edge). */
+/** Painel lateral de notas alinhadas ao trecho (estilo documento). */
 export function DocumentNotes({ editor, editable }: Props) {
   const [draft, setDraft] = useState<Draft | null>(null);
-  const [hover, setHover] = useState<HoverTip | null>(null);
-  const [bubble, setBubble] = useState<BubblePos | null>(null);
+  const [notes, setNotes] = useState<SideNote[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [hasSelection, setHasSelection] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const hoverTimer = useRef<number | null>(null);
-  const draftRef = useRef<Draft | null>(null);
-  draftRef.current = draft;
 
   useEffect(() => {
     if (!draft) return;
@@ -76,96 +60,87 @@ export function DocumentNotes({ editor, editable }: Props) {
     return () => window.clearTimeout(t);
   }, [draft]);
 
-  const syncBubble = useCallback(() => {
-    if (!editable || draftRef.current) {
-      setBubble(null);
-      return;
-    }
-    if (!editor.isEditable) {
-      setBubble(null);
-      return;
-    }
-    const rect = selectionRect(editor);
-    if (!rect) {
-      setBubble(null);
-      return;
-    }
-    const width = 140;
-    setBubble({
-      x: clamp(
-        rect.left + rect.width / 2 - width / 2,
-        8,
-        window.innerWidth - width - 8,
-      ),
-      y: Math.max(8, rect.top - 44),
+  const refreshNotes = useCallback(() => {
+    const collected = collectAnnotations(editor);
+    const next: SideNote[] = collected.map((item) => {
+      let top = 8;
+      try {
+        const coords = editor.view.coordsAtPos(item.from);
+        const root = editor.view.dom.getBoundingClientRect();
+        top = Math.max(0, coords.top - root.top + editor.view.dom.scrollTop);
+      } catch {
+        // ignore
+      }
+      return { ...item, top };
     });
-  }, [editable, editor]);
 
-  useEffect(() => {
+    const sorted = [...next].sort((a, b) => a.top - b.top);
+    let lastBottom = -12;
+    for (const n of sorted) {
+      if (n.top < lastBottom + 12) n.top = lastBottom + 12;
+      lastBottom = n.top + 64;
+    }
+    setNotes(sorted);
+
+    const { empty, from, to } = editor.state.selection;
+    setHasSelection(!empty && from !== to);
+  }, [editor]);
+
+  useLayoutEffect(() => {
+    refreshNotes();
     const onUpdate = () => {
-      // deixa o mouseup terminar antes de medir a seleção
-      window.requestAnimationFrame(syncBubble);
+      window.requestAnimationFrame(refreshNotes);
     };
+    editor.on('update', onUpdate);
     editor.on('selectionUpdate', onUpdate);
     editor.on('transaction', onUpdate);
-    window.addEventListener('scroll', onUpdate, true);
     window.addEventListener('resize', onUpdate);
-    syncBubble();
+    const surface = editor.view.dom.closest('.sc-doc-surface');
+    surface?.addEventListener('scroll', onUpdate, true);
     return () => {
+      editor.off('update', onUpdate);
       editor.off('selectionUpdate', onUpdate);
       editor.off('transaction', onUpdate);
-      window.removeEventListener('scroll', onUpdate, true);
       window.removeEventListener('resize', onUpdate);
+      surface?.removeEventListener('scroll', onUpdate, true);
     };
-  }, [editor, syncBubble]);
+  }, [editor, refreshNotes]);
 
   const openCreate = useCallback(() => {
     if (!editable || !editor.isEditable) return;
     const { from, to, empty } = editor.state.selection;
     if (empty || from === to) return;
-    const rect = selectionRect(editor);
-    if (!rect) return;
-    const { x, y } = placeNearRect(rect);
     const existing = editor.isActive('annotation')
       ? ((editor.getAttributes('annotation').note as string | undefined) ?? '')
       : '';
-    setHover(null);
-    setBubble(null);
+    const id = editor.isActive('annotation')
+      ? ((editor.getAttributes('annotation').id as string | null) ?? null)
+      : null;
     setDraft({
       mode: existing ? 'edit' : 'create',
       note: existing,
-      x,
-      y,
       from,
       to,
+      id,
     });
   }, [editable, editor]);
 
-  const openEditAt = useCallback(
-    (el: HTMLElement) => {
+  const openEdit = useCallback(
+    (item: SideNote) => {
       if (!editable || !editor.isEditable) return;
-      const note = el.getAttribute('data-note') ?? '';
-      const rect = el.getBoundingClientRect();
-      const { x, y } = placeNearRect(rect);
-      let from = editor.state.selection.from;
-      let to = editor.state.selection.to;
-      try {
-        const pos = editor.view.posAtDOM(el, 0);
-        if (pos >= 0) {
-          editor
-            .chain()
-            .setTextSelection(pos)
-            .extendMarkRange('annotation')
-            .run();
-          from = editor.state.selection.from;
-          to = editor.state.selection.to;
-        }
-      } catch {
-        // ignore
-      }
-      setHover(null);
-      setBubble(null);
-      setDraft({ mode: 'edit', note, x, y, from, to });
+      editor
+        .chain()
+        .focus()
+        .setTextSelection({ from: item.from, to: item.to })
+        .run();
+      setActiveId(item.id);
+      setDraft({
+        mode: 'edit',
+        note: item.note,
+        from: item.from,
+        to: item.to,
+        id: item.id,
+      });
     },
     [editable, editor],
   );
@@ -190,11 +165,12 @@ export function DocumentNotes({ editor, editable }: Props) {
     }
     const chain = editor.chain().focus().setTextSelection({ from, to });
     if (draft.mode === 'edit') {
-      chain.updateAnnotation({ note }).run();
+      chain.updateAnnotation({ note, id: draft.id ?? undefined }).run();
     } else {
       chain.setAnnotation({ note }).run();
     }
     setDraft(null);
+    window.requestAnimationFrame(refreshNotes);
   };
 
   const deleteNote = () => {
@@ -206,42 +182,11 @@ export function DocumentNotes({ editor, editable }: Props) {
       .unsetAnnotation()
       .run();
     setDraft(null);
+    window.requestAnimationFrame(refreshNotes);
   };
 
   useEffect(() => {
     const root = editor.view.dom;
-
-    const clearHoverTimer = () => {
-      if (hoverTimer.current != null) {
-        window.clearTimeout(hoverTimer.current);
-        hoverTimer.current = null;
-      }
-    };
-
-    const onMove = (e: MouseEvent) => {
-      if (draftRef.current) return;
-      const target = (e.target as HTMLElement | null)?.closest?.(
-        '[data-annotation]',
-      ) as HTMLElement | null;
-      if (!target) {
-        clearHoverTimer();
-        setHover(null);
-        return;
-      }
-      const note = target.getAttribute('data-note')?.trim();
-      if (!note) return;
-      clearHoverTimer();
-      hoverTimer.current = window.setTimeout(() => {
-        const rect = target.getBoundingClientRect();
-        const width = 260;
-        const x = clamp(
-          rect.left + rect.width / 2 - width / 2,
-          8,
-          window.innerWidth - width - 8,
-        );
-        setHover({ note, x, y: Math.max(8, rect.top - 8) });
-      }, 160);
-    };
 
     const onClick = (e: MouseEvent) => {
       const target = (e.target as HTMLElement | null)?.closest?.(
@@ -250,21 +195,36 @@ export function DocumentNotes({ editor, editable }: Props) {
       if (!target || !editable || !editor.isEditable) return;
       e.preventDefault();
       e.stopPropagation();
-      openEditAt(target);
+      try {
+        const pos = editor.view.posAtDOM(target, 0);
+        editor
+          .chain()
+          .setTextSelection(pos)
+          .extendMarkRange('annotation')
+          .run();
+        const attrs = editor.getAttributes('annotation');
+        setDraft({
+          mode: 'edit',
+          note: String(attrs.note ?? ''),
+          from: editor.state.selection.from,
+          to: editor.state.selection.to,
+          id: (attrs.id as string | null) ?? null,
+        });
+        setActiveId((attrs.id as string | null) ?? null);
+      } catch {
+        // ignore
+      }
     };
 
     const onOpenNote = () => openCreate();
 
-    root.addEventListener('mousemove', onMove);
     root.addEventListener('click', onClick);
     root.addEventListener('sc-open-note', onOpenNote as EventListener);
     return () => {
-      clearHoverTimer();
-      root.removeEventListener('mousemove', onMove);
       root.removeEventListener('click', onClick);
       root.removeEventListener('sc-open-note', onOpenNote as EventListener);
     };
-  }, [editable, editor, openCreate, openEditAt]);
+  }, [editable, editor, openCreate]);
 
   useEffect(() => {
     if (!editable) return;
@@ -279,40 +239,32 @@ export function DocumentNotes({ editor, editable }: Props) {
     return () => window.removeEventListener('keydown', onKey);
   }, [editable, editor, openCreate]);
 
-  return createPortal(
-    <>
-      {editable && bubble && !draft ? (
-        <div
-          className="sc-doc-note-bubble"
-          style={{ left: bubble.x, top: bubble.y }}
-          role="toolbar"
-          aria-label="Seleção"
+  return (
+    <aside className="sc-doc-notes-rail" aria-label="Notas">
+      <div className="sc-doc-notes-rail-head">Notas</div>
+
+      {editable && hasSelection && !draft ? (
+        <button
+          type="button"
+          className="sc-doc-notes-add"
           onMouseDown={(e) => {
-            // impede a seleção do editor sumir ao clicar no botão
             e.preventDefault();
             e.stopPropagation();
           }}
+          onClick={openCreate}
         >
-          <button
-            type="button"
-            className="sc-doc-note-bubble-btn"
-            onClick={openCreate}
-          >
-            {editor.isActive('annotation') ? 'Editar nota' : 'Adicionar nota'}
-          </button>
-        </div>
+          + Nota na seleção
+        </button>
       ) : null}
 
       {draft ? (
         <div
-          className="sc-doc-note-composer"
-          style={{ left: draft.x, top: draft.y }}
+          className="sc-doc-note-card is-editing"
           role="dialog"
-          aria-label={draft.mode === 'edit' ? 'Editar nota' : 'Nova nota'}
-          onMouseDown={(e) => e.stopPropagation()}
+          aria-label="Editar nota"
         >
-          <div className="sc-doc-note-composer-head">
-            <span>{draft.mode === 'edit' ? 'Nota' : 'Nova nota'}</span>
+          <div className="sc-doc-note-card-head">
+            <span>{draft.mode === 'edit' ? 'Editar nota' : 'Nova nota'}</span>
             <button
               type="button"
               className="sc-doc-note-composer-x"
@@ -374,16 +326,25 @@ export function DocumentNotes({ editor, editable }: Props) {
         </div>
       ) : null}
 
-      {hover && !draft ? (
-        <div
-          className="sc-doc-note-tip"
-          style={{ left: hover.x, top: hover.y }}
-          role="tooltip"
-        >
-          {hover.note}
-        </div>
-      ) : null}
-    </>,
-    globalThis.document.body,
+      <div className="sc-doc-notes-track">
+        {notes.length === 0 && !draft ? (
+          <p className="sc-doc-notes-empty">
+            Selecione um trecho e adicione uma nota.
+          </p>
+        ) : null}
+        {notes.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className={`sc-doc-note-card is-soft${activeId === item.id ? ' is-active' : ''}`}
+            style={{ top: item.top }}
+            onClick={() => openEdit(item)}
+            title={item.note}
+          >
+            <span className="sc-doc-note-card-text">{item.note}</span>
+          </button>
+        ))}
+      </div>
+    </aside>
   );
 }

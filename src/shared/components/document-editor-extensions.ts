@@ -230,12 +230,14 @@ function newAnnotationId() {
 
 /**
  * Anotação estilo Edge: marca o texto selecionado com uma nota.
- * Hover / clique mostram o conteúdo (UI no DocumentEditor).
+ * Funciona junto com código (inline e bloco) e demais marcas.
  */
 export const Annotation = Mark.create({
   name: 'annotation',
   inclusive: false,
   keepOnSplit: false,
+  excludes: '',
+  spanning: true,
 
   addAttributes() {
     return {

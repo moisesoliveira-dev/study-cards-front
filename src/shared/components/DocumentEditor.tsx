@@ -2,8 +2,10 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import { Extension } from '@tiptap/core';
 import type { Editor } from '@tiptap/core';
+import { Plugin, PluginKey } from '@tiptap/pm/state';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
+import Code from '@tiptap/extension-code';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import Highlight from '@tiptap/extension-highlight';
 import TextAlign from '@tiptap/extension-text-align';
@@ -22,6 +24,149 @@ import {
 import { DocumentNotes } from './DocumentNotes';
 
 const lowlight = createLowlight(common);
+
+/** Código inline que permite anotações (e outras marcas). */
+const CodeWithNotes = Code.extend({
+  excludes: 'code',
+});
+
+/** Bloco de código que permite anotações. */
+const CodeBlockWithNotes = CodeBlockLowlight.extend({
+  marks: 'annotation',
+});
+
+function looksLikeRichHtml(html: string): boolean {
+  const t = html.trim().toLowerCase();
+  if (!t.includes('<')) return false;
+  if (t.includes('<!--startfragment-->') || t.includes('mso-')) return true;
+  if (/<pre[\s>]/.test(t) || /<code[\s>]/.test(t)) return true;
+  return /<(p|div|ul|ol|li|h[1-6]|table|blockquote|strong|em|b|i|a|br)\b/.test(
+    t,
+  );
+}
+
+function looksLikeCode(text: string): boolean {
+  const lines = text.replace(/\r\n/g, '\n').split('\n');
+  if (lines.length < 2) {
+    return (
+      /[{};]\s*$/.test(text.trim()) ||
+      /^(import |export |const |let |var |function |class |def |package |#include )/m.test(
+        text,
+      )
+    );
+  }
+  const indented = lines.filter((l) => /^\s{2,}|\t/.test(l)).length;
+  const codey = lines.filter((l) =>
+    /[{};]|=>|::|def |function |class |import |#include |SELECT |FROM /.test(l),
+  ).length;
+  return indented >= 1 || codey >= 2 || (lines.length >= 3 && codey >= 1);
+}
+
+function looksLikeMarkdown(text: string): boolean {
+  return (
+    /^#{1,6}\s/m.test(text) ||
+    /^\s*[-*+]\s+\S/m.test(text) ||
+    /^\s*\d+\.\s+\S/m.test(text) ||
+    /```[\s\S]*```/.test(text) ||
+    /\*\*[^*\n]+\*\*/.test(text) ||
+    /\[[^\]]+\]\([^)]+\)/.test(text)
+  );
+}
+
+function detectCodeLanguage(text: string): string {
+  if (
+    /^\s*import .+ from ['"]|:\s*[A-Z]\w*<|interface |type \w+ =/m.test(text)
+  ) {
+    return 'typescript';
+  }
+  if (/^\s*(def |async def |from \w+ import |print\()/m.test(text)) {
+    return 'python';
+  }
+  if (/^\s*(SELECT |INSERT |UPDATE |DELETE |CREATE TABLE)/im.test(text)) {
+    return 'sql';
+  }
+  if (/^\s*(fn |let mut |impl |pub )/m.test(text)) return 'rust';
+  if (/^\s*(package |func |fmt\.)/m.test(text)) return 'go';
+  if (/^\s*(public class |System\.out|void main)/m.test(text)) return 'java';
+  if (/^\s*(\.|#)\w+[^{]*\{/m.test(text) && /:\s*[^;]+;/.test(text)) {
+    return 'css';
+  }
+  if (/^\s*</.test(text.trim()) && /<\/\w+>/.test(text)) return 'html';
+  if (/^\s*[{\[]/.test(text.trim()) && /"\w+"\s*:/.test(text)) return 'json';
+  if (/^\s*(#!\/bin\/|echo |export \w+=)/m.test(text)) return 'bash';
+  return 'typescript';
+}
+
+/**
+ * Cola código/markdown/HTML com autoformatação (experiência de documento).
+ */
+const PasteSmartFormat = Extension.create({
+  name: 'pasteSmartFormat',
+
+  addProseMirrorPlugins() {
+    const editor = this.editor;
+    return [
+      new Plugin({
+        key: new PluginKey('pasteSmartFormat'),
+        props: {
+          handlePaste(_view, event) {
+            if (!event.clipboardData || editor.isActive('codeBlock')) {
+              return false;
+            }
+
+            const html = event.clipboardData.getData('text/html') ?? '';
+            const text = event.clipboardData.getData('text/plain') ?? '';
+            if (!text.trim() && !html.trim()) return false;
+
+            const fromWord =
+              /mso-|xmlns:o=|<!--\[if/i.test(html) ||
+              (html.includes('StartFragment') &&
+                /<(p|h[1-6]|table)\b/i.test(html));
+
+            // Código (IDE / texto puro): vira bloco formatado com linguagem.
+            if (
+              text.trim() &&
+              looksLikeCode(text) &&
+              !fromWord &&
+              !looksLikeMarkdown(text)
+            ) {
+              event.preventDefault();
+              const language = detectCodeLanguage(text);
+              editor
+                .chain()
+                .focus()
+                .insertContent({
+                  type: 'codeBlock',
+                  attrs: { language },
+                  content: [{ type: 'text', text }],
+                })
+                .run();
+              return true;
+            }
+
+            // Markdown → tipografia tipográfica.
+            if (text.trim() && looksLikeMarkdown(text) && !fromWord) {
+              event.preventDefault();
+              editor
+                .chain()
+                .focus()
+                .insertContent(text, { contentType: 'markdown' })
+                .run();
+              return true;
+            }
+
+            // HTML rico (Word, browser): deixa o TipTap parsear.
+            if (html.trim() && looksLikeRichHtml(html)) {
+              return false;
+            }
+
+            return false;
+          },
+        },
+      }),
+    ];
+  },
+});
 
 export const CODE_LANGUAGES = [
   { value: 'javascript', label: 'JavaScript' },
@@ -544,6 +689,7 @@ export function DocumentEditor({
     shouldRerenderOnTransaction: true,
     extensions: [
       StarterKit.configure({
+        code: false,
         codeBlock: false,
         link: {
           openOnClick: false,
@@ -551,7 +697,8 @@ export function DocumentEditor({
         },
       }),
       Placeholder.configure({ placeholder }),
-      CodeBlockLowlight.configure({
+      CodeWithNotes,
+      CodeBlockWithNotes.configure({
         lowlight,
         defaultLanguage: 'typescript',
       }),
@@ -572,6 +719,7 @@ export function DocumentEditor({
       TaskItem.configure({ nested: true }),
       Annotation,
       Markdown,
+      PasteSmartFormat,
       DocumentShortcuts,
     ],
     content: initialDoc?.content ?? '',
@@ -635,19 +783,43 @@ export function DocumentEditor({
     <div className={`sc-doc-editor${editable ? '' : ' is-readonly'}`}>
       {editable ? (
         <div className="sc-doc-ribbon">
-          <div className="sc-doc-ribbon-tabs" role="tablist" aria-label="Ferramentas">
-            {RIBBON_TABS.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                role="tab"
-                aria-selected={tab === item.id}
-                className={`sc-doc-ribbon-tab${tab === item.id ? ' active' : ''}`}
-                onClick={() => setTab(item.id)}
+          <div className="sc-doc-ribbon-top">
+            <div className="sc-doc-qat" aria-label="Acesso rápido">
+              <ToolButton
+                title="Desfazer"
+                shortcut="Mod-z"
+                disabled={!editor.can().undo()}
+                onClick={() => editor.chain().focus().undo().run()}
               >
-                {item.label}
-              </button>
-            ))}
+                ↺
+              </ToolButton>
+              <ToolButton
+                title="Refazer"
+                shortcut="Mod-y"
+                disabled={!editor.can().redo()}
+                onClick={() => editor.chain().focus().redo().run()}
+              >
+                ↻
+              </ToolButton>
+            </div>
+            <div
+              className="sc-doc-ribbon-tabs"
+              role="tablist"
+              aria-label="Ferramentas"
+            >
+              {RIBBON_TABS.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === item.id}
+                  className={`sc-doc-ribbon-tab${tab === item.id ? ' active' : ''}`}
+                  onClick={() => setTab(item.id)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div
@@ -657,25 +829,6 @@ export function DocumentEditor({
           >
             {tab === 'inicio' ? (
               <>
-                <Group label="Área de transferência">
-                  <ToolButton
-                    title="Desfazer"
-                    shortcut="Mod-z"
-                    disabled={!editor.can().undo()}
-                    onClick={() => editor.chain().focus().undo().run()}
-                  >
-                    ↺
-                  </ToolButton>
-                  <ToolButton
-                    title="Refazer"
-                    shortcut="Mod-y"
-                    disabled={!editor.can().redo()}
-                    onClick={() => editor.chain().focus().redo().run()}
-                  >
-                    ↻
-                  </ToolButton>
-                </Group>
-
                 <Group label="Fonte">
                   <select
                     className="sc-doc-lang"

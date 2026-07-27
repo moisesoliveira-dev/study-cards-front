@@ -2368,11 +2368,53 @@ ion-popover {
   background: var(--surface-2);
 }
 
+.sc-doc-ribbon-top {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  border-bottom: 0.5px solid var(--border);
+  padding: 0 4px 0 2px;
+}
+
+.sc-doc-qat {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+  padding: 4px 2px 6px;
+  margin-right: 2px;
+}
+
+.sc-doc-qat .sc-doc-tool {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: 4px;
+  padding: 4px 6px;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  min-width: 28px;
+  min-height: 28px;
+}
+
+.sc-doc-qat .sc-doc-tool:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--surface-1) 80%, transparent);
+  color: var(--text-primary);
+}
+
+.sc-doc-qat .sc-doc-tool:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
 .sc-doc-ribbon-tabs {
   display: flex;
   gap: 2px;
-  padding: 6px 8px 0;
-  border-bottom: 0.5px solid var(--border);
+  flex: 1;
+  min-width: 0;
+  padding: 6px 4px 0;
 }
 
 .sc-doc-ribbon-tab {
@@ -2650,31 +2692,209 @@ ion-popover {
   color: #1f2937;
 }
 
-/* Anotações estilo Edge */
+/* Documento + painel de notas ao lado */
 .sc-doc-surface-wrap {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  min-height: 280px;
   position: relative;
+}
+
+.sc-doc-surface-wrap > .sc-doc-surface {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.sc-doc-notes-rail {
+  flex: 0 0 196px;
+  width: 196px;
+  max-width: 42%;
+  border-left: 0.5px solid var(--border);
+  background: color-mix(in srgb, var(--surface-2) 72%, transparent);
+  padding: 10px 8px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.sc-doc-notes-rail-head {
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 0 4px;
+}
+
+.sc-doc-notes-add {
+  border: 0.5px dashed color-mix(in srgb, var(--border-strong) 70%, transparent);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 550;
+  padding: 8px 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.sc-doc-notes-add:hover {
+  background: color-mix(in srgb, var(--surface-1) 80%, transparent);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.sc-doc-notes-empty {
+  margin: 8px 4px 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.sc-doc-notes-track {
+  position: relative;
+  flex: 1;
+  min-height: 120px;
+}
+
+.sc-doc-note-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface-1) 88%, transparent);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.45;
+  padding: 8px 10px;
+  cursor: pointer;
+  box-shadow: none;
+  transition:
+    opacity 0.2s ease,
+    background 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.sc-doc-note-card.is-soft {
+  position: absolute;
+  left: 0;
+  right: 0;
+  opacity: 0.82;
+  background: transparent;
+  border-left: 2px solid color-mix(in srgb, var(--text-accent) 45%, transparent);
+  border-radius: 0 6px 6px 0;
+  padding: 4px 8px 4px 10px;
+}
+
+.sc-doc-note-card.is-soft:hover,
+.sc-doc-note-card.is-soft.is-active {
+  opacity: 1;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--surface-1) 90%, transparent);
+}
+
+.sc-doc-note-card.is-editing {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  opacity: 1;
+  background: var(--surface-1);
+  border: 0.5px solid var(--border);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--text-primary) 10%, transparent);
+}
+
+.sc-doc-note-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.sc-doc-note-card-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: pre-wrap;
+}
+
+.sc-doc-note-card.is-editing textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 72px;
+  border: 0.5px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+  padding: 8px 10px;
+  outline: none;
 }
 
 .sc-doc-surface .tiptap .sc-doc-annotation {
-  background: color-mix(in srgb, #fde047 42%, transparent);
-  border-bottom: 1.5px solid color-mix(in srgb, #ca8a04 70%, transparent);
-  border-radius: 2px;
-  padding: 0 1px;
+  background: transparent;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  color: color-mix(in srgb, var(--text-accent) 70%, var(--text-primary));
+  border-bottom: 1.5px solid
+    color-mix(in srgb, var(--text-accent) 48%, transparent);
+  border-radius: 0;
+  padding: 0;
   cursor: pointer;
-  color: inherit;
-  position: relative;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  transition: border-color 0.18s ease, color 0.18s ease;
 }
 
-.sc-doc-surface .tiptap .sc-doc-annotation::after {
-  content: '';
-  display: inline-block;
-  width: 9px;
-  height: 9px;
-  margin-left: 3px;
-  vertical-align: super;
-  border-radius: 2px 2px 2px 0;
-  background: #ca8a04;
-  box-shadow: 1px 1px 0 color-mix(in srgb, #000 12%, transparent);
+.sc-doc-surface .tiptap .sc-doc-annotation:hover {
+  color: color-mix(in srgb, var(--text-accent) 88%, var(--text-primary));
+  border-bottom-color: color-mix(in srgb, var(--text-accent) 75%, transparent);
+}
+
+.sc-doc-surface .tiptap pre .sc-doc-annotation,
+.sc-doc-surface .tiptap code .sc-doc-annotation {
+  font-weight: 700;
+  color: color-mix(in srgb, #79c0ff 55%, inherit);
+  border-bottom-color: color-mix(in srgb, #79c0ff 55%, transparent);
+}
+
+@media (max-width: 720px) {
+  .sc-doc-surface-wrap {
+    flex-direction: column;
+  }
+
+  .sc-doc-notes-rail {
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: none;
+    border-left: none;
+    border-top: 0.5px solid var(--border);
+  }
+
+  .sc-doc-notes-track {
+    position: static;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .sc-doc-note-card.is-soft {
+    position: static;
+  }
 }
 
 .sc-doc-note-bubble {
