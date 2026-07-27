@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import {
   IonContent,
   IonHeader,
@@ -8,7 +8,7 @@ import {
   IonTitle,
   IonToolbar,
 } from '@ionic/react';
-import { layersOutline } from 'ionicons/icons';
+import { layersOutline, searchOutline } from 'ionicons/icons';
 import { cardLevelsFacade } from '../../cards/facades/card-levels.facade';
 import type { CardLevel } from '../../cards/types/card-level.types';
 import { useAppToast } from '../../../shared/hooks/useAppToast';
@@ -32,6 +32,17 @@ export default function CardLevelsCadastroPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<Draft>(emptyDraft);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [listFilter, setListFilter] = useState('');
+
+  const filteredLevels = useMemo(() => {
+    const q = listFilter.trim().toLocaleLowerCase('pt-BR');
+    if (!q) return levels;
+    return levels.filter((level) => {
+      const name = level.name.toLocaleLowerCase('pt-BR');
+      const desc = (level.description ?? '').toLocaleLowerCase('pt-BR');
+      return name.includes(q) || desc.includes(q);
+    });
+  }, [levels, listFilter]);
 
   useEffect(() => {
     let cancelled = false;
@@ -208,6 +219,19 @@ export default function CardLevelsCadastroPage() {
                 </div>
 
                 <div className="sc-cadastro-list-wrap">
+                  {levels.length > 0 ? (
+                    <div className="sc-cadastro-list-filter">
+                      <IonIcon icon={searchOutline} aria-hidden />
+                      <input
+                        type="search"
+                        value={listFilter}
+                        onChange={(e) => setListFilter(e.target.value)}
+                        placeholder="Filtrar níveis…"
+                        aria-label="Filtrar níveis"
+                      />
+                    </div>
+                  ) : null}
+
                   {loading ? (
                     <div className="sc-cadastro-levels-loading">
                       <IonSpinner name="crescent" />
@@ -220,8 +244,14 @@ export default function CardLevelsCadastroPage() {
                     </p>
                   ) : null}
 
+                  {!loading && levels.length > 0 && filteredLevels.length === 0 ? (
+                    <p className="sc-cadastro-levels-empty">
+                      Nenhum nível com “{listFilter.trim()}”.
+                    </p>
+                  ) : null}
+
                   <ul className="sc-cadastro-level-list">
-                    {levels.map((level) => {
+                    {filteredLevels.map((level) => {
                       const editing = editingId === level.id;
                       return (
                         <li
