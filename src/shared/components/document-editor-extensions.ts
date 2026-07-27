@@ -235,7 +235,6 @@ function newAnnotationId() {
 export const Annotation = Mark.create({
   name: 'annotation',
   inclusive: false,
-  excludes: '',
   keepOnSplit: false,
 
   addAttributes() {
@@ -245,7 +244,7 @@ export const Annotation = Mark.create({
         parseHTML: (element) => element.getAttribute('data-note') ?? '',
         renderHTML: (attributes) => {
           if (!attributes.note) return {};
-          return { 'data-note': attributes.note };
+          return { 'data-note': String(attributes.note) };
         },
       },
       id: {
@@ -253,7 +252,7 @@ export const Annotation = Mark.create({
         parseHTML: (element) => element.getAttribute('data-annotation-id'),
         renderHTML: (attributes) => {
           if (!attributes.id) return {};
-          return { 'data-annotation-id': attributes.id };
+          return { 'data-annotation-id': String(attributes.id) };
         },
       },
     };
@@ -266,10 +265,13 @@ export const Annotation = Mark.create({
   renderHTML({ HTMLAttributes }) {
     return [
       'span',
-      mergeAttributes(HTMLAttributes, {
-        'data-annotation': '',
-        class: 'sc-doc-annotation',
-      }),
+      mergeAttributes(
+        {
+          'data-annotation': 'true',
+          class: 'sc-doc-annotation',
+        },
+        HTMLAttributes,
+      ),
       0,
     ];
   },
@@ -292,7 +294,7 @@ export const Annotation = Mark.create({
         ({ commands }) =>
           commands.updateAttributes(this.name, {
             note: attrs.note,
-            id: attrs.id || newAnnotationId(),
+            ...(attrs.id ? { id: attrs.id } : {}),
           }),
     };
   },
