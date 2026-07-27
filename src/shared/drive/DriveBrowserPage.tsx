@@ -894,13 +894,19 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
 
       <CardDocumentSheet
         card={detail}
-        onClose={() => setDetail(null)}
+        onClose={() => {
+          setDetail(null);
+          setRaisedId(null);
+        }}
         onChanged={(updated) => {
           setDetail(updated);
           void load();
         }}
         onDelete={removeCard}
-        onOpenLinked={(linkedCard) => setDetail(linkedCard)}
+        onOpenLinked={(linkedCard) => {
+          setDetail(linkedCard);
+          setRaisedId(linkedCard.id);
+        }}
       />
 
       <ConfirmDialog
