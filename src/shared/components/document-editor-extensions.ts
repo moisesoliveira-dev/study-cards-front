@@ -1,4 +1,7 @@
 import { Extension, Mark, mergeAttributes } from '@tiptap/core';
+import { HardBreak } from '@tiptap/extension-hard-break';
+import type { Mark as ProseMirrorMark } from '@tiptap/pm/model';
+import type { EditorState } from '@tiptap/pm/state';
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
@@ -298,6 +301,79 @@ export const Annotation = Mark.create({
             note: attrs.note,
             ...(attrs.id ? { id: attrs.id } : {}),
           }),
+    };
+  },
+});
+
+/**
+ * Resolve marcas a preservar no Shift+Enter.
+ * O HardBreak padrão do TipTap falha no início do bloco
+ * (`parentOffset === 0`) e no fim de um trecho formatado.
+ */
+function marksForSoftBreak(state: EditorState): readonly ProseMirrorMark[] {
+  const { selection, storedMarks } = state;
+  if (storedMarks?.length) return storedMarks;
+
+  const { $from } = selection;
+  const atCursor = $from.marks();
+  if (atCursor.length) return atCursor;
+
+  const before = $from.nodeBefore?.marks;
+  if (before?.length) return before;
+
+  const after = $from.nodeAfter?.marks;
+  if (after?.length) return after;
+
+  return [];
+}
+
+/**
+ * Quebra de linha (Shift+Enter / Ctrl+Enter) que mantém formatação
+ * no início e no fim do texto marcado — como em editores de documento.
+ */
+export const SoftBreak = HardBreak.extend({
+  name: 'hardBreak',
+  priority: 1010,
+
+  addCommands() {
+    return {
+      setHardBreak:
+        () =>
+        ({ chain, state, editor, commands }) => {
+          // Em bloco de código: newline real, sem sair do bloco.
+          if (editor.isActive('codeBlock')) {
+            return commands.insertContent('\n');
+          }
+
+          const { selection } = state;
+          if (selection.$from.parent.type.spec.isolating) {
+            return false;
+          }
+
+          const marks = marksForSoftBreak(state);
+          const { keepMarks } = this.options;
+          const { splittableMarks } = editor.extensionManager;
+
+          return chain()
+            .insertContent({ type: this.name })
+            .command(({ tr, dispatch }) => {
+              if (dispatch && keepMarks && marks.length) {
+                const filtered = marks.filter((mark) =>
+                  splittableMarks.includes(mark.type.name),
+                );
+                if (filtered.length) tr.ensureMarks(filtered);
+              }
+              return true;
+            })
+            .run();
+        },
+    };
+  },
+
+  addKeyboardShortcuts() {
+    return {
+      'Mod-Enter': () => this.editor.commands.setHardBreak(),
+      'Shift-Enter': () => this.editor.commands.setHardBreak(),
     };
   },
 });

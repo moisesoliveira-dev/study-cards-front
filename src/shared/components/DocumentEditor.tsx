@@ -20,6 +20,7 @@ import {
   Indent,
   ParagraphLineHeight,
   ParagraphSpacing,
+  SoftBreak,
 } from './document-editor-extensions';
 import { DocumentNotes } from './DocumentNotes';
 
@@ -691,12 +692,14 @@ export function DocumentEditor({
       StarterKit.configure({
         code: false,
         codeBlock: false,
+        hardBreak: false,
         link: {
           openOnClick: false,
           autolink: true,
         },
       }),
       Placeholder.configure({ placeholder }),
+      SoftBreak.configure({ keepMarks: true }),
       CodeWithNotes,
       CodeBlockWithNotes.configure({
         lowlight,
@@ -1097,6 +1100,7 @@ export function DocumentEditor({
                   </ToolButton>
                   <ToolButton
                     title="Quebra de linha"
+                    shortcut="Shift-Enter"
                     onClick={() => editor.chain().focus().setHardBreak().run()}
                   >
                     ↵
