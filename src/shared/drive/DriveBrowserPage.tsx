@@ -42,6 +42,8 @@ import {
   createOutline,
   documentTextOutline,
   folderOutline,
+  openOutline,
+  pencilOutline,
   trashOutline,
 } from 'ionicons/icons';
 
@@ -113,6 +115,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   const [query, setQuery] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [folderOpen, setFolderOpen] = useState(false);
+  const [editingFolder, setEditingFolder] = useState<TopicTreeNode | null>(null);
   const [cardOpen, setCardOpen] = useState(false);
   const [mergeOpen, setMergeOpen] = useState(false);
   const [mergeSources, setMergeSources] = useState<Card[]>([]);
@@ -175,7 +178,11 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   const filteredFolders = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return folders;
-    return folders.filter((n) => n.name.toLowerCase().includes(q));
+    return folders.filter(
+      (n) =>
+        n.name.toLowerCase().includes(q) ||
+        (n.description ?? '').toLowerCase().includes(q),
+    );
   }, [folders, query]);
 
   const filteredCards = useMemo(() => {
@@ -336,20 +343,47 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     openMergeComposer(sources);
   };
 
-  const createFolder = async () => {
+  const openCreateFolder = () => {
+    setEditingFolder(null);
+    setName('');
+    setDescription('');
+    setFolderOpen(true);
+  };
+
+  const openEditFolder = (node: TopicTreeNode) => {
+    setEditingFolder(node);
+    setName(node.name);
+    setDescription(node.description ?? '');
+    setFolderOpen(true);
+  };
+
+  const closeFolderModal = () => {
+    setFolderOpen(false);
+    setEditingFolder(null);
+    setName('');
+    setDescription('');
+  };
+
+  const saveFolder = async () => {
     if (!name.trim()) return;
     setSaving(true);
     try {
-      await topicsFacade.create({
-        subjectId,
-        parentId: topicId ?? null,
-        name,
-        description,
-      });
-      setFolderOpen(false);
-      setName('');
-      setDescription('');
-      toast.success('Pasta criada');
+      if (editingFolder) {
+        await topicsFacade.update(editingFolder.id, {
+          name,
+          description: description.trim() || null,
+        });
+        toast.success('Pasta atualizada');
+      } else {
+        await topicsFacade.create({
+          subjectId,
+          parentId: topicId ?? null,
+          name,
+          description,
+        });
+        toast.success('Pasta criada');
+      }
+      closeFolderModal();
       await load();
     } catch (error) {
       toast.error(error);
@@ -488,8 +522,14 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
           {
             id: 'open',
             label: 'Abrir pasta',
-            icon: folderOutline,
+            icon: openOutline,
             onSelect: () => openFolder(node.id),
+          },
+          {
+            id: 'rename',
+            label: 'Renomear / editar',
+            icon: pencilOutline,
+            onSelect: () => openEditFolder(node),
           },
           {
             id: 'delete',
@@ -521,7 +561,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
             id: 'folder',
             label: 'Nova pasta',
             icon: folderOutline,
-            onSelect: () => setFolderOpen(true),
+            onSelect: openCreateFolder,
           },
         ],
         folderName,
@@ -600,7 +640,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
             onQuery={setQuery}
             view={view}
             onView={setView}
-            onNewFolder={() => setFolderOpen(true)}
+            onNewFolder={openCreateFolder}
             onNewCard={() => setCardOpen(true)}
           />
 
@@ -756,37 +796,95 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
           ) : null}
 
           <div className="sc-section-label">Pastas</div>
-          <MotionStagger className="sc-grid" key={`folders-${filteredFolders.length}`}>
-            {filteredFolders.map((node) => (
-              <DropZone key={node.id} target={{ kind: 'folder', id: node.id }}>
-                <DragItem
-                  payload={{
-                    kind: 'folder',
-                    id: node.id,
-                    subjectId,
-                    parentId: node.parentId,
-                    label: node.name,
-                  }}
-                  onClick={() => openFolder(node.id)}
-                  onContextMenu={(e) => openFolderContextMenu(e, node)}
-                >
-                  <DriveFolderItem
-                    name={node.name}
-                    subtitle={`${node.children.length} sub · abrir`}
-                    color={subject?.color}
+          {view === 'grid' ? (
+            <MotionStagger className="sc-grid" key={`folders-${filteredFolders.length}`}>
+              {filteredFolders.map((node) => (
+                <DropZone key={node.id} target={{ kind: 'folder', id: node.id }}>
+                  <DragItem
+                    payload={{
+                      kind: 'folder',
+                      id: node.id,
+                      subjectId,
+                      parentId: node.parentId,
+                      label: node.name,
+                    }}
                     onClick={() => openFolder(node.id)}
-                    onDelete={() => setDeleteFolder(node)}
                     onContextMenu={(e) => openFolderContextMenu(e, node)}
-                  />
-                </DragItem>
-              </DropZone>
-            ))}
-            <DriveFolderItem
-              name="Nova pasta"
-              dashed
-              onClick={() => setFolderOpen(true)}
-            />
-          </MotionStagger>
+                  >
+                    <DriveFolderItem
+                      name={node.name}
+                      subtitle={node.description || 'Abrir pasta'}
+                      color={subject?.color}
+                      onClick={() => openFolder(node.id)}
+                      onDelete={() => setDeleteFolder(node)}
+                      onContextMenu={(e) => openFolderContextMenu(e, node)}
+                    />
+                  </DragItem>
+                </DropZone>
+              ))}
+              <DriveFolderItem
+                name="Nova pasta"
+                dashed
+                onClick={openCreateFolder}
+              />
+            </MotionStagger>
+          ) : (
+            <MotionStagger
+              className="sc-list-view"
+              key={`folders-list-${filteredFolders.length}`}
+            >
+              {filteredFolders.map((node, i) => (
+                <DropZone key={node.id} target={{ kind: 'folder', id: node.id }}>
+                  <div
+                    className="sc-list-row-wrap"
+                    onContextMenu={(e) => openFolderContextMenu(e, node)}
+                  >
+                    <DragItem
+                      payload={{
+                        kind: 'folder',
+                        id: node.id,
+                        subjectId,
+                        parentId: node.parentId,
+                        label: node.name,
+                      }}
+                      onClick={() => openFolder(node.id)}
+                      onContextMenu={(e) => openFolderContextMenu(e, node)}
+                    >
+                      <motion.div
+                        className="sc-list-row"
+                        initial={reduce ? false : { opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.03 }}
+                        whileTap={reduce ? undefined : tapScale}
+                      >
+                        <span className="list-icon">📁</span>
+                        <span className="list-name">{node.name}</span>
+                        <span className="list-tag">Pasta</span>
+                        <span
+                          className="list-links"
+                          title={node.description || undefined}
+                        >
+                          {node.description || '—'}
+                        </span>
+                      </motion.div>
+                    </DragItem>
+                    <button
+                      type="button"
+                      className="sc-list-delete"
+                      aria-label={`Excluir ${node.name}`}
+                      title="Excluir"
+                      onClick={() => setDeleteFolder(node)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                </DropZone>
+              ))}
+              {!filteredFolders.length ? (
+                <div className="sc-empty">Nenhuma pasta aqui.</div>
+              ) : null}
+            </MotionStagger>
+          )}
 
           <div className="sc-bottom">
             <span>
@@ -804,16 +902,18 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         </MotionShell>
       </IonContent>
 
-      <IonModal isOpen={folderOpen} onDidDismiss={() => setFolderOpen(false)}>
+      <IonModal isOpen={folderOpen} onDidDismiss={closeFolderModal}>
         <IonHeader>
           <IonToolbar>
-            <IonTitle>Nova pasta</IonTitle>
+            <IonTitle>
+              {editingFolder ? 'Editar pasta' : 'Nova pasta'}
+            </IonTitle>
             <IonButtons slot="end">
               <button
                 type="button"
                 className="sc-modal-x"
                 aria-label="Fechar"
-                onClick={() => setFolderOpen(false)}
+                onClick={closeFolderModal}
               >
                 ×
               </button>
@@ -834,9 +934,13 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
             className="sc-btn primary"
             style={{ marginTop: 16 }}
             disabled={saving || !name.trim()}
-            onClick={() => void createFolder()}
+            onClick={() => void saveFolder()}
           >
-            Criar
+            {saving
+              ? 'Salvando…'
+              : editingFolder
+                ? 'Salvar alterações'
+                : 'Criar pasta'}
           </button>
         </IonContent>
       </IonModal>
