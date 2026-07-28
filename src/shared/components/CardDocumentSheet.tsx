@@ -60,15 +60,35 @@ export function CardDocumentSheet({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [flipped, setFlipped] = useState(false);
   const [flipping, setFlipping] = useState(false);
+  const [baseline, setBaseline] = useState({
+    front: '',
+    back: '',
+    docJson: '',
+    tag: '',
+    levelId: null as string | null,
+    icon: null as string | null,
+    color: null as string | null,
+  });
 
   const hydrate = (next: Card) => {
+    const nextDoc = seedDocument(next);
+    const nextColor = next.color ?? CARD_ACCENT_COLORS[0];
     setFront(next.front);
     setBack(next.back);
     setTag(next.tag);
     setLevelId(next.levelId ?? null);
     setIcon(next.icon ?? null);
-    setColor(next.color ?? CARD_ACCENT_COLORS[0]);
-    setDocJson(seedDocument(next));
+    setColor(nextColor);
+    setDocJson(nextDoc);
+    setBaseline({
+      front: next.front,
+      back: next.back,
+      docJson: nextDoc,
+      tag: next.tag,
+      levelId: next.levelId ?? null,
+      icon: next.icon ?? null,
+      color: nextColor,
+    });
   };
 
   useEffect(() => {
@@ -163,8 +183,17 @@ export function CardDocumentSheet({
     card.document?.trim() && documentToPlainText(card.document),
   );
 
+  const isDirty =
+    front !== baseline.front ||
+    back !== baseline.back ||
+    docJson !== baseline.docJson ||
+    tag !== baseline.tag ||
+    levelId !== baseline.levelId ||
+    icon !== baseline.icon ||
+    color !== baseline.color;
+
   const save = async () => {
-    if (!front.trim()) return;
+    if (!front.trim() || !isDirty) return;
     setSaving(true);
     try {
       const plain = documentToPlainText(docJson);
@@ -184,7 +213,6 @@ export function CardDocumentSheet({
       });
       onChanged(updated);
       hydrate(updated);
-      setEditing(false);
       toast.success('Salvo');
     } catch (error) {
       toast.error(error);
@@ -218,9 +246,9 @@ export function CardDocumentSheet({
       type="button"
       className="sc-edit-icon sc-save-icon"
       onClick={() => void save()}
-      disabled={saving || !front.trim()}
+      disabled={saving || !front.trim() || !isDirty}
       aria-label="Salvar"
-      title="Salvar"
+      title={isDirty ? 'Salvar alterações' : 'Sem alterações'}
     >
       {saving ? <IonSpinner name="crescent" /> : <IonIcon icon={saveOutline} />}
     </button>
@@ -376,6 +404,7 @@ export function CardDocumentSheet({
                 value={docJson || ''}
                 onChange={setDocJson}
                 editable={editing}
+                cardId={card.id}
                 placeholder="Markdown: # título, **negrito**, listas…"
               />
             )}

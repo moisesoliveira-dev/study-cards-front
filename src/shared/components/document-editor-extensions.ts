@@ -290,13 +290,13 @@ export const Annotation = Mark.create({
     ];
   },
 
-  addCommands() {
+      addCommands() {
     return {
       setAnnotation:
         (attrs) =>
         ({ commands }) =>
           commands.setMark(this.name, {
-            note: attrs.note,
+            note: attrs.note ?? '',
             id: attrs.id || newAnnotationId(),
           }),
       unsetAnnotation:
@@ -306,10 +306,8 @@ export const Annotation = Mark.create({
       updateAnnotation:
         (attrs) =>
         ({ commands }) =>
-          // setMark no intervalo selecionado (updateAttributes falha em seleção vazia
-          // e é frágil para marks com attrs grandes).
           commands.setMark(this.name, {
-            note: attrs.note,
+            note: attrs.note ?? '',
             id: attrs.id || newAnnotationId(),
           }),
     };

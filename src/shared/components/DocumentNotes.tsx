@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Editor } from '@tiptap/core';
+import { documentNotesFacade } from '../../modules/cards/facades/document-notes.facade';
+import type { DocumentNote } from '../../modules/cards/types/document-note.types';
 import { DocumentNoteEditor, isNoteBlank } from './DocumentNoteEditor';
 
 const PANEL_W = 360;
@@ -20,6 +22,7 @@ type Panel = {
 type Props = {
   editor: Editor;
   editable: boolean;
+  cardId?: string | null;
 };
 
 /** Posição fixa ao lado do modal do documento (não segue o trecho). */
@@ -57,13 +60,28 @@ function sameNote(
   return a.from === b.from && a.to === b.to && a.note === b.note;
 }
 
-/** Nota flutuante fora do modal — só aparece ao criar ou ao clicar no trecho. */
-export function DocumentNotes({ editor, editable }: Props) {
+function collectMarkIds(editor: Editor): Set<string> {
+  const ids = new Set<string>();
+  editor.state.doc.descendants((node) => {
+    if (!node.isText) return;
+    for (const mark of node.marks) {
+      if (mark.type.name !== 'annotation') continue;
+      const id = mark.attrs.id as string | null | undefined;
+      if (id) ids.add(id);
+    }
+  });
+  return ids;
+}
+
+/** Nota flutuante — conteúdo persistido em tabela DocumentNote. */
+export function DocumentNotes({ editor, editable, cardId = null }: Props) {
   const [panel, setPanel] = useState<Panel | null>(null);
   const [visible, setVisible] = useState(false);
   const [bubble, setBubble] = useState<{ top: number; left: number } | null>(
     null,
   );
+  const [savingNote, setSavingNote] = useState(false);
+  const [notesById, setNotesById] = useState<Record<string, DocumentNote>>({});
   const panelRef = useRef<HTMLDivElement>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
   const panelSnap = useRef<Panel | null>(null);
@@ -72,6 +90,9 @@ export function DocumentNotes({ editor, editable }: Props) {
   const lastRange = useRef<{ from: number; to: number } | null>(null);
   const fadeTimer = useRef<number | null>(null);
   const gen = useRef(0);
+  const notesByIdRef = useRef(notesById);
+  notesByIdRef.current = notesById;
+  const hydrated = useRef(false);
 
   useEffect(() => {
     panelSnap.current = panel;
@@ -119,14 +140,19 @@ export function DocumentNotes({ editor, editable }: Props) {
   );
 
   const applyNoteMark = useCallback(
-    (from: number, to: number, note: string, id?: string | null) => {
+    (from: number, to: number, id: string) => {
       const range = clampRange(from, to);
       if (range.from >= range.to) return false;
       return editor
         .chain()
+        .command(({ tr }) => {
+          tr.setMeta('skipOnChange', true);
+          tr.setMeta('addToHistory', false);
+          return true;
+        })
         .focus()
         .setTextSelection(range)
-        .setAnnotation({ note, id: id || undefined })
+        .setAnnotation({ note: '', id })
         .run();
     },
     [clampRange, editor],
@@ -135,16 +161,13 @@ export function DocumentNotes({ editor, editable }: Props) {
   const removeNoteMark = useCallback(
     (from: number, to: number) => {
       const range = clampRange(from, to);
-      if (range.from >= range.to) {
-        return editor
-          .chain()
-          .focus()
-          .extendMarkRange('annotation')
-          .unsetAnnotation()
-          .run();
-      }
       return editor
         .chain()
+        .command(({ tr }) => {
+          tr.setMeta('skipOnChange', true);
+          tr.setMeta('addToHistory', false);
+          return true;
+        })
         .focus()
         .setTextSelection(range)
         .extendMarkRange('annotation')
@@ -153,6 +176,49 @@ export function DocumentNotes({ editor, editable }: Props) {
     },
     [clampRange, editor],
   );
+
+  /** Carrega notas da API e reaplica marcas ausentes no documento. */
+  useEffect(() => {
+    if (!cardId) {
+      setNotesById({});
+      hydrated.current = false;
+      return;
+    }
+    let cancelled = false;
+    hydrated.current = false;
+    void documentNotesFacade
+      .list(cardId)
+      .then((list) => {
+        if (cancelled) return;
+        const map: Record<string, DocumentNote> = {};
+        for (const n of list) map[n.id] = n;
+        setNotesById(map);
+
+        const existing = collectMarkIds(editor);
+        for (const n of list) {
+          if (existing.has(n.id)) continue;
+          const range = clampRange(n.fromPos, n.toPos);
+          if (range.from >= range.to) continue;
+          editor
+            .chain()
+            .command(({ tr }) => {
+              tr.setMeta('skipOnChange', true);
+              tr.setMeta('addToHistory', false);
+              return true;
+            })
+            .setTextSelection(range)
+            .setAnnotation({ note: '', id: n.id })
+            .run();
+        }
+        hydrated.current = true;
+      })
+      .catch(() => {
+        if (!cancelled) setNotesById({});
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cardId, clampRange, editor]);
 
   const openAt = useCallback(
     (next: Omit<Panel, 'top' | 'left'>) => {
@@ -253,6 +319,10 @@ export function DocumentNotes({ editor, editable }: Props) {
 
   const openCreate = useCallback(() => {
     if (!editable || !editor.isEditable) return;
+    if (!cardId) {
+      window.alert('Salve o card antes de adicionar notas.');
+      return;
+    }
     let { from, to, empty } = editor.state.selection;
     if (empty || from === to) {
       const saved = lastRange.current;
@@ -263,26 +333,32 @@ export function DocumentNotes({ editor, editable }: Props) {
     } else {
       lastRange.current = { from, to };
     }
-    const existing = editor.isActive('annotation')
-      ? ((editor.getAttributes('annotation').note as string | undefined) ?? '')
-      : '';
-    const id = editor.isActive('annotation')
+    const existingId = editor.isActive('annotation')
       ? ((editor.getAttributes('annotation').id as string | null) ?? null)
       : null;
+    const legacyNote = editor.isActive('annotation')
+      ? ((editor.getAttributes('annotation').note as string | undefined) ?? '')
+      : '';
+    const fromApi = existingId
+      ? notesByIdRef.current[existingId]?.content
+      : '';
     openAt({
-      mode: existing ? 'edit' : 'create',
-      note: existing,
+      mode: existingId || legacyNote ? 'edit' : 'create',
+      note: fromApi || legacyNote || '',
       from,
       to,
-      id,
+      id: existingId,
     });
-  }, [editable, editor, openAt]);
+  }, [editable, editor, openAt, cardId]);
 
-  const saveDraft = useCallback(() => {
+  const saveDraft = useCallback(async () => {
     const current = panelSnap.current;
     if (!current || current.mode === 'view') return;
+    if (!cardId) {
+      window.alert('Salve o card antes de adicionar notas.');
+      return;
+    }
 
-    // Conteúdo mais recente do TipTap (não esperar o setState do React).
     const note = noteContentRef.current || current.note;
     const { from, to, id, mode } = current;
 
@@ -292,28 +368,84 @@ export function DocumentNotes({ editor, editable }: Props) {
     }
 
     if (isNoteBlank(note)) {
+      if (id) {
+        try {
+          setSavingNote(true);
+          await documentNotesFacade.remove(cardId, id);
+          setNotesById((m) => {
+            const next = { ...m };
+            delete next[id];
+            return next;
+          });
+        } catch (error) {
+          window.alert(
+            error instanceof Error ? error.message : 'Falha ao excluir nota',
+          );
+          setSavingNote(false);
+          return;
+        } finally {
+          setSavingNote(false);
+        }
+      }
       removeNoteMark(from, to);
       closePanel();
       return;
     }
 
-    const ok = applyNoteMark(from, to, note, mode === 'edit' ? id : undefined);
-    if (!ok) {
-      // Fallback: tenta marcar a seleção atual do doc se o range antigo falhou.
-      const { empty, from: f, to: t } = editor.state.selection;
-      if (!empty && f < t) {
-        applyNoteMark(f, t, note, mode === 'edit' ? id : undefined);
+    try {
+      setSavingNote(true);
+      if (mode === 'edit' && id) {
+        const updated = await documentNotesFacade.update(cardId, id, {
+          content: note,
+          fromPos: from,
+          toPos: to,
+        });
+        setNotesById((m) => ({ ...m, [updated.id]: updated }));
+        applyNoteMark(from, to, updated.id);
+      } else {
+        const created = await documentNotesFacade.create(cardId, {
+          content: note,
+          fromPos: from,
+          toPos: to,
+        });
+        setNotesById((m) => ({ ...m, [created.id]: created }));
+        applyNoteMark(from, to, created.id);
       }
+      closePanel();
+    } catch (error) {
+      window.alert(
+        error instanceof Error ? error.message : 'Falha ao salvar nota',
+      );
+    } finally {
+      setSavingNote(false);
     }
-    closePanel();
-  }, [applyNoteMark, closePanel, editor, removeNoteMark]);
+  }, [applyNoteMark, cardId, closePanel, removeNoteMark]);
 
-  const deleteNote = useCallback(() => {
+  const deleteNote = useCallback(async () => {
     const current = panelSnap.current;
     if (!current) return;
+    if (cardId && current.id) {
+      try {
+        setSavingNote(true);
+        await documentNotesFacade.remove(cardId, current.id);
+        setNotesById((m) => {
+          const next = { ...m };
+          delete next[current.id as string];
+          return next;
+        });
+      } catch (error) {
+        window.alert(
+          error instanceof Error ? error.message : 'Falha ao excluir nota',
+        );
+        setSavingNote(false);
+        return;
+      } finally {
+        setSavingNote(false);
+      }
+    }
     removeNoteMark(current.from, current.to);
     closePanel();
-  }, [closePanel, removeNoteMark]);
+  }, [cardId, closePanel, removeNoteMark]);
 
   useEffect(() => {
     const root = editor.view.dom;
@@ -334,12 +466,14 @@ export function DocumentNotes({ editor, editable }: Props) {
           .extendMarkRange('annotation')
           .run();
         const attrs = editor.getAttributes('annotation');
-        const note = String(attrs.note ?? '');
         const id = (attrs.id as string | null) ?? null;
+        const legacy = String(attrs.note ?? '');
         const { from, to } = editor.state.selection;
+        const content =
+          (id && notesByIdRef.current[id]?.content) || legacy;
         openAt({
           mode: editable && editor.isEditable ? 'edit' : 'view',
-          note,
+          note: content,
           from,
           to,
           id,
@@ -468,7 +602,9 @@ export function DocumentNotes({ editor, editable }: Props) {
                 setPanel((p) => (p ? { ...p, note: json } : p));
               }}
               onEscape={closePanel}
-              onSaveShortcut={saveDraft}
+              onSaveShortcut={() => {
+                void saveDraft();
+              }}
             />
           </div>
 
@@ -478,7 +614,8 @@ export function DocumentNotes({ editor, editable }: Props) {
                 <button
                   type="button"
                   className="sc-btn sc-doc-note-danger"
-                  onClick={deleteNote}
+                  disabled={savingNote}
+                  onClick={() => void deleteNote()}
                 >
                   Excluir
                 </button>
@@ -486,16 +623,24 @@ export function DocumentNotes({ editor, editable }: Props) {
                 <span />
               )}
               <div className="sc-doc-note-composer-right">
-                <button type="button" className="sc-btn" onClick={closePanel}>
+                <button
+                  type="button"
+                  className="sc-btn"
+                  disabled={savingNote}
+                  onClick={closePanel}
+                >
                   Cancelar
                 </button>
                 <button
                   type="button"
                   className="sc-btn primary"
-                  onClick={saveDraft}
-                  disabled={isNoteBlank(noteContentRef.current || panel.note)}
+                  onClick={() => void saveDraft()}
+                  disabled={
+                    savingNote ||
+                    isNoteBlank(noteContentRef.current || panel.note)
+                  }
                 >
-                  Salvar
+                  {savingNote ? 'Salvando…' : 'Salvar'}
                 </button>
               </div>
             </div>

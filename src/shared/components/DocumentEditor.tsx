@@ -296,6 +296,8 @@ type Props = {
   onChange: (json: string) => void;
   editable?: boolean;
   placeholder?: string;
+  /** Card id — necessário para persistir notas na API. */
+  cardId?: string | null;
 };
 
 function isMac() {
@@ -731,6 +733,7 @@ export function DocumentEditor({
   onChange,
   editable = true,
   placeholder = 'Markdown: # título, **negrito**, listas, `código`…',
+  cardId = null,
 }: Props) {
   const [tab, setTab] = useState<RibbonTab>('inicio');
 
@@ -778,7 +781,8 @@ export function DocumentEditor({
     ],
     content: initialDoc?.content ?? '',
     contentType: initialDoc?.contentType ?? 'json',
-    onUpdate: ({ editor: ed }) => {
+    onUpdate: ({ editor: ed, transaction }) => {
+      if (transaction.getMeta('skipOnChange')) return;
       onChange(JSON.stringify(ed.getJSON()));
     },
   });
@@ -1368,7 +1372,7 @@ export function DocumentEditor({
       ) : null}
       <div className="sc-doc-surface-wrap">
         <EditorContent editor={editor} className="sc-doc-surface" />
-        <DocumentNotes editor={editor} editable={editable} />
+        <DocumentNotes editor={editor} editable={editable} cardId={cardId} />
       </div>
     </div>
   );
