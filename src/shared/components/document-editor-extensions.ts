@@ -246,10 +246,19 @@ export const Annotation = Mark.create({
     return {
       note: {
         default: '',
-        parseHTML: (element) => element.getAttribute('data-note') ?? '',
+        parseHTML: (element) => {
+          const raw = element.getAttribute('data-note') ?? '';
+          if (!raw) return '';
+          try {
+            return decodeURIComponent(raw);
+          } catch {
+            return raw;
+          }
+        },
         renderHTML: (attributes) => {
           if (!attributes.note) return {};
-          return { 'data-note': String(attributes.note) };
+          // JSON rico quebra atributo HTML se não for escapado via encode.
+          return { 'data-note': encodeURIComponent(String(attributes.note)) };
         },
       },
       id: {
@@ -297,9 +306,11 @@ export const Annotation = Mark.create({
       updateAnnotation:
         (attrs) =>
         ({ commands }) =>
-          commands.updateAttributes(this.name, {
+          // setMark no intervalo selecionado (updateAttributes falha em seleção vazia
+          // e é frágil para marks com attrs grandes).
+          commands.setMark(this.name, {
             note: attrs.note,
-            ...(attrs.id ? { id: attrs.id } : {}),
+            id: attrs.id || newAnnotationId(),
           }),
     };
   },

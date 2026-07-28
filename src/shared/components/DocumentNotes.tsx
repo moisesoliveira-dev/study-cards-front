@@ -67,6 +67,7 @@ export function DocumentNotes({ editor, editable }: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
   const panelSnap = useRef<Panel | null>(null);
+  const noteContentRef = useRef('');
   const visibleSnap = useRef(false);
   const lastRange = useRef<{ from: number; to: number } | null>(null);
   const fadeTimer = useRef<number | null>(null);
@@ -74,6 +75,7 @@ export function DocumentNotes({ editor, editable }: Props) {
 
   useEffect(() => {
     panelSnap.current = panel;
+    if (panel) noteContentRef.current = panel.note;
   }, [panel]);
 
   useEffect(() => {
@@ -101,14 +103,62 @@ export function DocumentNotes({ editor, editable }: Props) {
     fadeTimer.current = window.setTimeout(() => {
       if (gen.current !== token) return;
       setPanel(null);
+      noteContentRef.current = '';
       fadeTimer.current = null;
     }, FADE_MS);
   }, []);
+
+  const clampRange = useCallback(
+    (from: number, to: number) => {
+      const max = editor.state.doc.content.size;
+      const a = Math.max(0, Math.min(from, max));
+      const b = Math.max(0, Math.min(to, max));
+      return a <= b ? { from: a, to: b } : { from: b, to: a };
+    },
+    [editor],
+  );
+
+  const applyNoteMark = useCallback(
+    (from: number, to: number, note: string, id?: string | null) => {
+      const range = clampRange(from, to);
+      if (range.from >= range.to) return false;
+      return editor
+        .chain()
+        .focus()
+        .setTextSelection(range)
+        .setAnnotation({ note, id: id || undefined })
+        .run();
+    },
+    [clampRange, editor],
+  );
+
+  const removeNoteMark = useCallback(
+    (from: number, to: number) => {
+      const range = clampRange(from, to);
+      if (range.from >= range.to) {
+        return editor
+          .chain()
+          .focus()
+          .extendMarkRange('annotation')
+          .unsetAnnotation()
+          .run();
+      }
+      return editor
+        .chain()
+        .focus()
+        .setTextSelection(range)
+        .extendMarkRange('annotation')
+        .unsetAnnotation()
+        .run();
+    },
+    [clampRange, editor],
+  );
 
   const openAt = useCallback(
     (next: Omit<Panel, 'top' | 'left'>) => {
       clearFade();
       setBubble(null);
+      noteContentRef.current = next.note;
       const pos = placeBesideDoc(editor);
       const current = panelSnap.current;
       const isShowing = visibleSnap.current;
@@ -124,6 +174,7 @@ export function DocumentNotes({ editor, editable }: Props) {
         setVisible(false);
         fadeTimer.current = window.setTimeout(() => {
           if (gen.current !== token) return;
+          noteContentRef.current = next.note;
           setPanel({ ...next, ...placeBesideDoc(editor) });
           window.requestAnimationFrame(() => {
             if (gen.current !== token) return;
@@ -230,41 +281,39 @@ export function DocumentNotes({ editor, editable }: Props) {
   const saveDraft = useCallback(() => {
     const current = panelSnap.current;
     if (!current || current.mode === 'view') return;
-    const note = current.note;
-    const { from, to } = current;
+
+    // Conteúdo mais recente do TipTap (não esperar o setState do React).
+    const note = noteContentRef.current || current.note;
+    const { from, to, id, mode } = current;
+
     if (from >= to) {
       closePanel();
       return;
     }
+
     if (isNoteBlank(note)) {
-      editor
-        .chain()
-        .focus()
-        .setTextSelection({ from, to })
-        .unsetAnnotation()
-        .run();
+      removeNoteMark(from, to);
       closePanel();
       return;
     }
-    const chain = editor.chain().focus().setTextSelection({ from, to });
-    if (current.mode === 'edit') {
-      chain.updateAnnotation({ note, id: current.id ?? undefined }).run();
-    } else {
-      chain.setAnnotation({ note }).run();
+
+    const ok = applyNoteMark(from, to, note, mode === 'edit' ? id : undefined);
+    if (!ok) {
+      // Fallback: tenta marcar a seleção atual do doc se o range antigo falhou.
+      const { empty, from: f, to: t } = editor.state.selection;
+      if (!empty && f < t) {
+        applyNoteMark(f, t, note, mode === 'edit' ? id : undefined);
+      }
     }
     closePanel();
-  }, [closePanel, editor]);
+  }, [applyNoteMark, closePanel, editor, removeNoteMark]);
 
-  const deleteNote = () => {
-    if (!panel) return;
-    editor
-      .chain()
-      .focus()
-      .setTextSelection({ from: panel.from, to: panel.to })
-      .unsetAnnotation()
-      .run();
+  const deleteNote = useCallback(() => {
+    const current = panelSnap.current;
+    if (!current) return;
+    removeNoteMark(current.from, current.to);
     closePanel();
-  };
+  }, [closePanel, removeNoteMark]);
 
   useEffect(() => {
     const root = editor.view.dom;
@@ -414,9 +463,10 @@ export function DocumentNotes({ editor, editable }: Props) {
               value={panel.note}
               editable={editing}
               autoFocus={editing && visible}
-              onChange={(json) =>
-                setPanel((p) => (p ? { ...p, note: json } : p))
-              }
+              onChange={(json) => {
+                noteContentRef.current = json;
+                setPanel((p) => (p ? { ...p, note: json } : p));
+              }}
               onEscape={closePanel}
               onSaveShortcut={saveDraft}
             />
@@ -443,7 +493,7 @@ export function DocumentNotes({ editor, editable }: Props) {
                   type="button"
                   className="sc-btn primary"
                   onClick={saveDraft}
-                  disabled={isNoteBlank(panel.note)}
+                  disabled={isNoteBlank(noteContentRef.current || panel.note)}
                 >
                   Salvar
                 </button>
