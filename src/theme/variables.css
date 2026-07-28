@@ -2142,12 +2142,17 @@ ion-popover {
   border: none;
   border-radius: 0;
   background: transparent;
-  overflow: visible;
+  overflow: hidden;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .sc-doc-editor.is-readonly .sc-doc-surface {
   min-height: 0;
+  height: 100%;
   padding: 8px 4px 20px;
+  overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .sc-doc-editor.is-readonly .sc-doc-surface .tiptap {
@@ -2315,8 +2320,12 @@ ion-popover {
 
 .sc-doc-body {
   flex: 1;
-  overflow: auto;
-  padding: 16px 20px 28px;
+  min-height: 0;
+  overflow: hidden;
+  padding: 16px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .sc-doc-lead {
@@ -2337,7 +2346,8 @@ ion-popover {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-top: 16px;
+  margin-top: 0;
+  flex: 0 0 auto;
   font-size: 12px;
   color: var(--text-secondary);
 }
@@ -2353,7 +2363,16 @@ ion-popover {
   background: var(--surface-2);
   padding: 10px 12px;
   outline: none;
-  resize: vertical;
+}
+
+.sc-doc-hint-row textarea {
+  height: 96px;
+  min-height: 96px;
+  max-height: 96px;
+  resize: none;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
 }
 
 .sc-doc-editor {
@@ -2361,11 +2380,16 @@ ion-popover {
   border-radius: 12px;
   background: var(--surface-1);
   overflow: hidden;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .sc-doc-ribbon {
   border-bottom: 0.5px solid var(--border);
   background: var(--surface-2);
+  flex: 0 0 auto;
 }
 
 .sc-doc-ribbon-top {
@@ -2584,13 +2608,16 @@ ion-popover {
 }
 
 .sc-doc-surface {
-  min-height: 280px;
+  min-height: 0;
+  height: 100%;
   padding: 16px 18px 24px;
+  overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .sc-doc-surface .tiptap {
   outline: none;
-  min-height: 240px;
+  min-height: 120px;
   font-size: 15px;
   line-height: 1.65;
   color: var(--text-primary);
@@ -2695,14 +2722,19 @@ ion-popover {
 /* Superfície do documento (notas flutuam fora do modal) */
 .sc-doc-surface-wrap {
   position: relative;
-  min-height: 280px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .sc-doc-note-float {
   position: fixed;
   z-index: 10050;
   width: min(360px, calc(100vw - 24px));
-  max-height: min(480px, calc(100dvh - 32px));
+  height: min(420px, calc(100dvh - 32px));
+  max-height: min(420px, calc(100dvh - 32px));
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -2741,9 +2773,10 @@ ion-popover {
 }
 
 .sc-doc-note-float-scroll {
-  flex: 1 1 auto;
-  min-height: 160px;
-  max-height: min(360px, calc(100dvh - 160px));
+  flex: 0 0 280px;
+  height: 280px;
+  min-height: 280px;
+  max-height: 280px;
   overflow: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
@@ -2769,9 +2802,11 @@ ion-popover {
 .sc-doc-note-float textarea {
   display: block;
   width: 100%;
-  min-height: 220px;
   height: 100%;
+  min-height: 100%;
+  max-height: 100%;
   resize: none;
+  overflow: auto;
   border: 0.5px solid var(--border);
   border-radius: 10px;
   background: var(--surface-2);
@@ -2779,8 +2814,9 @@ ion-popover {
   font: inherit;
   font-size: 15px;
   line-height: 1.5;
-  padding: 12px 12px;
+  padding: 12px;
   outline: none;
+  box-sizing: border-box;
 }
 
 .sc-doc-note-float textarea:focus {
@@ -2820,7 +2856,7 @@ ion-popover {
 
 .sc-doc-note-bubble {
   position: fixed;
-  z-index: 52900;
+  z-index: 10040;
   display: flex;
   gap: 4px;
   padding: 4px;
@@ -2828,6 +2864,18 @@ ion-popover {
   border: 0.5px solid var(--border);
   background: var(--surface-1);
   box-shadow: 0 8px 24px color-mix(in srgb, var(--text-primary) 14%, transparent);
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+}
+
+.sc-doc-note-bubble.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
 }
 
 .sc-doc-note-bubble-btn {

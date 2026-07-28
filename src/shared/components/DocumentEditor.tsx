@@ -652,6 +652,10 @@ function ToolButton({
       className={`sc-doc-tool${caption ? ' has-caption' : ''} ${className}${
         active ? ' active' : ''
       }`.trim()}
+      onMouseDown={(e) => {
+        // Mantém a seleção do editor ao clicar na barra (padrão Word/TipTap).
+        e.preventDefault();
+      }}
       onClick={onClick}
     >
       <span className="sc-doc-tool-icon">{children}</span>
