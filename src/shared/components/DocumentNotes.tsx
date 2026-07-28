@@ -3,8 +3,8 @@ import { createPortal } from 'react-dom';
 import type { Editor } from '@tiptap/core';
 
 const PANEL_W = 360;
+const PANEL_H = 420;
 const FADE_MS = 220;
-const NOTE_BODY_H = 280;
 
 type Panel = {
   mode: 'create' | 'edit' | 'view';
@@ -21,22 +21,9 @@ type Props = {
   editable: boolean;
 };
 
-function placeBeside(
-  editor: Editor,
-  from: number,
-): { top: number; left: number } {
+/** Posição fixa ao lado do modal do documento (não segue o trecho). */
+function placeBesideDoc(editor: Editor): { top: number; left: number } {
   const gap = 14;
-  let anchorTop = 80;
-  let anchorBottom = 120;
-
-  try {
-    const coords = editor.view.coordsAtPos(from);
-    anchorTop = coords.top;
-    anchorBottom = coords.bottom;
-  } catch {
-    // ignore
-  }
-
   const shell =
     editor.view.dom.closest('.sc-doc-shell')?.getBoundingClientRect() ??
     editor.view.dom.getBoundingClientRect();
@@ -54,10 +41,7 @@ function placeBeside(
 
   const top = Math.max(
     10,
-    Math.min(
-      window.innerHeight - (NOTE_BODY_H + 120),
-      (anchorTop + anchorBottom) / 2 - 40,
-    ),
+    Math.min(window.innerHeight - PANEL_H - 10, shell.top + 56),
   );
 
   return { top, left };
@@ -125,7 +109,7 @@ export function DocumentNotes({ editor, editable }: Props) {
     (next: Omit<Panel, 'top' | 'left'>) => {
       clearFade();
       setBubble(null);
-      const pos = placeBeside(editor, next.from);
+      const pos = placeBesideDoc(editor);
       const current = panelSnap.current;
       const isShowing = visibleSnap.current;
       const token = ++gen.current;
@@ -140,7 +124,7 @@ export function DocumentNotes({ editor, editable }: Props) {
         setVisible(false);
         fadeTimer.current = window.setTimeout(() => {
           if (gen.current !== token) return;
-          setPanel({ ...next, ...placeBeside(editor, next.from) });
+          setPanel({ ...next, ...placeBesideDoc(editor) });
           window.requestAnimationFrame(() => {
             if (gen.current !== token) return;
             setVisible(true);
@@ -197,7 +181,7 @@ export function DocumentNotes({ editor, editable }: Props) {
   useLayoutEffect(() => {
     if (!panel) return;
     const reposition = () => {
-      const pos = placeBeside(editor, panel.from);
+      const pos = placeBesideDoc(editor);
       setPanel((p) => (p ? { ...p, ...pos } : p));
     };
     window.addEventListener('resize', reposition);
@@ -206,7 +190,7 @@ export function DocumentNotes({ editor, editable }: Props) {
       window.removeEventListener('resize', reposition);
       window.removeEventListener('scroll', reposition, true);
     };
-  }, [editor, panel?.from, panel?.id]);
+  }, [editor, panel]);
 
   useLayoutEffect(() => {
     refreshBubble();
