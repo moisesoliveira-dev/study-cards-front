@@ -345,19 +345,22 @@ export function DocumentNotes({ editor, editable, cardId = null }: Props) {
           bubbleRef.current?.contains(target),
       );
     };
-    const onSel = (e?: Event) => {
-      if (e && fromUiChrome(e.target)) return;
+    const refresh = () => {
       window.requestAnimationFrame(refreshBubble);
     };
-    editor.on('selectionUpdate', onSel);
-    editor.on('transaction', onSel);
-    window.addEventListener('resize', onSel);
-    window.addEventListener('scroll', onSel, true);
+    const onDomScrollOrResize = (e: Event) => {
+      if (fromUiChrome(e.target)) return;
+      refresh();
+    };
+    editor.on('selectionUpdate', refresh);
+    editor.on('transaction', refresh);
+    window.addEventListener('resize', onDomScrollOrResize);
+    window.addEventListener('scroll', onDomScrollOrResize, true);
     return () => {
-      editor.off('selectionUpdate', onSel);
-      editor.off('transaction', onSel);
-      window.removeEventListener('resize', onSel);
-      window.removeEventListener('scroll', onSel, true);
+      editor.off('selectionUpdate', refresh);
+      editor.off('transaction', refresh);
+      window.removeEventListener('resize', onDomScrollOrResize);
+      window.removeEventListener('scroll', onDomScrollOrResize, true);
     };
   }, [editor, refreshBubble, panel]);
 
