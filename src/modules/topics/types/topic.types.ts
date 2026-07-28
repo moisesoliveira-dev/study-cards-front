@@ -4,6 +4,7 @@ export type Topic = {
   parentId: string | null;
   name: string;
   description: string | null;
+  color: string;
   position: number;
   createdAt: string;
   updatedAt: string;
@@ -18,11 +19,13 @@ export type CreateTopicInput = {
   parentId?: string | null;
   name: string;
   description?: string;
+  color?: string;
 };
 
 export type UpdateTopicInput = {
   name?: string;
   description?: string | null;
+  color?: string;
   position?: number;
   parentId?: string | null;
 };

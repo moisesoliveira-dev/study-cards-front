@@ -17,6 +17,7 @@ export class TopicsFacade {
       ...input,
       name: input.name.trim(),
       description: input.description?.trim() || undefined,
+      color: input.color?.trim() || undefined,
       parentId: input.parentId ?? null,
     });
   }
@@ -25,6 +26,7 @@ export class TopicsFacade {
     return topicsApi.update(id, {
       ...input,
       name: input.name?.trim(),
+      color: input.color?.trim(),
     });
   }
 

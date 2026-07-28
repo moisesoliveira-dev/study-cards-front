@@ -48,6 +48,14 @@ import {
 } from 'ionicons/icons';
 
 const DOUBLE_TAP_MS = 340;
+const FOLDER_COLORS = [
+  '#BA7517',
+  '#378ADD',
+  '#1D9E75',
+  '#7F77DD',
+  '#D4537E',
+  '#888780',
+];
 
 function useTouchUi() {
   const [touchUi, setTouchUi] = useState(
@@ -123,6 +131,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   const [mergePickIds, setMergePickIds] = useState<string[]>([]);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [folderColor, setFolderColor] = useState(FOLDER_COLORS[0]);
   const [front, setFront] = useState('');
   const [back, setBack] = useState('');
   const [docJson, setDocJson] = useState('');
@@ -347,6 +356,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     setEditingFolder(null);
     setName('');
     setDescription('');
+    setFolderColor(subject?.color || FOLDER_COLORS[0]);
     setFolderOpen(true);
   };
 
@@ -354,6 +364,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     setEditingFolder(node);
     setName(node.name);
     setDescription(node.description ?? '');
+    setFolderColor(node.color || subject?.color || FOLDER_COLORS[0]);
     setFolderOpen(true);
   };
 
@@ -362,6 +373,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     setEditingFolder(null);
     setName('');
     setDescription('');
+    setFolderColor(FOLDER_COLORS[0]);
   };
 
   const saveFolder = async () => {
@@ -372,6 +384,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         await topicsFacade.update(editingFolder.id, {
           name,
           description: description.trim() || null,
+          color: folderColor,
         });
         toast.success('Pasta atualizada');
       } else {
@@ -380,6 +393,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
           parentId: topicId ?? null,
           name,
           description,
+          color: folderColor,
         });
         toast.success('Pasta criada');
       }
@@ -814,7 +828,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                     <DriveFolderItem
                       name={node.name}
                       subtitle={node.description || 'Abrir pasta'}
-                      color={subject?.color}
+                      color={node.color || subject?.color}
                       onClick={() => openFolder(node.id)}
                       onDelete={() => setDeleteFolder(node)}
                       onContextMenu={(e) => openFolderContextMenu(e, node)}
@@ -929,10 +943,37 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
               onChange={setDescription}
             />
           </div>
+          <div
+            style={{
+              display: 'flex',
+              gap: 8,
+              padding: '8px 0 16px',
+              flexWrap: 'wrap',
+            }}
+          >
+            {FOLDER_COLORS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                aria-label={c}
+                onClick={() => setFolderColor(c)}
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: '50%',
+                  border:
+                    folderColor === c
+                      ? '2px solid #1a1917'
+                      : '2px solid transparent',
+                  background: c,
+                  cursor: 'pointer',
+                }}
+              />
+            ))}
+          </div>
           <button
             type="button"
             className="sc-btn primary"
-            style={{ marginTop: 16 }}
             disabled={saving || !name.trim()}
             onClick={() => void saveFolder()}
           >
