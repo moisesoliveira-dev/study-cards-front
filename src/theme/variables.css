@@ -2815,44 +2815,134 @@ ion-popover {
 }
 
 .sc-doc-note-float-scroll {
-  flex: 0 0 280px;
-  height: 280px;
-  min-height: 280px;
-  max-height: 280px;
-  overflow: auto;
+  flex: 0 0 300px;
+  height: 300px;
+  min-height: 300px;
+  max-height: 300px;
+  overflow: hidden;
   overscroll-behavior: contain;
-}
-
-.sc-doc-note-float-body {
-  margin: 0;
-  font-size: 15px;
-  line-height: 1.55;
-  color: var(--text-primary);
-  white-space: pre-wrap;
-}
-
-.sc-doc-note-float textarea {
-  display: block;
-  width: 100%;
-  height: 100%;
-  min-height: 100%;
-  max-height: 100%;
-  resize: none;
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
   border: 0.5px solid var(--border);
   border-radius: 10px;
   background: var(--surface-2);
-  color: var(--text-primary);
-  font: inherit;
-  font-size: 15px;
-  line-height: 1.5;
-  padding: 12px;
-  outline: none;
-  box-sizing: border-box;
 }
 
-.sc-doc-note-float textarea:focus {
-  border-color: var(--border-strong);
+.sc-doc-note-editor {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
+.sc-doc-note-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
+  padding: 6px 7px;
+  border-bottom: 0.5px solid var(--border);
+  background: color-mix(in srgb, var(--surface-1) 70%, var(--surface-2));
+}
+
+.sc-doc-note-toolbar-sep {
+  width: 1px;
+  height: 16px;
+  margin: 0 2px;
+  background: var(--border);
+  flex: 0 0 auto;
+}
+
+.sc-doc-note-mini {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 5px;
+  border: 0.5px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.sc-doc-note-mini:hover {
+  background: var(--surface-1);
+  color: var(--text-primary);
+}
+
+.sc-doc-note-mini.active {
+  background: var(--bg-accent);
+  color: var(--text-accent);
+  border-color: var(--border-accent);
+}
+
+.sc-doc-note-swatch {
+  display: block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.sc-doc-note-surface {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 10px 12px 14px;
+}
+
+.sc-doc-note-surface .tiptap {
+  outline: none;
+  min-height: 100%;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--text-primary);
+}
+
+.sc-doc-note-surface .tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--text-muted);
+  pointer-events: none;
+  height: 0;
+}
+
+.sc-doc-note-surface .tiptap h3 {
+  font-size: 1.05rem;
+  margin: 0.4em 0 0.25em;
+}
+
+.sc-doc-note-surface .tiptap ul,
+.sc-doc-note-surface .tiptap ol {
+  padding-left: 1.25em;
+  margin: 0.35em 0;
+}
+
+.sc-doc-note-surface .tiptap code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9em;
+  background: color-mix(in srgb, var(--surface-1) 80%, transparent);
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+
+.sc-doc-note-surface .tiptap mark {
+  border-radius: 3px;
+  padding: 0 2px;
+  color: #1f2937;
+}
+
+.sc-doc-note-editor.is-readonly .sc-doc-note-surface {
+  padding-top: 12px;
 }
 
 .sc-doc-note-float .sc-doc-note-composer-actions {

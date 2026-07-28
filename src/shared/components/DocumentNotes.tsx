@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Editor } from '@tiptap/core';
+import { DocumentNoteEditor, isNoteBlank } from './DocumentNoteEditor';
 
 const PANEL_W = 360;
-const PANEL_H = 420;
+const PANEL_H = 460;
 const FADE_MS = 220;
 
 type Panel = {
@@ -63,7 +64,6 @@ export function DocumentNotes({ editor, editable }: Props) {
   const [bubble, setBubble] = useState<{ top: number; left: number } | null>(
     null,
   );
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
   const panelSnap = useRef<Panel | null>(null);
@@ -169,15 +169,6 @@ export function DocumentNotes({ editor, editable }: Props) {
     }
   }, [editable, editor]);
 
-  useEffect(() => {
-    if (!panel || panel.mode === 'view' || !visible) return;
-    const t = window.setTimeout(
-      () => textareaRef.current?.focus(),
-      FADE_MS + 40,
-    );
-    return () => window.clearTimeout(t);
-  }, [panel?.mode, panel?.from, panel?.id, visible]);
-
   useLayoutEffect(() => {
     if (!panel) return;
     const reposition = () => {
@@ -236,15 +227,16 @@ export function DocumentNotes({ editor, editable }: Props) {
     });
   }, [editable, editor, openAt]);
 
-  const saveDraft = () => {
-    if (!panel || panel.mode === 'view') return;
-    const note = panel.note.trim();
-    const { from, to } = panel;
+  const saveDraft = useCallback(() => {
+    const current = panelSnap.current;
+    if (!current || current.mode === 'view') return;
+    const note = current.note;
+    const { from, to } = current;
     if (from >= to) {
       closePanel();
       return;
     }
-    if (!note) {
+    if (isNoteBlank(note)) {
       editor
         .chain()
         .focus()
@@ -255,13 +247,13 @@ export function DocumentNotes({ editor, editable }: Props) {
       return;
     }
     const chain = editor.chain().focus().setTextSelection({ from, to });
-    if (panel.mode === 'edit') {
-      chain.updateAnnotation({ note, id: panel.id ?? undefined }).run();
+    if (current.mode === 'edit') {
+      chain.updateAnnotation({ note, id: current.id ?? undefined }).run();
     } else {
       chain.setAnnotation({ note }).run();
     }
     closePanel();
-  };
+  }, [closePanel, editor]);
 
   const deleteNote = () => {
     if (!panel) return;
@@ -282,7 +274,6 @@ export function DocumentNotes({ editor, editable }: Props) {
         '[data-annotation]',
       ) as HTMLElement | null;
       if (!target) return;
-      // Clique simples em anotação existente; seleção nova usa o bubble.
       if (!editor.state.selection.empty) return;
       e.preventDefault();
       e.stopPropagation();
@@ -418,28 +409,17 @@ export function DocumentNotes({ editor, editable }: Props) {
           </div>
 
           <div className="sc-doc-note-float-scroll">
-            {editing ? (
-              <textarea
-                ref={textareaRef}
-                value={panel.note}
-                placeholder="Escreva a nota…"
-                onChange={(e) =>
-                  setPanel((p) => (p ? { ...p, note: e.target.value } : p))
-                }
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape') {
-                    e.preventDefault();
-                    closePanel();
-                  }
-                  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                    e.preventDefault();
-                    saveDraft();
-                  }
-                }}
-              />
-            ) : (
-              <p className="sc-doc-note-float-body">{panel.note}</p>
-            )}
+            <DocumentNoteEditor
+              key={`${panel.id ?? 'new'}-${panel.from}-${panel.to}-${panel.mode}`}
+              value={panel.note}
+              editable={editing}
+              autoFocus={editing && visible}
+              onChange={(json) =>
+                setPanel((p) => (p ? { ...p, note: json } : p))
+              }
+              onEscape={closePanel}
+              onSaveShortcut={saveDraft}
+            />
           </div>
 
           {editing ? (
@@ -463,7 +443,7 @@ export function DocumentNotes({ editor, editable }: Props) {
                   type="button"
                   className="sc-btn primary"
                   onClick={saveDraft}
-                  disabled={!panel.note.trim()}
+                  disabled={isNoteBlank(panel.note)}
                 >
                   Salvar
                 </button>
