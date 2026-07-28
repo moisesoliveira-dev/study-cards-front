@@ -328,8 +328,10 @@ function marksForSoftBreak(state: EditorState): readonly ProseMirrorMark[] {
 }
 
 /**
- * Quebra de linha (Shift+Enter / Ctrl+Enter) que mantém formatação
- * no início e no fim do texto marcado — como em editores de documento.
+ * Quebra de linha (Shift+Enter / Ctrl+Enter) estilo documento:
+ * - No início de bloco de código / citação / título → parágrafo acima (fora do bloco)
+ * - No fim de bloco de código → sai do bloco
+ * - No meio → newline / hard break, preservando marcas (negrito, cor, etc.)
  */
 export const SoftBreak = HardBreak.extend({
   name: 'hardBreak',
@@ -340,16 +342,45 @@ export const SoftBreak = HardBreak.extend({
       setHardBreak:
         () =>
         ({ chain, state, editor, commands }) => {
-          // Em bloco de código: newline real, sem sair do bloco.
-          if (editor.isActive('codeBlock')) {
+          const { selection } = state;
+          const { $from } = selection;
+          const parent = $from.parent;
+          const parentName = parent.type.name;
+          const atStart = $from.parentOffset === 0;
+          const atEnd = $from.parentOffset === parent.content.size;
+
+          // --- Bloco de código ---
+          if (parentName === 'codeBlock') {
+            if (atStart) {
+              const insertPos = $from.before();
+              return chain()
+                .insertContentAt(insertPos, { type: 'paragraph' })
+                .setTextSelection(insertPos + 1)
+                .run();
+            }
+            if (atEnd) {
+              return commands.exitCode();
+            }
             return commands.insertContent('\n');
           }
 
-          const { selection } = state;
-          if (selection.$from.parent.type.spec.isolating) {
+          // --- Citação / título no início: linha fora do bloco ---
+          if (
+            atStart &&
+            (parentName === 'blockquote' || parentName === 'heading')
+          ) {
+            const insertPos = $from.before();
+            return chain()
+              .insertContentAt(insertPos, { type: 'paragraph' })
+              .setTextSelection(insertPos + 1)
+              .run();
+          }
+
+          if (parent.type.spec.isolating) {
             return false;
           }
 
+          // --- Parágrafo / texto com marcas (negrito, cor, código inline…) ---
           const marks = marksForSoftBreak(state);
           const { keepMarks } = this.options;
           const { splittableMarks } = editor.extensionManager;

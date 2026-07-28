@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import { Extension } from '@tiptap/core';
 import type { Editor } from '@tiptap/core';
-import { Plugin, PluginKey } from '@tiptap/pm/state';
+import { Plugin, PluginKey, Selection } from '@tiptap/pm/state';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Code from '@tiptap/extension-code';
@@ -31,9 +31,56 @@ const CodeWithNotes = Code.extend({
   excludes: 'code',
 });
 
-/** Bloco de código que permite anotações. */
+/** Bloco de código que permite anotações e não se apaga no Backspace. */
 const CodeBlockWithNotes = CodeBlockLowlight.extend({
   marks: 'annotation',
+
+  addKeyboardShortcuts() {
+    return {
+      ...this.parent?.(),
+
+      /**
+       * No início de um bloco com conteúdo, o TipTap padrão chama clearNodes()
+       * (quando o bloco é o 1º do doc) e apaga o código. Aqui só removemos
+       * bloco vazio; com conteúdo, subimos para o parágrafo anterior ou
+       * criamos um acima — sem destruir o código.
+       */
+      Backspace: ({ editor }) => {
+        const { empty, $anchor } = editor.state.selection;
+        if (!empty || $anchor.parent.type.name !== 'codeBlock') {
+          return false;
+        }
+
+        const atStartOfBlock = $anchor.parentOffset === 0;
+        const isEmpty = !$anchor.parent.textContent.length;
+
+        if (isEmpty) {
+          return editor.commands.clearNodes();
+        }
+
+        if (!atStartOfBlock) {
+          return false;
+        }
+
+        const before = $anchor.before();
+        if (before > 0) {
+          return editor.commands.command(({ tr, dispatch, state }) => {
+            const $pos = state.doc.resolve(before);
+            if (dispatch) {
+              tr.setSelection(Selection.near($pos, -1)).scrollIntoView();
+            }
+            return true;
+          });
+        }
+
+        return editor
+          .chain()
+          .insertContentAt(before, { type: 'paragraph' })
+          .setTextSelection(before + 1)
+          .run();
+      },
+    };
+  },
 });
 
 function looksLikeRichHtml(html: string): boolean {
