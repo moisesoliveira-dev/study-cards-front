@@ -342,12 +342,14 @@ export function DocumentNotes({ editor, editable, cardId = null }: Props) {
     const fromApi = existingId
       ? notesByIdRef.current[existingId]?.content
       : '';
+    const existsInDb = Boolean(existingId && notesByIdRef.current[existingId]);
     openAt({
-      mode: existingId || legacyNote ? 'edit' : 'create',
+      // Só "edit" se a nota já existe na API; ids antigos do mark não contam.
+      mode: existsInDb ? 'edit' : 'create',
       note: fromApi || legacyNote || '',
       from,
       to,
-      id: existingId,
+      id: existsInDb ? existingId : null,
     });
   }, [editable, editor, openAt, cardId]);
 
@@ -360,7 +362,9 @@ export function DocumentNotes({ editor, editable, cardId = null }: Props) {
     }
 
     const note = noteContentRef.current || current.note;
-    const { from, to, id, mode } = current;
+    const { from, to } = current;
+    const id =
+      current.id && notesByIdRef.current[current.id] ? current.id : null;
 
     if (from >= to) {
       closePanel();
@@ -377,12 +381,8 @@ export function DocumentNotes({ editor, editable, cardId = null }: Props) {
             delete next[id];
             return next;
           });
-        } catch (error) {
-          window.alert(
-            error instanceof Error ? error.message : 'Falha ao excluir nota',
-          );
-          setSavingNote(false);
-          return;
+        } catch {
+          // Id fantasma / já removido — só limpa a marca local.
         } finally {
           setSavingNote(false);
         }
@@ -394,14 +394,25 @@ export function DocumentNotes({ editor, editable, cardId = null }: Props) {
 
     try {
       setSavingNote(true);
-      if (mode === 'edit' && id) {
-        const updated = await documentNotesFacade.update(cardId, id, {
-          content: note,
-          fromPos: from,
-          toPos: to,
-        });
-        setNotesById((m) => ({ ...m, [updated.id]: updated }));
-        applyNoteMark(from, to, updated.id);
+      if (id) {
+        try {
+          const updated = await documentNotesFacade.update(cardId, id, {
+            content: note,
+            fromPos: from,
+            toPos: to,
+          });
+          setNotesById((m) => ({ ...m, [updated.id]: updated }));
+          applyNoteMark(from, to, updated.id);
+        } catch {
+          // Nota sumiu do banco — cria de novo.
+          const created = await documentNotesFacade.create(cardId, {
+            content: note,
+            fromPos: from,
+            toPos: to,
+          });
+          setNotesById((m) => ({ ...m, [created.id]: created }));
+          applyNoteMark(from, to, created.id);
+        }
       } else {
         const created = await documentNotesFacade.create(cardId, {
           content: note,
@@ -424,21 +435,19 @@ export function DocumentNotes({ editor, editable, cardId = null }: Props) {
   const deleteNote = useCallback(async () => {
     const current = panelSnap.current;
     if (!current) return;
-    if (cardId && current.id) {
+    const id =
+      current.id && notesByIdRef.current[current.id] ? current.id : null;
+    if (cardId && id) {
       try {
         setSavingNote(true);
-        await documentNotesFacade.remove(cardId, current.id);
+        await documentNotesFacade.remove(cardId, id);
         setNotesById((m) => {
           const next = { ...m };
-          delete next[current.id as string];
+          delete next[id];
           return next;
         });
-      } catch (error) {
-        window.alert(
-          error instanceof Error ? error.message : 'Falha ao excluir nota',
-        );
-        setSavingNote(false);
-        return;
+      } catch {
+        // já removida
       } finally {
         setSavingNote(false);
       }
@@ -469,14 +478,19 @@ export function DocumentNotes({ editor, editable, cardId = null }: Props) {
         const id = (attrs.id as string | null) ?? null;
         const legacy = String(attrs.note ?? '');
         const { from, to } = editor.state.selection;
-        const content =
-          (id && notesByIdRef.current[id]?.content) || legacy;
+        const fromApi = id ? notesByIdRef.current[id]?.content : '';
+        const existsInDb = Boolean(id && notesByIdRef.current[id]);
         openAt({
-          mode: editable && editor.isEditable ? 'edit' : 'view',
-          note: content,
+          mode:
+            editable && editor.isEditable
+              ? existsInDb
+                ? 'edit'
+                : 'create'
+              : 'view',
+          note: fromApi || legacy,
           from,
           to,
-          id,
+          id: existsInDb ? id : null,
         });
       } catch {
         // ignore
