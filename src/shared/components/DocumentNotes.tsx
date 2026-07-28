@@ -6,7 +6,7 @@ import type { DocumentNote } from '../../modules/cards/types/document-note.types
 import { DocumentNoteEditor, isNoteBlank } from './DocumentNoteEditor';
 
 const PANEL_W = 360;
-const PANEL_H = 460;
+const PANEL_H_MAX = 420;
 const FADE_MS = 220;
 
 type Panel = {
@@ -26,26 +26,38 @@ type Props = {
 };
 
 /** Posição fixa ao lado do modal do documento (não segue o trecho). */
-function placeBesideDoc(editor: Editor): { top: number; left: number } {
+function placeBesideDoc(
+  editor: Editor,
+  panelEl?: HTMLElement | null,
+): { top: number; left: number } {
   const gap = 14;
   const shell =
     editor.view.dom.closest('.sc-doc-shell')?.getBoundingClientRect() ??
     editor.view.dom.getBoundingClientRect();
 
+  const panelW = Math.min(
+    panelEl?.offsetWidth || PANEL_W,
+    window.innerWidth - 20,
+  );
+  const panelH = Math.min(
+    panelEl?.offsetHeight || PANEL_H_MAX,
+    window.innerHeight - 20,
+  );
+
   let left = shell.right + gap;
-  if (left + PANEL_W > window.innerWidth - 10) {
-    left = shell.left - PANEL_W - gap;
+  if (left + panelW > window.innerWidth - 10) {
+    left = shell.left - panelW - gap;
   }
   if (left < 10) {
     left = Math.max(
       10,
-      Math.min(window.innerWidth - PANEL_W - 10, shell.right - PANEL_W),
+      Math.min(window.innerWidth - panelW - 10, shell.right - panelW),
     );
   }
 
   const top = Math.max(
     10,
-    Math.min(window.innerHeight - PANEL_H - 10, shell.top + 56),
+    Math.min(window.innerHeight - panelH - 10, shell.top + 56),
   );
 
   return { top, left };
@@ -288,21 +300,53 @@ export function DocumentNotes({ editor, editable, cardId = null }: Props) {
 
   useLayoutEffect(() => {
     if (!panel) return;
-    const reposition = () => {
-      const pos = placeBesideDoc(editor);
-      setPanel((p) => (p ? { ...p, ...pos } : p));
+
+    const fromUiChrome = (target: EventTarget | null) => {
+      if (!(target instanceof Node)) return false;
+      return Boolean(
+        panelRef.current?.contains(target) ||
+          bubbleRef.current?.contains(target),
+      );
     };
+
+    const reposition = (e?: Event) => {
+      if (e && fromUiChrome(e.target)) return;
+      const pos = placeBesideDoc(editor, panelRef.current);
+      setPanel((p) =>
+        p && (p.top !== pos.top || p.left !== pos.left)
+          ? { ...p, ...pos }
+          : p,
+      );
+    };
+
+    reposition();
     window.addEventListener('resize', reposition);
     window.addEventListener('scroll', reposition, true);
+
+    const ro =
+      typeof ResizeObserver !== 'undefined' && panelRef.current
+        ? new ResizeObserver(() => reposition())
+        : null;
+    if (panelRef.current && ro) ro.observe(panelRef.current);
+
     return () => {
       window.removeEventListener('resize', reposition);
       window.removeEventListener('scroll', reposition, true);
+      ro?.disconnect();
     };
-  }, [editor, panel]);
+  }, [editor, panel?.id, panel?.mode, visible]);
 
   useLayoutEffect(() => {
     refreshBubble();
-    const onSel = () => {
+    const fromUiChrome = (target: EventTarget | null) => {
+      if (!(target instanceof Node)) return false;
+      return Boolean(
+        panelRef.current?.contains(target) ||
+          bubbleRef.current?.contains(target),
+      );
+    };
+    const onSel = (e?: Event) => {
+      if (e && fromUiChrome(e.target)) return;
       window.requestAnimationFrame(refreshBubble);
     };
     editor.on('selectionUpdate', onSel);

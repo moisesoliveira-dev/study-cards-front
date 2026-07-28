@@ -785,6 +785,39 @@ export function DocumentEditor({
       if (transaction.getMeta('skipOnChange')) return;
       onChange(JSON.stringify(ed.getJSON()));
     },
+    editorProps: {
+      /**
+       * Scroll só na superfície do documento — evita cascata em pais
+       * (modal / body) quando a seleção muda.
+       */
+      handleScrollToSelection(view) {
+        const surface = view.dom.closest(
+          '.sc-doc-surface',
+        ) as HTMLElement | null;
+        if (!surface) return false;
+
+        const { from, to } = view.state.selection;
+        let start: { top: number; bottom: number };
+        let end: { top: number; bottom: number };
+        try {
+          start = view.coordsAtPos(from);
+          end = view.coordsAtPos(Math.max(from, to));
+        } catch {
+          return true;
+        }
+
+        const box = surface.getBoundingClientRect();
+        const pad = 16;
+        let delta = 0;
+        if (start.top < box.top + pad) {
+          delta = start.top - (box.top + pad);
+        } else if (end.bottom > box.bottom - pad) {
+          delta = end.bottom - (box.bottom - pad);
+        }
+        if (delta !== 0) surface.scrollTop += delta;
+        return true;
+      },
+    },
   });
 
   useEffect(() => {
