@@ -775,6 +775,165 @@ ion-modal::part(content),
   flex-wrap: wrap;
 }
 
+.sc-merge-picker-lead {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.sc-merge-picker-filters {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.sc-merge-picker-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.sc-merge-picker-field select,
+.sc-merge-picker-field input {
+  width: 100%;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text-primary);
+  border: 0.5px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  padding: 10px 12px;
+  outline: none;
+}
+
+.sc-merge-picker-chosen {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 0.5px solid var(--border);
+  background: var(--surface-2);
+}
+
+.sc-merge-picker-chosen strong {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+}
+
+.sc-merge-picker-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sc-merge-picker-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 0.5px solid color-mix(in srgb, #7F77DD 40%, var(--border));
+  background: color-mix(in srgb, #7F77DD 12%, var(--surface-1));
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.sc-merge-picker-chip span {
+  opacity: 0.65;
+}
+
+.sc-merge-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: min(48vh, 360px);
+  overflow: auto;
+  margin-bottom: 16px;
+  padding-right: 2px;
+}
+
+.sc-merge-picker-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  text-align: left;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 0.5px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.sc-merge-picker-row:hover {
+  background: var(--surface-2);
+}
+
+.sc-merge-picker-row.is-active {
+  border-color: color-mix(in srgb, #7F77DD 45%, var(--border));
+  background: color-mix(in srgb, #7F77DD 10%, var(--surface-1));
+  color: var(--text-primary);
+}
+
+.sc-merge-picker-check {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  border-radius: 5px;
+  border: 1px solid var(--border-strong);
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #7F77DD;
+  background: var(--surface-1);
+}
+
+.sc-merge-picker-row.is-active .sc-merge-picker-check {
+  border-color: #7F77DD;
+  background: color-mix(in srgb, #7F77DD 18%, var(--surface-1));
+}
+
+.sc-merge-picker-row-copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sc-merge-picker-row-copy strong {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sc-merge-picker-row-copy span {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.sc-merge-picker-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}
+
 .sc-face-add {
   border-style: dashed;
   background: transparent;

@@ -30,6 +30,7 @@ import { CardDocumentSheet } from '../components/CardDocumentSheet';
 import { documentToPlainText } from '../components/DocumentEditor';
 import { DragItem, DropZone, useDriveDrop } from '../dnd/DragDrop';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { MergeSourcePicker } from '../components/MergeSourcePicker';
 import {
   ContextMenu,
   useContextMenu,
@@ -129,6 +130,10 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   const [mergeSources, setMergeSources] = useState<Card[]>([]);
   const [raisedId, setRaisedId] = useState<string | null>(null);
   const [mergePickIds, setMergePickIds] = useState<string[]>([]);
+  const [mergePickCards, setMergePickCards] = useState<Record<string, Card>>(
+    {},
+  );
+  const [mergePickerOpen, setMergePickerOpen] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [folderColor, setFolderColor] = useState(FOLDER_COLORS[0]);
@@ -253,6 +258,50 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     setMergeOpen(true);
   }, [levels]);
 
+  const clearMergePicks = () => {
+    setMergePickIds([]);
+    setMergePickCards({});
+    setRaisedId(null);
+  };
+
+  const upsertMergePick = useCallback((card: Card) => {
+    setMergePickIds((prev) =>
+      prev.includes(card.id) ? prev : [...prev, card.id],
+    );
+    setMergePickCards((prev) => ({ ...prev, [card.id]: card }));
+  }, []);
+
+  const toggleMergePick = useCallback((card: Card) => {
+    setMergePickIds((prev) => {
+      if (prev.includes(card.id)) {
+        return prev.filter((id) => id !== card.id);
+      }
+      return [...prev, card.id];
+    });
+    setMergePickCards((prev) => {
+      if (prev[card.id]) {
+        const next = { ...prev };
+        delete next[card.id];
+        return next;
+      }
+      return { ...prev, [card.id]: card };
+    });
+    setRaisedId(card.id);
+  }, []);
+
+  const resolveMergeSources = useCallback(
+    (ids: string[]) => {
+      const byId = new Map<string, Card>();
+      for (const id of ids) {
+        const card =
+          mergePickCards[id] ?? cards.find((c) => c.id === id) ?? null;
+        if (card) byId.set(id, card);
+      }
+      return [...byId.values()];
+    },
+    [cards, mergePickCards],
+  );
+
   const handleDrop = useCallback(
     async (event: {
       payload: {
@@ -279,10 +328,8 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
           const b = cards.find((c) => c.id === over.id);
           if (!a || !b) return;
 
-          // Une seleção atual + as duas do arraste (permite 3+)
-          const picked = mergePickIds
-            .map((id) => cards.find((c) => c.id === id))
-            .filter((c): c is Card => Boolean(c));
+          // Une seleção atual + as duas do arraste (permite 3+ e outros grupos)
+          const picked = resolveMergeSources(mergePickIds);
           const byId = new Map<string, Card>();
           for (const c of [...picked, a, b]) byId.set(c.id, c);
           const sources = [...byId.values()];
@@ -328,21 +375,12 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
       mergePickIds,
       openMergeComposer,
       parentId,
+      resolveMergeSources,
       toast,
     ],
   );
 
   useDriveDrop(handleDrop);
-
-  const toggleMergePick = useCallback((card: Card) => {
-    setMergePickIds((prev) => {
-      if (prev.includes(card.id)) {
-        return prev.filter((id) => id !== card.id);
-      }
-      return [...prev, card.id];
-    });
-    setRaisedId(card.id);
-  }, []);
 
   const handleCardTap = useCallback(
     (card: Card, mode: 'face' | 'list' = 'face', e?: PointerEvent) => {
@@ -390,15 +428,13 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   );
 
   const openMergeFromPicks = () => {
-    const sources = mergePickIds
-      .map((id) => cards.find((c) => c.id === id))
-      .filter((c): c is Card => Boolean(c));
+    const sources = resolveMergeSources(mergePickIds);
     if (sources.length < 2) {
       toast.error(
         new Error(
           touchUi
-            ? 'Selecione pelo menos 2 cards (toque duplo).'
-            : 'Selecione pelo menos 2 cards (Ctrl+clique ou menu).',
+            ? 'Selecione pelo menos 2 cards (toque duplo ou de outros grupos).'
+            : 'Selecione pelo menos 2 cards (Ctrl+clique, menu ou outros grupos).',
         ),
       );
       return;
@@ -515,8 +551,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
       });
       setMergeOpen(false);
       setMergeSources([]);
-      setMergePickIds([]);
-      setRaisedId(null);
+      clearMergePicks();
       setFront('');
       setBack('');
       setDocJson('');
@@ -540,6 +575,12 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         await cardsFacade.remove(id);
         setDetail(null);
         setMergePickIds((prev) => prev.filter((pickId) => pickId !== id));
+        setMergePickCards((prev) => {
+          if (!prev[id]) return prev;
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        });
         setRaisedId((prev) => (prev === id ? null : prev));
         window.dispatchEvent(
           new CustomEvent('sc-card-deleted', { detail: { id } }),
@@ -580,13 +621,21 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
             const ids = picked
               ? mergePickIds
               : [...new Set([...mergePickIds, card.id])];
-            const sources = ids
-              .map((id) => cards.find((c) => c.id === id))
-              .filter((c): c is Card => Boolean(c));
+            if (!picked) upsertMergePick(card);
+            const sources = resolveMergeSources(ids);
             if (sources.length >= 2) openMergeComposer(sources);
           },
         });
       }
+
+      items.push({
+        id: 'merge-browse',
+        label: 'Buscar em outros grupos…',
+        onSelect: () => {
+          upsertMergePick(card);
+          setMergePickerOpen(true);
+        },
+      });
 
       items.push({
         id: 'delete',
@@ -599,7 +648,14 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
 
       openCtx(e, items, card.front);
     },
-    [cards, mergePickIds, openCtx, openMergeComposer, toggleMergePick],
+    [
+      mergePickIds,
+      openCtx,
+      openMergeComposer,
+      resolveMergeSources,
+      toggleMergePick,
+      upsertMergePick,
+    ],
   );
 
   const openFolderContextMenu = useCallback(
@@ -650,6 +706,11 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
             label: 'Nova pasta',
             icon: folderOutline,
             onSelect: openCreateFolder,
+          },
+          {
+            id: 'merge-browse',
+            label: 'Síntese de outros grupos…',
+            onSelect: () => setMergePickerOpen(true),
           },
         ],
         folderName,
@@ -730,12 +791,22 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
             onView={setView}
             onNewFolder={openCreateFolder}
             onNewCard={() => setCardOpen(true)}
+            extra={
+              <motion.button
+                type="button"
+                className="sc-btn"
+                onClick={() => setMergePickerOpen(true)}
+                whileTap={reduce ? undefined : tapScale}
+              >
+                Unir grupos
+              </motion.button>
+            }
           />
 
           <p className="sc-dnd-hint">
             {touchUi
-              ? 'Toque para abrir · toque duplo para marcar síntese (2+) · segure para opções'
-              : 'Clique para abrir · Ctrl+clique para marcar síntese (2+) · arraste card sobre card para unir'}
+              ? 'Toque para abrir · toque duplo para marcar · “Outros grupos” para unir entre grupos'
+              : 'Clique para abrir · Ctrl+clique para marcar · “Outros grupos” para unir entre grupos'}
           </p>
 
           {!isRoot ? (
@@ -857,8 +928,8 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                 <span>
                   {mergePickIds.length < 2
                     ? touchUi
-                      ? 'Toque duplo em outro card para unir'
-                      : 'Ctrl+clique em outro card para unir'
+                      ? 'Toque duplo em outro card — ou busque outros grupos'
+                      : 'Ctrl+clique em outro card — ou busque outros grupos'
                     : `Pronto para criar a síntese com ${mergePickIds.length} cards`}
                 </span>
               </div>
@@ -866,10 +937,14 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                 <button
                   type="button"
                   className="sc-btn"
-                  onClick={() => {
-                    setMergePickIds([]);
-                    setRaisedId(null);
-                  }}
+                  onClick={() => setMergePickerOpen(true)}
+                >
+                  Outros grupos
+                </button>
+                <button
+                  type="button"
+                  className="sc-btn"
+                  onClick={clearMergePicks}
                 >
                   Limpar
                 </button>
@@ -1129,6 +1204,22 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         onOpenLinked={(linkedCard) => {
           setDetail(linkedCard);
           setRaisedId(linkedCard.id);
+        }}
+      />
+
+      <MergeSourcePicker
+        open={mergePickerOpen}
+        currentSubjectId={subjectId}
+        alreadyPickedIds={mergePickIds}
+        onClose={() => setMergePickerOpen(false)}
+        onConfirm={(picked) => {
+          for (const card of picked) upsertMergePick(card);
+          setMergePickerOpen(false);
+          toast.success(
+            picked.length === 1
+              ? '1 card adicionado à síntese'
+              : `${picked.length} cards adicionados à síntese`,
+          );
         }}
       />
 
