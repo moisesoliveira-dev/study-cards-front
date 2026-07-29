@@ -17,7 +17,7 @@ type DragItemProps = {
   disabled?: boolean;
   className?: string;
   children: ReactNode;
-  onClick?: () => void;
+  onClick?: (e: PointerEvent) => void;
   onLongPress?: () => void;
   onContextMenu?: (e: MouseEvent) => void;
 };
@@ -126,7 +126,7 @@ export function DragItem({
         }
 
         if (!dragArmed.current) {
-          onClick?.();
+          onClick?.(e.nativeEvent);
           return;
         }
 
@@ -137,7 +137,7 @@ export function DragItem({
             new CustomEvent('sc-drive-drop', { detail: result }),
           );
         } else {
-          onClick?.();
+          onClick?.(e.nativeEvent);
         }
       }}
       onPointerCancel={() => {

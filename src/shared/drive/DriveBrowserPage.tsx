@@ -278,7 +278,15 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
           const a = cards.find((c) => c.id === payload.id);
           const b = cards.find((c) => c.id === over.id);
           if (!a || !b) return;
-          openMergeComposer([a, b]);
+
+          // Une seleção atual + as duas do arraste (permite 3+)
+          const picked = mergePickIds
+            .map((id) => cards.find((c) => c.id === id))
+            .filter((c): c is Card => Boolean(c));
+          const byId = new Map<string, Card>();
+          for (const c of [...picked, a, b]) byId.set(c.id, c);
+          const sources = [...byId.values()];
+          openMergeComposer(sources);
           return;
         }
 
@@ -313,7 +321,15 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         toast.error(error);
       }
     },
-    [cards, isRoot, load, openMergeComposer, parentId, toast],
+    [
+      cards,
+      isRoot,
+      load,
+      mergePickIds,
+      openMergeComposer,
+      parentId,
+      toast,
+    ],
   );
 
   useDriveDrop(handleDrop);
@@ -329,9 +345,16 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   }, []);
 
   const handleCardTap = useCallback(
-    (card: Card, mode: 'face' | 'list' = 'face') => {
+    (card: Card, mode: 'face' | 'list' = 'face', e?: PointerEvent) => {
       const now = Date.now();
       const last = lastTapRef.current;
+      const multiSelect = Boolean(e && (e.ctrlKey || e.metaKey || e.shiftKey));
+
+      // Desktop: Ctrl/Cmd/Shift+clique marca para síntese (2+)
+      if (!touchUi && multiSelect) {
+        toggleMergePick(card);
+        return;
+      }
 
       if (mode === 'list') {
         if (touchUi) {
@@ -371,7 +394,13 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
       .map((id) => cards.find((c) => c.id === id))
       .filter((c): c is Card => Boolean(c));
     if (sources.length < 2) {
-      toast.error(new Error('Toque duas vezes em pelo menos 2 cards.'));
+      toast.error(
+        new Error(
+          touchUi
+            ? 'Selecione pelo menos 2 cards (toque duplo).'
+            : 'Selecione pelo menos 2 cards (Ctrl+clique ou menu).',
+        ),
+      );
       return;
     }
     openMergeComposer(sources);
@@ -525,6 +554,10 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
 
   const openCardContextMenu = useCallback(
     (e: MouseEvent, card: Card) => {
+      const picked = mergePickIds.includes(card.id);
+      const selectionCount = picked
+        ? mergePickIds.length
+        : mergePickIds.length + 1;
       const items: ContextMenuItem[] = [
         {
           id: 'open',
@@ -534,23 +567,39 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         },
         {
           id: 'merge',
-          label: mergePickIds.includes(card.id)
-            ? 'Tirar da síntese'
-            : 'Marcar para síntese',
+          label: picked ? 'Tirar da síntese' : 'Marcar para síntese',
           onSelect: () => toggleMergePick(card),
         },
-        {
-          id: 'delete',
-          label: 'Excluir carta',
-          icon: trashOutline,
-          danger: true,
-          separator: true,
-          onSelect: () => removeCard(card.id),
-        },
       ];
+
+      if (selectionCount >= 2) {
+        items.push({
+          id: 'merge-now',
+          label: `Criar síntese (${selectionCount})`,
+          onSelect: () => {
+            const ids = picked
+              ? mergePickIds
+              : [...new Set([...mergePickIds, card.id])];
+            const sources = ids
+              .map((id) => cards.find((c) => c.id === id))
+              .filter((c): c is Card => Boolean(c));
+            if (sources.length >= 2) openMergeComposer(sources);
+          },
+        });
+      }
+
+      items.push({
+        id: 'delete',
+        label: 'Excluir carta',
+        icon: trashOutline,
+        danger: true,
+        separator: true,
+        onSelect: () => removeCard(card.id),
+      });
+
       openCtx(e, items, card.front);
     },
-    [mergePickIds, openCtx, toggleMergePick],
+    [cards, mergePickIds, openCtx, openMergeComposer, toggleMergePick],
   );
 
   const openFolderContextMenu = useCallback(
@@ -685,8 +734,8 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
 
           <p className="sc-dnd-hint">
             {touchUi
-              ? 'Toque para abrir a carta · toque duplo para síntese · segure para opções'
-              : 'Clique para abrir a carta · arraste card sobre card para unir'}
+              ? 'Toque para abrir · toque duplo para marcar síntese (2+) · segure para opções'
+              : 'Clique para abrir · Ctrl+clique para marcar síntese (2+) · arraste card sobre card para unir'}
           </p>
 
           {!isRoot ? (
@@ -722,7 +771,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                         topicId: card.topicId,
                         label: card.front,
                       }}
-                      onClick={() => handleCardTap(card)}
+                      onClick={(e) => handleCardTap(card, 'face', e)}
                       onLongPress={
                         touchUi ? () => setDetail(card) : undefined
                       }
@@ -775,7 +824,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                         topicId: card.topicId,
                         label: card.front,
                       }}
-                      onClick={() => handleCardTap(card, 'list')}
+                      onClick={(e) => handleCardTap(card, 'list', e)}
                       onLongPress={
                         touchUi ? () => setDetail(card) : undefined
                       }
@@ -798,7 +847,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
             </div>
           )}
 
-          {touchUi && mergePickIds.length > 0 ? (
+          {mergePickIds.length > 0 ? (
             <div className="sc-merge-bar">
               <div className="sc-merge-bar-copy">
                 <strong>
@@ -807,8 +856,10 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                 </strong>
                 <span>
                   {mergePickIds.length < 2
-                    ? 'Toque duplo em outro card para unir'
-                    : 'Pronto para criar a síntese'}
+                    ? touchUi
+                      ? 'Toque duplo em outro card para unir'
+                      : 'Ctrl+clique em outro card para unir'
+                    : `Pronto para criar a síntese com ${mergePickIds.length} cards`}
                 </span>
               </div>
               <div className="sc-merge-bar-actions">
