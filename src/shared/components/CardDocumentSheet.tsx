@@ -174,10 +174,12 @@ export function CardDocumentSheet({
   if (!card) return null;
 
   const accent = cardAccent(color, tag);
+  const resolvedLevelId = editing ? levelId : (card.levelId ?? levelId);
   const currentLevel =
-    levels.find((l) => l.id === (editing ? levelId : card.levelId)) ??
-    levels.find((l) => l.id === levelId) ??
-    null;
+    (resolvedLevelId
+      ? levels.find((l) => l.id === resolvedLevelId)
+      : null) ?? null;
+  const levelLabel = currentLevel?.name ?? (resolvedLevelId ? 'Nível' : null);
 
   const hasDocument = Boolean(
     card.document?.trim() && documentToPlainText(card.document),
@@ -600,9 +602,19 @@ export function CardDocumentSheet({
                 </div>
                 <div className="sc-card-face-footer">
                   <div className="sc-card-face-footer-tags">
-                    {currentLevel ? (
-                      <span className="sc-card-level-badge">
-                        {currentLevel.name}
+                    {levelLabel ? (
+                      <span
+                        className="sc-card-level-badge"
+                        style={
+                          currentLevel?.color
+                            ? {
+                                borderColor: currentLevel.color,
+                                color: currentLevel.color,
+                              }
+                            : undefined
+                        }
+                      >
+                        {levelLabel}
                       </span>
                     ) : null}
                   </div>

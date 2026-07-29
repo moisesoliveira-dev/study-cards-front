@@ -66,9 +66,11 @@ export default function StudyPage() {
   }, []);
 
   const current = cards[index];
-  const currentLevel = current
+  const currentLevel = current?.levelId
     ? levels.find((l) => l.id === current.levelId)
     : undefined;
+  const levelLabel = currentLevel?.name
+    ?? (current?.levelId ? 'Nível' : null);
   const done = !loading && (!cards.length || index >= cards.length);
   const progress = useMemo(() => {
     if (!cards.length) return 0;
@@ -179,10 +181,10 @@ export default function StudyPage() {
                       <h4>Explicação</h4>
                       <p>{current.back}</p>
                     </div>
-                    {currentLevel ? (
+                    {levelLabel ? (
                       <div className="sc-detail-block">
                         <h4>Nível</h4>
-                        <p>{currentLevel.name}</p>
+                        <p>{levelLabel}</p>
                       </div>
                     ) : null}
                   </motion.div>

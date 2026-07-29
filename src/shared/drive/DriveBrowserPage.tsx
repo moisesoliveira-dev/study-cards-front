@@ -137,6 +137,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   const [docJson, setDocJson] = useState('');
   const [levelId, setLevelId] = useState<string | null>(null);
   const [levels, setLevels] = useState<CardLevel[]>([]);
+  const [levelsLoading, setLevelsLoading] = useState(false);
   const [icon, setIcon] = useState<string | null>(null);
   const [color, setColor] = useState<string | null>(CARD_ACCENT_COLORS[0]);
   const [tag, setTag] = useState('Conceito');
@@ -184,6 +185,30 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    let cancelled = false;
+    setLevelsLoading(true);
+    void cardLevelsFacade
+      .list()
+      .then((list) => {
+        if (cancelled) return;
+        setLevels(list);
+        setLevelId((prev) => {
+          if (prev && list.some((l) => l.id === prev)) return prev;
+          return list.find((l) => l.slug === 'basic')?.id ?? list[0]?.id ?? null;
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setLevels([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLevelsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const filteredFolders = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return folders;
@@ -226,7 +251,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     setColor(CARD_ACCENT_COLORS[3]);
     setTag('Síntese');
     setMergeOpen(true);
-  }, []);
+  }, [levels]);
 
   const handleDrop = useCallback(
     async (event: {
@@ -994,6 +1019,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         tag={tag}
         levelId={levelId}
         levels={levels}
+        levelsLoading={levelsLoading}
         icon={icon}
         color={color}
         saving={saving}
@@ -1019,6 +1045,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         tag={tag || 'Síntese'}
         levelId={levelId}
         levels={levels}
+        levelsLoading={levelsLoading}
         icon={icon}
         color={color}
         saving={saving}

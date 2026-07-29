@@ -404,6 +404,23 @@ export function CardLoadoutPanel({
                             Limpar
                           </button>
                         </div>
+                      ) : levelId ? (
+                        <div className="sc-loadout-level-chosen">
+                          <div className="sc-loadout-level-chosen-copy">
+                            <strong>Nível não encontrado</strong>
+                            <span>
+                              Esse nível pode ter sido removido. Escolha outro
+                              abaixo.
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            className="sc-btn sc-loadout-mini-btn"
+                            onClick={() => onLevelId(null)}
+                          >
+                            Limpar
+                          </button>
+                        </div>
                       ) : null}
 
                       {loadingGate(levelsLoading, levels.length) ? (
