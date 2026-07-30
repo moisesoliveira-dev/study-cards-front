@@ -4,7 +4,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import type { Card } from '../../modules/cards/types/card.types';
 import { cardAccent } from './FaceCardComposer';
 import { CardFaceIcon } from './CardIcon';
-import { springSoft, staggerItem, tapScale } from '../motion';
+import { springLayout, staggerItem, tapScale } from '../motion';
 import { subscribeDrag } from '../dnd/drive-dnd';
 
 type Props = {
@@ -23,7 +23,7 @@ export function DriveCardItem({ card, selected, onClick, view = 'grid' }: Props)
       <motion.div
         layout={!reduce}
         layoutId={reduce ? undefined : `drive-card-${card.id}`}
-        transition={{ layout: springSoft }}
+        transition={{ layout: springLayout }}
         role={onClick ? 'button' : undefined}
         tabIndex={onClick ? 0 : undefined}
         className={`sc-list-row${selected ? ' selected' : ''}`}
@@ -47,7 +47,7 @@ export function DriveCardItem({ card, selected, onClick, view = 'grid' }: Props)
     <motion.div
       layout={!reduce}
       layoutId={reduce ? undefined : `drive-card-${card.id}`}
-      transition={{ layout: springSoft }}
+      transition={{ layout: springLayout }}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
       className={`sc-item card-item${selected ? ' selected' : ''}`}
@@ -132,7 +132,7 @@ export function FaceCard({
               },
             }
       }
-      transition={{ layout: springSoft }}
+      transition={{ layout: springLayout }}
       whileTap={reduce ? undefined : tapScale}
     >
       <span className="card-accent-bar" aria-hidden />

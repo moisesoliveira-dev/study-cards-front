@@ -5207,19 +5207,6 @@ body.sc-dragging * {
   width: 4px;
 }
 
-/* Abre um vão visível entre as cartas sobrepostas do Hall */
-body.sc-dragging .sc-hand-slot.is-insert-before,
-body.sc-dragging .sc-hand > .sc-drop-zone.sc-hand-slot.is-insert-before {
-  margin-left: 10px;
-  transform: translateX(6px);
-}
-
-body.sc-dragging .sc-hand-slot.is-insert-after,
-body.sc-dragging .sc-hand > .sc-drop-zone.sc-hand-slot.is-insert-after {
-  margin-right: 18px;
-  transform: translateX(-2px);
-}
-
 body.sc-dragging .sc-hand-slot.is-insert-before .sc-face-card,
 body.sc-dragging .sc-hand-slot.is-insert-after .sc-face-card,
 body.sc-dragging
@@ -5251,14 +5238,6 @@ body.sc-dragging
   bottom: -3px;
   height: 4px;
   width: auto;
-}
-
-.sc-list-view > .sc-drop-zone.is-insert-before {
-  margin-top: 10px;
-}
-
-.sc-list-view > .sc-drop-zone.is-insert-after {
-  margin-bottom: 10px;
 }
 
 .sc-drag-ghost[data-edge='before'],

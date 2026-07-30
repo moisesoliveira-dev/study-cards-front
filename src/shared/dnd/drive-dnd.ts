@@ -151,15 +151,26 @@ export function endDriveDrag(): {
 function cardInsertEdge(
   node: Element,
   point: { x: number; y: number },
+  sticky?: { id: string; edge: 'before' | 'after' } | null,
 ): 'before' | 'after' {
   const rect = node.getBoundingClientRect();
+  const id = node.getAttribute('data-drop-id');
   const inHand = Boolean(
     node.closest('.sc-hand, .sc-deck-hand, .sc-hand-slot'),
   );
-  if (inHand) {
-    return point.x < rect.left + rect.width / 2 ? 'before' : 'after';
+  const span = inHand ? rect.width : rect.height;
+  const offset = inHand ? point.x - rect.left : point.y - rect.top;
+  const ratio = offset / Math.max(span, 1);
+
+  // Histerese: evita tremer no meio da carta
+  if (sticky && sticky.id === id) {
+    if (sticky.edge === 'before') {
+      return ratio < 0.64 ? 'before' : 'after';
+    }
+    return ratio > 0.36 ? 'after' : 'before';
   }
-  return point.y < rect.top + rect.height / 2 ? 'before' : 'after';
+
+  return ratio < 0.5 ? 'before' : 'after';
 }
 
 export function readDropTarget(
@@ -173,7 +184,13 @@ export function readDropTarget(
     if (kind === 'root') return { kind: 'root' };
     if (kind === 'hall') return { kind: 'hall' };
     if (kind === 'card' && id) {
-      const edge = point ? cardInsertEdge(node, point) : 'before';
+      const sticky =
+        state?.over?.kind === 'card'
+          ? { id: state.over.id, edge: state.over.edge }
+          : null;
+      const edge = point
+        ? cardInsertEdge(node, point, sticky)
+        : 'before';
       return { kind: 'card', id, edge };
     }
     if ((kind === 'folder' || kind === 'deck') && id) {
