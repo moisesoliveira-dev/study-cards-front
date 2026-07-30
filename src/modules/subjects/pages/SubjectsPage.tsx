@@ -23,16 +23,19 @@ import {
   type ContextMenuItem,
 } from '../../../shared/components/ContextMenu';
 import { useAppToast } from '../../../shared/hooks/useAppToast';
+import { useCatalogColors } from '../../../shared/hooks/useCatalogColors';
+import { CatalogColorPicker } from '../../../shared/components/CatalogColorPicker';
 import { MotionShell, MotionStagger, tapScale } from '../../../shared/motion';
 import { createOutline, openOutline, pencilOutline, trashOutline } from 'ionicons/icons';
 import type { MouseEvent } from 'react';
-
-const COLORS = ['#BA7517', '#378ADD', '#1D9E75', '#7F77DD', '#D4537E', '#888780'];
 
 export default function SubjectsPage() {
   const history = useHistory();
   const toast = useAppToast();
   const reduce = useReducedMotion();
+  const { colors: catalogColors, loading: catalogColorsLoading } =
+    useCatalogColors();
+  const fallbackColor = catalogColors[0]?.hex ?? '#1D9E75';
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -41,7 +44,7 @@ export default function SubjectsPage() {
   const [editing, setEditing] = useState<Subject | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [color, setColor] = useState(COLORS[0]);
+  const [color, setColor] = useState<string>('#1D9E75');
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Subject | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -77,7 +80,7 @@ export default function SubjectsPage() {
     setEditing(null);
     setName('');
     setDescription('');
-    setColor(COLORS[0]);
+    setColor(fallbackColor);
     setOpen(true);
   };
 
@@ -85,7 +88,7 @@ export default function SubjectsPage() {
     setEditing(s);
     setName(s.name);
     setDescription(s.description ?? '');
-    setColor(s.color || COLORS[0]);
+    setColor(s.color || fallbackColor);
     setOpen(true);
   };
 
@@ -294,24 +297,13 @@ export default function SubjectsPage() {
               onChange={setDescription}
             />
           </div>
-          <div style={{ display: 'flex', gap: 8, padding: '8px 0 16px', flexWrap: 'wrap' }}>
-            {COLORS.map((c) => (
-              <button
-                key={c}
-                type="button"
-                aria-label={c}
-                onClick={() => setColor(c)}
-                style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: '50%',
-                  border: color === c ? '2px solid #1a1917' : '2px solid transparent',
-                  background: c,
-                  cursor: 'pointer',
-                }}
-              />
-            ))}
-          </div>
+          <CatalogColorPicker
+            colors={catalogColors}
+            loading={catalogColorsLoading}
+            value={color}
+            onChange={setColor}
+            style={{ padding: '8px 0 16px' }}
+          />
           <button
             type="button"
             className="sc-btn primary"

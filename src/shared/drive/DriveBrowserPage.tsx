@@ -40,6 +40,8 @@ import {
   type ContextMenuItem,
 } from '../components/ContextMenu';
 import { useAppToast } from '../hooks/useAppToast';
+import { useCatalogColors } from '../hooks/useCatalogColors';
+import { CatalogColorPicker } from '../components/CatalogColorPicker';
 import { MotionShell, MotionStagger, tapScale } from '../motion';
 import { LayoutGroup, motion, useReducedMotion } from 'framer-motion';
 import {
@@ -52,14 +54,6 @@ import {
 } from 'ionicons/icons';
 
 const DOUBLE_TAP_MS = 340;
-const FOLDER_COLORS = [
-  '#BA7517',
-  '#378ADD',
-  '#1D9E75',
-  '#7F77DD',
-  '#D4537E',
-  '#888780',
-];
 
 function useTouchUi() {
   const [touchUi, setTouchUi] = useState(
@@ -168,6 +162,10 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   const history = useHistory();
   const toast = useAppToast();
   const touchUi = useTouchUi();
+  const { colors: catalogColors, loading: catalogColorsLoading } =
+    useCatalogColors();
+  const fallbackColor =
+    catalogColors[0]?.hex ?? CARD_ACCENT_COLORS[0];
   const lastTapRef = useRef<{ id: string; at: number } | null>(null);
 
   const [subject, setSubject] = useState<Subject | null>(null);
@@ -177,7 +175,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   const [deckModalOpen, setDeckModalOpen] = useState(false);
   const [editingDeck, setEditingDeck] = useState<Deck | null>(null);
   const [deckName, setDeckNameInput] = useState('');
-  const [deckColor, setDeckColor] = useState(FOLDER_COLORS[3]);
+  const [deckColor, setDeckColor] = useState<string>(CARD_ACCENT_COLORS[3]);
   const [folderName, setFolderName] = useState('Grupo');
   const [parentId, setParentId] = useState<string | null>(null);
   const [path, setPath] = useState<TopicTreeNode[]>([]);
@@ -198,7 +196,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   const [mergePickerOpen, setMergePickerOpen] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [folderColor, setFolderColor] = useState(FOLDER_COLORS[0]);
+  const [folderColor, setFolderColor] = useState<string>(CARD_ACCENT_COLORS[0]);
   const [front, setFront] = useState('');
   const [back, setBack] = useState('');
   const [docJson, setDocJson] = useState('');
@@ -658,7 +656,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     setEditingFolder(null);
     setName('');
     setDescription('');
-    setFolderColor(subject?.color || FOLDER_COLORS[0]);
+    setFolderColor(subject?.color || fallbackColor);
     setFolderOpen(true);
   };
 
@@ -666,7 +664,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     setEditingFolder(node);
     setName(node.name);
     setDescription(node.description ?? '');
-    setFolderColor(node.color || subject?.color || FOLDER_COLORS[0]);
+    setFolderColor(node.color || subject?.color || fallbackColor);
     setFolderOpen(true);
   };
 
@@ -675,7 +673,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     setEditingFolder(null);
     setName('');
     setDescription('');
-    setFolderColor(FOLDER_COLORS[0]);
+    setFolderColor(fallbackColor);
   };
 
   const saveFolder = async () => {
@@ -711,14 +709,14 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   const openCreateDeck = () => {
     setEditingDeck(null);
     setDeckNameInput('');
-    setDeckColor(FOLDER_COLORS[3]);
+    setDeckColor(catalogColors[3]?.hex ?? fallbackColor);
     setDeckModalOpen(true);
   };
 
   const openEditDeck = (deck: Deck) => {
     setEditingDeck(deck);
     setDeckNameInput(deck.name);
-    setDeckColor(deck.color || FOLDER_COLORS[3]);
+    setDeckColor(deck.color || catalogColors[3]?.hex || fallbackColor);
     setDeckModalOpen(true);
   };
 
@@ -726,7 +724,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     setDeckModalOpen(false);
     setEditingDeck(null);
     setDeckNameInput('');
-    setDeckColor(FOLDER_COLORS[3]);
+    setDeckColor(catalogColors[3]?.hex ?? fallbackColor);
   };
 
   const saveDeck = async () => {
@@ -1564,34 +1562,13 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
           >
             Cor da borda
           </p>
-          <div
-            style={{
-              display: 'flex',
-              gap: 8,
-              padding: '4px 0 16px',
-              flexWrap: 'wrap',
-            }}
-          >
-            {FOLDER_COLORS.map((c) => (
-              <button
-                key={c}
-                type="button"
-                aria-label={c}
-                onClick={() => setDeckColor(c)}
-                style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: '50%',
-                  border:
-                    deckColor === c
-                      ? '2px solid #1a1917'
-                      : '2px solid transparent',
-                  background: c,
-                  cursor: 'pointer',
-                }}
-              />
-            ))}
-          </div>
+          <CatalogColorPicker
+            colors={catalogColors}
+            loading={catalogColorsLoading}
+            value={deckColor}
+            onChange={setDeckColor}
+            style={{ padding: '4px 0 16px' }}
+          />
           <button
             type="button"
             className="sc-btn primary"
@@ -1635,34 +1612,13 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
               onChange={setDescription}
             />
           </div>
-          <div
-            style={{
-              display: 'flex',
-              gap: 8,
-              padding: '8px 0 16px',
-              flexWrap: 'wrap',
-            }}
-          >
-            {FOLDER_COLORS.map((c) => (
-              <button
-                key={c}
-                type="button"
-                aria-label={c}
-                onClick={() => setFolderColor(c)}
-                style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: '50%',
-                  border:
-                    folderColor === c
-                      ? '2px solid #1a1917'
-                      : '2px solid transparent',
-                  background: c,
-                  cursor: 'pointer',
-                }}
-              />
-            ))}
-          </div>
+          <CatalogColorPicker
+            colors={catalogColors}
+            loading={catalogColorsLoading}
+            value={folderColor}
+            onChange={setFolderColor}
+            style={{ padding: '8px 0 16px' }}
+          />
           <button
             type="button"
             className="sc-btn primary"

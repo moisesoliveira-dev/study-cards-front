@@ -14,24 +14,26 @@ import {
   searchOutline,
   trashOutline,
 } from 'ionicons/icons';
-import { cardLevelsFacade } from '../../cards/facades/card-levels.facade';
-import type { CardLevel } from '../../cards/types/card-level.types';
-import { CadastrosSubNav } from '../components/CadastrosSubNav';
+import { colorsFacade } from '../../colors/facades/colors.facade';
+import type { CatalogColor } from '../../colors/types/color.types';
 import { useAppToast } from '../../../shared/hooks/useAppToast';
+import { CadastrosSubNav } from '../components/CadastrosSubNav';
 
 type Draft = {
   name: string;
+  hex: string;
   description: string;
 };
 
 const emptyDraft = (): Draft => ({
   name: '',
+  hex: '#1D9E75',
   description: '',
 });
 
-export default function CardLevelsCadastroPage() {
+export default function ColorsCadastroPage() {
   const toast = useAppToast();
-  const [levels, setLevels] = useState<CardLevel[]>([]);
+  const [colors, setColors] = useState<CatalogColor[]>([]);
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [creating, setCreating] = useState(false);
@@ -39,30 +41,31 @@ export default function CardLevelsCadastroPage() {
   const [editDraft, setEditDraft] = useState<Draft>(emptyDraft);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [listFilter, setListFilter] = useState('');
-  const [pendingDelete, setPendingDelete] = useState<CardLevel | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<CatalogColor | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const filteredLevels = useMemo(() => {
+  const filteredColors = useMemo(() => {
     const q = listFilter.trim().toLocaleLowerCase('pt-BR');
-    if (!q) return levels;
-    return levels.filter((level) => {
-      const name = level.name.toLocaleLowerCase('pt-BR');
-      const desc = (level.description ?? '').toLocaleLowerCase('pt-BR');
-      return name.includes(q) || desc.includes(q);
+    if (!q) return colors;
+    return colors.filter((color) => {
+      const name = color.name.toLocaleLowerCase('pt-BR');
+      const hex = color.hex.toLocaleLowerCase('pt-BR');
+      const desc = (color.description ?? '').toLocaleLowerCase('pt-BR');
+      return name.includes(q) || hex.includes(q) || desc.includes(q);
     });
-  }, [levels, listFilter]);
+  }, [colors, listFilter]);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       setLoading(true);
       try {
-        const list = await cardLevelsFacade.list();
-        if (!cancelled) setLevels(list);
+        const list = await colorsFacade.list();
+        if (!cancelled) setColors(list);
       } catch (error) {
         if (!cancelled) {
           toast.error(error);
-          setLevels([]);
+          setColors([]);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -71,27 +74,29 @@ export default function CardLevelsCadastroPage() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once
   }, []);
 
-  const createLevel = async (e: FormEvent) => {
+  const createColor = async (e: FormEvent) => {
     e.preventDefault();
     const name = draft.name.trim();
-    if (!name || creating) return;
+    const hex = draft.hex.trim();
+    if (!name || !hex || creating) return;
     setCreating(true);
     try {
-      const created = await cardLevelsFacade.create({
+      const created = await colorsFacade.create({
         name,
+        hex,
         description: draft.description.trim() || null,
-        position: levels.length,
+        position: colors.length,
       });
-      setLevels((prev) =>
+      setColors((prev) =>
         [...prev, created].sort(
           (a, b) => a.position - b.position || a.name.localeCompare(b.name, 'pt-BR'),
         ),
       );
       setDraft(emptyDraft());
-      toast.success(`Nível “${created.name}” criado`);
+      toast.success(`Cor “${created.name}” criada`);
     } catch (error) {
       toast.error(error);
     } finally {
@@ -99,11 +104,12 @@ export default function CardLevelsCadastroPage() {
     }
   };
 
-  const startEdit = (level: CardLevel) => {
-    setEditingId(level.id);
+  const startEdit = (color: CatalogColor) => {
+    setEditingId(color.id);
     setEditDraft({
-      name: level.name,
-      description: level.description ?? '',
+      name: color.name,
+      hex: color.hex,
+      description: color.description ?? '',
     });
   };
 
@@ -116,23 +122,25 @@ export default function CardLevelsCadastroPage() {
     e.preventDefault();
     if (!editingId || savingId) return;
     const name = editDraft.name.trim();
-    if (!name) return;
+    const hex = editDraft.hex.trim();
+    if (!name || !hex) return;
     setSavingId(editingId);
     try {
-      const updated = await cardLevelsFacade.update(editingId, {
+      const updated = await colorsFacade.update(editingId, {
         name,
+        hex,
         description: editDraft.description.trim() || null,
       });
-      setLevels((prev) =>
+      setColors((prev) =>
         prev
-          .map((l) => (l.id === updated.id ? updated : l))
+          .map((c) => (c.id === updated.id ? updated : c))
           .sort(
             (a, b) =>
               a.position - b.position || a.name.localeCompare(b.name, 'pt-BR'),
           ),
       );
       cancelEdit();
-      toast.success(`Nível “${updated.name}” atualizado`);
+      toast.success('Cor atualizada');
     } catch (error) {
       toast.error(error);
     } finally {
@@ -145,10 +153,10 @@ export default function CardLevelsCadastroPage() {
     const target = pendingDelete;
     setDeleting(true);
     try {
-      await cardLevelsFacade.delete(target.id);
-      setLevels((prev) => prev.filter((l) => l.id !== target.id));
+      await colorsFacade.delete(target.id);
+      setColors((prev) => prev.filter((c) => c.id !== target.id));
       if (editingId === target.id) cancelEdit();
-      toast.success(`Nível “${target.name}” excluído`);
+      toast.success(`Cor “${target.name}” excluída`);
     } catch (error) {
       toast.error(error);
     } finally {
@@ -170,7 +178,7 @@ export default function CardLevelsCadastroPage() {
             <div>
               <h1 className="sc-gh-title">Cadastros</h1>
               <p className="sc-gh-subtitle">
-                Dados reutilizados no app — níveis, cores e futuros cadastros.
+                Cores do sistema — usadas em cartas, pastas, decks e grupos.
               </p>
             </div>
           </header>
@@ -181,10 +189,10 @@ export default function CardLevelsCadastroPage() {
             <div className="sc-gh-main">
               <section className="sc-gh-box">
                 <div className="sc-gh-box-head">
-                  <h2>Novo nível</h2>
-                  <p>Nome obrigatório; descrição é opcional.</p>
+                  <h2>Nova cor</h2>
+                  <p>Cadastre aqui; no restante do app só se escolhe do catálogo.</p>
                 </div>
-                <form onSubmit={(e) => void createLevel(e)}>
+                <form onSubmit={(e) => void createColor(e)}>
                   <div className="sc-gh-fields">
                     <label className="sc-field">
                       <span className="sc-field-label">Nome</span>
@@ -194,10 +202,42 @@ export default function CardLevelsCadastroPage() {
                         onChange={(e) =>
                           setDraft((d) => ({ ...d, name: e.target.value }))
                         }
-                        placeholder="Ex.: Expert"
+                        placeholder="Ex.: Verde destaque"
                         disabled={creating}
                         required
                       />
+                    </label>
+                    <label className="sc-field">
+                      <span className="sc-field-label">Hex</span>
+                      <div className="sc-cadastro-color-hex-row">
+                        <input
+                          type="color"
+                          className="sc-cadastro-color-native"
+                          value={
+                            /^#[0-9A-Fa-f]{6}$/.test(draft.hex)
+                              ? draft.hex
+                              : '#1D9E75'
+                          }
+                          onChange={(e) =>
+                            setDraft((d) => ({
+                              ...d,
+                              hex: e.target.value.toUpperCase(),
+                            }))
+                          }
+                          disabled={creating}
+                          aria-label="Seletor de cor"
+                        />
+                        <input
+                          className="sc-field-input"
+                          value={draft.hex}
+                          onChange={(e) =>
+                            setDraft((d) => ({ ...d, hex: e.target.value }))
+                          }
+                          placeholder="#1D9E75"
+                          disabled={creating}
+                          required
+                        />
+                      </div>
                     </label>
                     <label className="sc-field">
                       <span className="sc-field-label">Descrição</span>
@@ -219,9 +259,9 @@ export default function CardLevelsCadastroPage() {
                     <button
                       type="submit"
                       className="sc-btn primary"
-                      disabled={creating || !draft.name.trim()}
+                      disabled={creating || !draft.name.trim() || !draft.hex.trim()}
                     >
-                      {creating ? 'Salvando…' : 'Criar nível'}
+                      {creating ? 'Salvando…' : 'Criar cor'}
                     </button>
                   </div>
                 </form>
@@ -229,20 +269,20 @@ export default function CardLevelsCadastroPage() {
 
               <section className="sc-gh-box">
                 <div className="sc-gh-box-head">
-                  <h2>Níveis cadastrados</h2>
-                  <p>Edite nome ou descrição de um nível existente.</p>
+                  <h2>Cores cadastradas</h2>
+                  <p>Edite nome, hex ou descrição.</p>
                 </div>
 
                 <div className="sc-cadastro-list-wrap">
-                  {levels.length > 0 ? (
+                  {colors.length > 0 ? (
                     <div className="sc-cadastro-list-filter">
                       <IonIcon icon={searchOutline} aria-hidden />
                       <input
                         type="search"
                         value={listFilter}
                         onChange={(e) => setListFilter(e.target.value)}
-                        placeholder="Filtrar níveis…"
-                        aria-label="Filtrar níveis"
+                        placeholder="Filtrar cores…"
+                        aria-label="Filtrar cores"
                       />
                     </div>
                   ) : null}
@@ -253,24 +293,24 @@ export default function CardLevelsCadastroPage() {
                     </div>
                   ) : null}
 
-                  {!loading && !levels.length ? (
+                  {!loading && !colors.length ? (
                     <p className="sc-cadastro-levels-empty">
-                      Nenhum nível cadastrado ainda.
+                      Nenhuma cor cadastrada ainda.
                     </p>
                   ) : null}
 
-                  {!loading && levels.length > 0 && filteredLevels.length === 0 ? (
+                  {!loading && colors.length > 0 && filteredColors.length === 0 ? (
                     <p className="sc-cadastro-levels-empty">
-                      Nenhum nível com “{listFilter.trim()}”.
+                      Nenhuma cor com “{listFilter.trim()}”.
                     </p>
                   ) : null}
 
                   <ul className="sc-cadastro-level-list">
-                    {filteredLevels.map((level) => {
-                      const editing = editingId === level.id;
+                    {filteredColors.map((color) => {
+                      const editing = editingId === color.id;
                       return (
                         <li
-                          key={level.id}
+                          key={color.id}
                           className={`sc-cadastro-level-row${editing ? ' is-editing' : ''}`}
                         >
                           {editing ? (
@@ -289,10 +329,44 @@ export default function CardLevelsCadastroPage() {
                                       name: e.target.value,
                                     }))
                                   }
-                                  disabled={savingId === level.id}
+                                  disabled={savingId === color.id}
                                   required
                                   autoFocus
                                 />
+                              </label>
+                              <label className="sc-field">
+                                <span className="sc-field-label">Hex</span>
+                                <div className="sc-cadastro-color-hex-row">
+                                  <input
+                                    type="color"
+                                    className="sc-cadastro-color-native"
+                                    value={
+                                      /^#[0-9A-Fa-f]{6}$/.test(editDraft.hex)
+                                        ? editDraft.hex
+                                        : '#1D9E75'
+                                    }
+                                    onChange={(e) =>
+                                      setEditDraft((d) => ({
+                                        ...d,
+                                        hex: e.target.value.toUpperCase(),
+                                      }))
+                                    }
+                                    disabled={savingId === color.id}
+                                    aria-label="Seletor de cor"
+                                  />
+                                  <input
+                                    className="sc-field-input"
+                                    value={editDraft.hex}
+                                    onChange={(e) =>
+                                      setEditDraft((d) => ({
+                                        ...d,
+                                        hex: e.target.value,
+                                      }))
+                                    }
+                                    disabled={savingId === color.id}
+                                    required
+                                  />
+                                </div>
                               </label>
                               <label className="sc-field">
                                 <span className="sc-field-label">Descrição</span>
@@ -305,14 +379,14 @@ export default function CardLevelsCadastroPage() {
                                       description: e.target.value,
                                     }))
                                   }
-                                  disabled={savingId === level.id}
+                                  disabled={savingId === color.id}
                                 />
                               </label>
                               <div className="sc-cadastro-level-row-actions">
                                 <button
                                   type="button"
                                   className="sc-btn"
-                                  disabled={savingId === level.id}
+                                  disabled={savingId === color.id}
                                   onClick={cancelEdit}
                                 >
                                   Cancelar
@@ -321,11 +395,12 @@ export default function CardLevelsCadastroPage() {
                                   type="submit"
                                   className="sc-btn primary"
                                   disabled={
-                                    savingId === level.id ||
-                                    !editDraft.name.trim()
+                                    savingId === color.id ||
+                                    !editDraft.name.trim() ||
+                                    !editDraft.hex.trim()
                                   }
                                 >
-                                  {savingId === level.id
+                                  {savingId === color.id
                                     ? 'Salvando…'
                                     : 'Salvar'}
                                 </button>
@@ -334,32 +409,36 @@ export default function CardLevelsCadastroPage() {
                           ) : (
                             <>
                               <div className="sc-cadastro-level-meta">
+                                <span
+                                  className="sc-cadastro-color-dot"
+                                  style={{ background: color.hex }}
+                                  aria-hidden
+                                />
                                 <div className="sc-cadastro-level-copy">
-                                  <strong>{level.name}</strong>
-                                  {level.description ? (
-                                    <p>{level.description}</p>
-                                  ) : (
-                                    <p className="is-muted">Sem descrição</p>
-                                  )}
+                                  <strong>{color.name}</strong>
+                                  <p className="is-muted">{color.hex}</p>
+                                  {color.description ? (
+                                    <p>{color.description}</p>
+                                  ) : null}
                                 </div>
                               </div>
                               <div className="sc-cadastro-row-actions">
                                 <button
                                   type="button"
                                   className="sc-edit-icon"
-                                  aria-label={`Editar ${level.name}`}
+                                  aria-label={`Editar ${color.name}`}
                                   title="Editar"
-                                  onClick={() => startEdit(level)}
+                                  onClick={() => startEdit(color)}
                                 >
                                   <IonIcon icon={createOutline} />
                                 </button>
                                 <button
                                   type="button"
                                   className="sc-edit-icon sc-delete-icon"
-                                  aria-label={`Excluir ${level.name}`}
+                                  aria-label={`Excluir ${color.name}`}
                                   title="Excluir"
                                   disabled={deleting}
-                                  onClick={() => setPendingDelete(level)}
+                                  onClick={() => setPendingDelete(color)}
                                 >
                                   <IonIcon icon={trashOutline} />
                                 </button>
@@ -378,10 +457,10 @@ export default function CardLevelsCadastroPage() {
 
         <IonAlert
           isOpen={Boolean(pendingDelete)}
-          header="Excluir nível?"
+          header="Excluir cor?"
           message={
             pendingDelete
-              ? `O nível “${pendingDelete.name}” será removido. Cartas que o usam ficam sem nível.`
+              ? `A cor “${pendingDelete.name}” sairá do catálogo. Itens que já usam o hex ${pendingDelete.hex} mantêm a cor.`
               : undefined
           }
           onDidDismiss={() => {
