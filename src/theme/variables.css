@@ -756,8 +756,8 @@ ion-modal::part(content),
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.7) inset,
     0 6px 16px rgba(26, 25, 23, 0.1);
+  /* Sem transition em transform — layout do Framer Motion anima a posição */
   transition:
-    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
     box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1),
     border-color 0.2s;
   -webkit-font-smoothing: antialiased;

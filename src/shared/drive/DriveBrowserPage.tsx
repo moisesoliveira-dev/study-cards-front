@@ -40,7 +40,7 @@ import {
 } from '../components/ContextMenu';
 import { useAppToast } from '../hooks/useAppToast';
 import { MotionShell, MotionStagger, tapScale } from '../motion';
-import { motion, useReducedMotion } from 'framer-motion';
+import { LayoutGroup, motion, useReducedMotion } from 'framer-motion';
 import {
   createOutline,
   documentTextOutline,
@@ -962,6 +962,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
           ) : null}
 
           <div className="sc-section-label">Hall</div>
+          <LayoutGroup id="drive-faces">
           {loading ? (
             <div className="sc-empty">
               <IonSpinner name="crescent" />
@@ -1293,6 +1294,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
               </div>
             ) : null}
           </div>
+          </LayoutGroup>
 
           <div className="sc-bottom">
             <span>

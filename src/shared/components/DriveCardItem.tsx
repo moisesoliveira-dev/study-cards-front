@@ -1,9 +1,11 @@
 import type { CSSProperties } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import type { Card } from '../../modules/cards/types/card.types';
 import { cardAccent } from './FaceCardComposer';
 import { CardFaceIcon } from './CardIcon';
-import { staggerItem, tapScale } from '../motion';
+import { springSoft, staggerItem, tapScale } from '../motion';
+import { subscribeDrag } from '../dnd/drive-dnd';
 
 type Props = {
   card: Card;
@@ -19,6 +21,9 @@ export function DriveCardItem({ card, selected, onClick, view = 'grid' }: Props)
   if (view === 'list') {
     return (
       <motion.div
+        layout={!reduce}
+        layoutId={reduce ? undefined : `drive-card-${card.id}`}
+        transition={{ layout: springSoft }}
         role={onClick ? 'button' : undefined}
         tabIndex={onClick ? 0 : undefined}
         className={`sc-list-row${selected ? ' selected' : ''}`}
@@ -40,6 +45,9 @@ export function DriveCardItem({ card, selected, onClick, view = 'grid' }: Props)
 
   return (
     <motion.div
+      layout={!reduce}
+      layoutId={reduce ? undefined : `drive-card-${card.id}`}
+      transition={{ layout: springSoft }}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
       className={`sc-item card-item${selected ? ' selected' : ''}`}
@@ -80,9 +88,22 @@ export function FaceCard({
 }: FaceProps) {
   const reduce = useReducedMotion();
   const accent = cardAccent(card.color, card.tag);
+  const [dragBusy, setDragBusy] = useState(false);
+
+  useEffect(
+    () =>
+      subscribeDrag((s) => {
+        setDragBusy(Boolean(s?.moved));
+      }),
+    [],
+  );
+
+  const layoutOn = !reduce && !dragBusy;
 
   return (
     <motion.div
+      layout={layoutOn}
+      layoutId={reduce ? undefined : `face-card-${card.id}`}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
       className={`sc-face-card is-simple${selected ? ' selected' : ''}`}
@@ -111,6 +132,7 @@ export function FaceCard({
               },
             }
       }
+      transition={{ layout: springSoft }}
       whileTap={reduce ? undefined : tapScale}
     >
       <span className="card-accent-bar" aria-hidden />
