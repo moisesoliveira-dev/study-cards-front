@@ -1151,9 +1151,6 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
             </MotionStagger>
           )}
 
-            </MotionStagger>
-          )}
-
           <div className="sc-section-label">Cards</div>
           <div className="sc-decks">
             {decks.map((deck) => {
