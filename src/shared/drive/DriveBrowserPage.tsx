@@ -104,6 +104,36 @@ function buildPath(
   return null;
 }
 
+/** Atualiza a lista local após um move — sem refetch / spinner. */
+function applyMovedCard(
+  list: Card[],
+  moved: Card,
+  currentTopicId: string | null,
+  beforeCardId?: string | null,
+): Card[] {
+  if (moved.topicId !== currentTopicId) {
+    return list.filter((c) => c.id !== moved.id);
+  }
+
+  const had = list.some((c) => c.id === moved.id);
+  let next = had
+    ? list.map((c) => (c.id === moved.id ? moved : c))
+    : [...list, moved];
+
+  if (beforeCardId) {
+    next = next.map((c) => {
+      if (c.id === moved.id) return c;
+      if (c.deckId !== moved.deckId) return c;
+      if (c.position >= moved.position) {
+        return { ...c, position: c.position + 1 };
+      }
+      return c;
+    });
+  }
+
+  return next;
+}
+
 type Props = {
   subjectId: string;
   /** Se omitido, estamos na raiz do grupo (assunto). */
@@ -159,8 +189,8 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
 
   const isRoot = !topicId;
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     try {
       const [s, t] = await Promise.all([
         subjectsFacade.get(subjectId),
@@ -196,7 +226,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     } catch (error) {
       toast.error(error);
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subjectId, topicId, isRoot]);
@@ -352,6 +382,20 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     [cards, mergePickCards],
   );
 
+  const commitMovedCard = useCallback(
+    (moved: Card, beforeCardId?: string | null) => {
+      const currentTopicId = topicId ?? null;
+      setCards((prev) =>
+        applyMovedCard(prev, moved, currentTopicId, beforeCardId),
+      );
+      setMergePickCards((prev) =>
+        prev[moved.id] ? { ...prev, [moved.id]: moved } : prev,
+      );
+      setDetail((prev) => (prev?.id === moved.id ? moved : prev));
+    },
+    [topicId],
+  );
+
   const handleDrop = useCallback(
     async (event: {
       payload: {
@@ -366,32 +410,32 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
 
       try {
         if (payload.kind === 'card' && over.kind === 'folder' && over.id) {
-          await cardsFacade.move(payload.id, {
+          const moved = await cardsFacade.move(payload.id, {
             topicId: over.id,
             deckId: null,
           });
           toast.success('Card movido para a pasta');
-          await load();
+          commitMovedCard(moved);
           return;
         }
 
         if (payload.kind === 'card' && over.kind === 'deck' && over.id) {
-          await cardsFacade.move(payload.id, {
+          const moved = await cardsFacade.move(payload.id, {
             topicId: topicId ?? null,
             deckId: over.id,
           });
           toast.success('Card movido para o deck');
-          await load();
+          commitMovedCard(moved);
           return;
         }
 
         if (payload.kind === 'card' && over.kind === 'hall') {
-          await cardsFacade.move(payload.id, {
+          const moved = await cardsFacade.move(payload.id, {
             topicId: topicId ?? null,
             deckId: null,
           });
           toast.success('Card no Hall');
-          await load();
+          commitMovedCard(moved);
           return;
         }
 
@@ -399,19 +443,19 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
           if (payload.id === over.id) return;
           const target = cards.find((c) => c.id === over.id);
           if (!target) return;
-          await cardsFacade.move(payload.id, {
+          const moved = await cardsFacade.move(payload.id, {
             topicId: topicId ?? null,
             deckId: target.deckId,
             beforeCardId: target.id,
           });
           toast.success('Posição atualizada');
-          await load();
+          commitMovedCard(moved, target.id);
           return;
         }
 
         if (payload.kind === 'card' && over.kind === 'root') {
           const targetTopicId = isRoot ? null : parentId;
-          await cardsFacade.move(payload.id, {
+          const moved = await cardsFacade.move(payload.id, {
             topicId: targetTopicId,
             deckId: null,
           });
@@ -420,7 +464,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
               ? 'Card na raiz do grupo'
               : 'Card movido para a pasta anterior',
           );
-          await load();
+          commitMovedCard(moved);
           return;
         }
 
@@ -428,7 +472,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
           if (payload.id === over.id) return;
           await topicsFacade.update(payload.id, { parentId: over.id });
           toast.success('Pasta movida');
-          await load();
+          await load({ silent: true });
           return;
         }
 
@@ -437,13 +481,13 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
             parentId: isRoot ? null : parentId,
           });
           toast.success('Pasta movida');
-          await load();
+          await load({ silent: true });
         }
       } catch (error) {
         toast.error(error);
       }
     },
-    [cards, isRoot, load, parentId, toast, topicId],
+    [cards, commitMovedCard, isRoot, load, parentId, toast, topicId],
   );
 
   useDriveDrop(handleDrop);
@@ -554,7 +598,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         toast.success('Pasta criada');
       }
       closeFolderModal();
-      await load();
+      await load({ silent: true });
     } catch (error) {
       toast.error(error);
     } finally {
@@ -566,7 +610,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     if (!deckName.trim()) return;
     setSaving(true);
     try {
-      await decksFacade.create({
+      const deck = await decksFacade.create({
         subjectId,
         topicId: topicId ?? null,
         name: deckName,
@@ -574,7 +618,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
       setDeckModalOpen(false);
       setDeckNameInput('');
       toast.success('Deck criado');
-      await load();
+      setDecks((prev) => [...prev, deck]);
     } catch (error) {
       toast.error(error);
     } finally {
@@ -586,7 +630,10 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     try {
       await decksFacade.remove(id);
       toast.success('Deck excluído');
-      await load();
+      setDecks((prev) => prev.filter((d) => d.id !== id));
+      setCards((prev) =>
+        prev.map((c) => (c.deckId === id ? { ...c, deckId: null } : c)),
+      );
     } catch (error) {
       toast.error(error);
     }
@@ -598,7 +645,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     const nextBack = back.trim() || plain.slice(0, 280) || front.trim();
     setSaving(true);
     try {
-      await cardsFacade.create({
+      const created = await cardsFacade.create({
         subjectId,
         topicId: topicId ?? null,
         front,
@@ -618,7 +665,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
       setColor(CARD_ACCENT_COLORS[0]);
       setTag('Conceito');
       toast.success('Card criado');
-      await load();
+      setCards((prev) => [...prev, created]);
     } catch (error) {
       toast.error(error);
     } finally {
@@ -656,7 +703,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
       setColor(CARD_ACCENT_COLORS[0]);
       setTag('Conceito');
       toast.success('Cards unidos');
-      await load();
+      await load({ silent: true });
       setDetail(created);
     } catch (error) {
       toast.error(error);
@@ -682,7 +729,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
           new CustomEvent('sc-card-deleted', { detail: { id } }),
         );
         toast.success('Card excluído');
-        await load();
+        setCards((prev) => prev.filter((c) => c.id !== id));
       } catch (error) {
         toast.error(error);
       }
@@ -830,7 +877,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         );
         return;
       }
-      await load();
+      await load({ silent: true });
     } catch (error) {
       toast.error(error);
     } finally {
@@ -1435,7 +1482,12 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         }}
         onChanged={(updated) => {
           setDetail(updated);
-          void load();
+          setCards((prev) =>
+            prev.map((c) => (c.id === updated.id ? updated : c)),
+          );
+          setMergePickCards((prev) =>
+            prev[updated.id] ? { ...prev, [updated.id]: updated } : prev,
+          );
         }}
         onDelete={removeCard}
         onOpenLinked={(linkedCard) => {
