@@ -5160,13 +5160,110 @@ body.sc-dragging * {
 }
 
 .sc-drop-zone.is-over[data-drop-kind='card'] {
-  outline-color: #7F77DD;
-  background: color-mix(in srgb, #7F77DD 12%, transparent);
+  outline: none;
+  background: transparent;
 }
 
 .sc-drop-zone.is-over[data-drop-kind='folder'] {
   outline-color: #BA7517;
   background: color-mix(in srgb, #BA7517 12%, transparent);
+}
+
+/* Linha / vão de inserção entre cartas */
+.sc-drop-zone.is-insert-before,
+.sc-drop-zone.is-insert-after {
+  position: relative;
+  z-index: 45;
+}
+
+.sc-drop-zone.is-insert-before::before,
+.sc-drop-zone.is-insert-after::after {
+  content: '';
+  position: absolute;
+  z-index: 60;
+  pointer-events: none;
+  border-radius: 999px;
+  background: #7f77dd;
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, #7f77dd 28%, transparent),
+    0 4px 14px color-mix(in srgb, #7f77dd 40%, transparent);
+}
+
+.sc-hand-slot.is-insert-before::before,
+.sc-hand > .sc-drop-zone.sc-hand-slot.is-insert-before::before,
+.sc-hand-slot.is-deck.is-insert-before::before {
+  top: 6%;
+  bottom: 6%;
+  left: -5px;
+  width: 4px;
+}
+
+.sc-hand-slot.is-insert-after::after,
+.sc-hand > .sc-drop-zone.sc-hand-slot.is-insert-after::after,
+.sc-hand-slot.is-deck.is-insert-after::after {
+  top: 6%;
+  bottom: 6%;
+  right: -5px;
+  width: 4px;
+}
+
+/* Abre um vão visível entre as cartas sobrepostas do Hall */
+body.sc-dragging .sc-hand-slot.is-insert-before,
+body.sc-dragging .sc-hand > .sc-drop-zone.sc-hand-slot.is-insert-before {
+  margin-left: 10px;
+  transform: translateX(6px);
+}
+
+body.sc-dragging .sc-hand-slot.is-insert-after,
+body.sc-dragging .sc-hand > .sc-drop-zone.sc-hand-slot.is-insert-after {
+  margin-right: 18px;
+  transform: translateX(-2px);
+}
+
+body.sc-dragging .sc-hand-slot.is-insert-before .sc-face-card,
+body.sc-dragging .sc-hand-slot.is-insert-after .sc-face-card,
+body.sc-dragging
+  .sc-hand
+  > .sc-drop-zone.sc-hand-slot.is-insert-before
+  .sc-face-card,
+body.sc-dragging
+  .sc-hand
+  > .sc-drop-zone.sc-hand-slot.is-insert-after
+  .sc-face-card {
+  border-color: color-mix(in srgb, #7f77dd 55%, var(--border-strong));
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.85) inset,
+    0 10px 24px color-mix(in srgb, #7f77dd 22%, transparent);
+}
+
+/* Lista vertical: linha horizontal */
+.sc-list-view > .sc-drop-zone.is-insert-before::before {
+  left: 8px;
+  right: 8px;
+  top: -3px;
+  height: 4px;
+  width: auto;
+}
+
+.sc-list-view > .sc-drop-zone.is-insert-after::after {
+  left: 8px;
+  right: 8px;
+  bottom: -3px;
+  height: 4px;
+  width: auto;
+}
+
+.sc-list-view > .sc-drop-zone.is-insert-before {
+  margin-top: 10px;
+}
+
+.sc-list-view > .sc-drop-zone.is-insert-after {
+  margin-bottom: 10px;
+}
+
+.sc-drag-ghost[data-edge='before'],
+.sc-drag-ghost[data-edge='after'] {
+  border-color: #7f77dd;
 }
 
 .sc-drop-root {
@@ -5213,8 +5310,10 @@ body.sc-dragging * {
   height: 100%;
 }
 
-body.sc-dragging .sc-hand-slot:hover,
-body.sc-dragging .sc-hand > .sc-drop-zone.sc-hand-slot:hover {
+body.sc-dragging .sc-hand-slot:hover:not(.is-insert-before):not(.is-insert-after),
+body.sc-dragging
+  .sc-hand
+  > .sc-drop-zone.sc-hand-slot:hover:not(.is-insert-before):not(.is-insert-after) {
   transform: none;
   margin-right: 0;
   z-index: 1;

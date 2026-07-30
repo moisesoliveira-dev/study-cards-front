@@ -16,9 +16,18 @@ export type DragFolderPayload = {
 
 export type DragPayload = DragCardPayload | DragFolderPayload;
 
-export type DropTarget =
+/** Alvo estático de drop (sem lado de inserção). */
+export type DropZoneTarget =
   | { kind: 'folder'; id: string }
   | { kind: 'card'; id: string }
+  | { kind: 'deck'; id: string }
+  | { kind: 'hall' }
+  | { kind: 'root' };
+
+/** Alvo ativo durante o drag (cartas incluem lado). */
+export type DropTarget =
+  | { kind: 'folder'; id: string }
+  | { kind: 'card'; id: string; edge: 'before' | 'after' }
   | { kind: 'deck'; id: string }
   | { kind: 'hall' }
   | { kind: 'root' };
@@ -49,12 +58,26 @@ function ensureGhost() {
   return ghostEl;
 }
 
+function ghostHint(over: DropTarget | null): string {
+  if (!over) return '';
+  if (over.kind === 'card') {
+    return over.edge === 'before' ? ' · inserir antes' : ' · inserir depois';
+  }
+  if (over.kind === 'deck') return ' · para o deck';
+  if (over.kind === 'hall') return ' · para o Hall';
+  if (over.kind === 'folder') return ' · para a pasta';
+  if (over.kind === 'root') return ' · um nível acima';
+  return '';
+}
+
 function updateGhost() {
   if (!state || !ghostEl) return;
-  ghostEl.textContent = state.payload.label;
+  ghostEl.textContent = `${state.payload.label}${ghostHint(state.over)}`;
   ghostEl.style.transform = `translate(${state.x + 12}px, ${state.y + 12}px)`;
   ghostEl.dataset.kind = state.payload.kind;
   ghostEl.dataset.over = state.over?.kind ?? '';
+  ghostEl.dataset.edge =
+    state.over?.kind === 'card' ? state.over.edge : '';
 }
 
 export function subscribeDrag(listener: Listener) {
@@ -86,7 +109,10 @@ export function startDriveDrag(
   emit();
 }
 
-export function moveDriveDrag(point: { x: number; y: number }, over: DropTarget | null) {
+export function moveDriveDrag(
+  point: { x: number; y: number },
+  over: DropTarget | null,
+) {
   if (!state) return;
   const dx = Math.abs(point.x - state.x);
   const dy = Math.abs(point.y - state.y);
@@ -122,14 +148,35 @@ export function endDriveDrag(): {
   return result;
 }
 
-export function readDropTarget(el: Element | null): DropTarget | null {
+function cardInsertEdge(
+  node: Element,
+  point: { x: number; y: number },
+): 'before' | 'after' {
+  const rect = node.getBoundingClientRect();
+  const inHand = Boolean(
+    node.closest('.sc-hand, .sc-deck-hand, .sc-hand-slot'),
+  );
+  if (inHand) {
+    return point.x < rect.left + rect.width / 2 ? 'before' : 'after';
+  }
+  return point.y < rect.top + rect.height / 2 ? 'before' : 'after';
+}
+
+export function readDropTarget(
+  el: Element | null,
+  point?: { x: number; y: number },
+): DropTarget | null {
   let node: Element | null = el;
   while (node) {
     const kind = node.getAttribute('data-drop-kind');
     const id = node.getAttribute('data-drop-id');
     if (kind === 'root') return { kind: 'root' };
     if (kind === 'hall') return { kind: 'hall' };
-    if ((kind === 'folder' || kind === 'card' || kind === 'deck') && id) {
+    if (kind === 'card' && id) {
+      const edge = point ? cardInsertEdge(node, point) : 'before';
+      return { kind: 'card', id, edge };
+    }
+    if ((kind === 'folder' || kind === 'deck') && id) {
       return { kind, id };
     }
     node = node.parentElement;

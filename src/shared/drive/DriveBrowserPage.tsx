@@ -31,6 +31,7 @@ import { FaceCardComposer } from '../components/FaceCardComposer';
 import { CardDocumentSheet } from '../components/CardDocumentSheet';
 import { documentToPlainText } from '../components/DocumentEditor';
 import { DragItem, DropZone, useDriveDrop } from '../dnd/DragDrop';
+import type { DragPayload, DropTarget } from '../dnd/drive-dnd';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { MergeSourcePicker } from '../components/MergeSourcePicker';
 import {
@@ -398,11 +399,8 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
 
   const handleDrop = useCallback(
     async (event: {
-      payload: {
-        kind: string;
-        id: string;
-      };
-      over: { kind: string; id?: string } | null;
+      payload: DragPayload;
+      over: DropTarget | null;
       moved: boolean;
     }) => {
       if (!event.moved || !event.over) return;
@@ -443,13 +441,30 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
           if (payload.id === over.id) return;
           const target = cards.find((c) => c.id === over.id);
           if (!target) return;
+
+          const siblings = cards
+            .filter(
+              (c) => c.deckId === target.deckId && c.id !== payload.id,
+            )
+            .sort((a, b) => a.position - b.position);
+          const targetIdx = siblings.findIndex((c) => c.id === target.id);
+          if (targetIdx < 0) return;
+
+          const edge = over.edge ?? 'before';
+          const beforeCard =
+            edge === 'before'
+              ? target
+              : (siblings[targetIdx + 1] ?? null);
+
           const moved = await cardsFacade.move(payload.id, {
             topicId: topicId ?? null,
             deckId: target.deckId,
-            beforeCardId: target.id,
+            ...(beforeCard
+              ? { beforeCardId: beforeCard.id }
+              : {}),
           });
           toast.success('Posição atualizada');
-          commitMovedCard(moved, target.id);
+          commitMovedCard(moved, beforeCard?.id ?? null);
           return;
         }
 

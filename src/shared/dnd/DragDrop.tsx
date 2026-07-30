@@ -7,6 +7,7 @@ import {
   subscribeDrag,
   type DragPayload,
   type DropTarget,
+  type DropZoneTarget,
 } from './drive-dnd';
 
 const MOVE_THRESHOLD = 10;
@@ -103,10 +104,12 @@ export function DragItem({
           startDriveDrag(payload, { x: e.clientX, y: e.clientY });
         }
 
+        const point = { x: e.clientX, y: e.clientY };
         const over = readDropTarget(
           document.elementFromPoint(e.clientX, e.clientY),
+          point,
         );
-        moveDriveDrag({ x: e.clientX, y: e.clientY }, over);
+        moveDriveDrag(point, over);
       }}
       onPointerUp={(e) => {
         if (!tracking.current || pointerId.current !== e.pointerId) return;
@@ -155,39 +158,60 @@ export function DragItem({
 }
 
 type DropZoneProps = {
-  target: DropTarget;
+  target: DropZoneTarget;
   className?: string;
   children: ReactNode;
 };
 
 export function DropZone({ target, className, children }: DropZoneProps) {
   const [active, setActive] = useState(false);
+  const [edge, setEdge] = useState<'before' | 'after' | null>(null);
 
   useEffect(
     () =>
       subscribeDrag((s) => {
         if (!s?.over || !s.moved) {
           setActive(false);
+          setEdge(null);
           return;
         }
         if (target.kind === 'root' || target.kind === 'hall') {
           setActive(s.over.kind === target.kind);
+          setEdge(null);
+          return;
+        }
+        if (target.kind === 'card') {
+          const hit =
+            s.over.kind === 'card' &&
+            s.over.id === target.id &&
+            s.payload.id !== target.id;
+          setActive(hit);
+          setEdge(hit && s.over.kind === 'card' ? s.over.edge : null);
           return;
         }
         setActive(s.over.kind === target.kind && s.over.id === target.id);
+        setEdge(null);
       }),
     [target],
   );
 
+  const insertClass =
+    target.kind === 'card' && edge
+      ? edge === 'before'
+        ? ' is-insert-before'
+        : ' is-insert-after'
+      : '';
+
   return (
     <div
-      className={`sc-drop-zone${active ? ' is-over' : ''}${className ? ` ${className}` : ''}`}
+      className={`sc-drop-zone${active ? ' is-over' : ''}${insertClass}${className ? ` ${className}` : ''}`}
       data-drop-kind={target.kind}
       data-drop-id={
         target.kind === 'root' || target.kind === 'hall'
           ? undefined
           : target.id
       }
+      data-insert-edge={edge ?? undefined}
     >
       {children}
     </div>
