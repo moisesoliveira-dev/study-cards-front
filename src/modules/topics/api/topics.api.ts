@@ -13,6 +13,10 @@ export const topicsApi = {
     ),
   create: (input: CreateTopicInput) =>
     httpClient.post<Topic>('/topics', input),
+  move: (
+    id: string,
+    input: { beforeTopicId?: string | null; position?: number },
+  ) => httpClient.post<Topic>(`/topics/${id}/move`, input),
   update: (id: string, input: UpdateTopicInput) =>
     httpClient.patch<Topic>(`/topics/${id}`, input),
   remove: (id: string) => httpClient.delete<{ ok: boolean }>(`/topics/${id}`),

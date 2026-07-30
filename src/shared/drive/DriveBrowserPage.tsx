@@ -187,6 +187,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   const [folderOpen, setFolderOpen] = useState(false);
   const [editingFolder, setEditingFolder] = useState<TopicTreeNode | null>(null);
   const [cardOpen, setCardOpen] = useState(false);
+  const [createDeckId, setCreateDeckId] = useState<string | null>(null);
   const [mergeOpen, setMergeOpen] = useState(false);
   const [mergeSources, setMergeSources] = useState<Card[]>([]);
   const [raisedId, setRaisedId] = useState<string | null>(null);
@@ -342,6 +343,11 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   const orderedDecks = useMemo(
     () => [...decks].sort((a, b) => a.position - b.position),
     [decks],
+  );
+
+  const orderedFolders = useMemo(
+    () => [...filteredFolders].sort((a, b) => a.position - b.position),
+    [filteredFolders],
   );
 
   const filteredCards = hallCards;
@@ -515,8 +521,32 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
 
         if (payload.kind === 'folder' && over.kind === 'folder' && over.id) {
           if (payload.id === over.id) return;
-          await topicsFacade.update(payload.id, { parentId: over.id });
-          toast.success('Pasta movida');
+          const edge = over.edge ?? 'into';
+
+          if (edge === 'into') {
+            await topicsFacade.update(payload.id, { parentId: over.id });
+            toast.success('Pasta movida');
+            await load({ silent: true });
+            return;
+          }
+
+          const siblings = folders
+            .filter((f) => f.id !== payload.id)
+            .sort((a, b) => a.position - b.position);
+          const target = folders.find((f) => f.id === over.id);
+          if (!target) return;
+          const targetIdx = siblings.findIndex((f) => f.id === target.id);
+          if (targetIdx < 0) return;
+
+          const beforeTopic =
+            edge === 'before'
+              ? target
+              : (siblings[targetIdx + 1] ?? null);
+
+          await topicsFacade.move(payload.id, {
+            ...(beforeTopic ? { beforeTopicId: beforeTopic.id } : {}),
+          });
+          toast.success('Pasta reordenada');
           await load({ silent: true });
           return;
         }
@@ -743,15 +773,27 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     }
   };
 
+  const openCreateCard = (deckId: string | null = null) => {
+    setCreateDeckId(deckId);
+    setCardOpen(true);
+  };
+
+  const closeCardComposer = () => {
+    setCardOpen(false);
+    setCreateDeckId(null);
+  };
+
   const createCard = async () => {
     if (!front.trim()) return;
     const plain = documentToPlainText(docJson);
     const nextBack = back.trim() || plain.slice(0, 280) || front.trim();
+    const targetDeckId = createDeckId;
     setSaving(true);
     try {
       const created = await cardsFacade.create({
         subjectId,
         topicId: topicId ?? null,
+        deckId: targetDeckId,
         front,
         back: nextBack,
         document: docJson || null,
@@ -760,7 +802,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         color,
         tag,
       });
-      setCardOpen(false);
+      closeCardComposer();
       setFront('');
       setBack('');
       setDocJson('');
@@ -768,7 +810,9 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
       setIcon(null);
       setColor(CARD_ACCENT_COLORS[0]);
       setTag('Conceito');
-      toast.success('Card criado');
+      toast.success(
+        targetDeckId ? 'Card criado no deck' : 'Card criado',
+      );
       setCards((prev) => [...prev, created]);
     } catch (error) {
       toast.error(error);
@@ -946,7 +990,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
             id: 'card',
             label: 'Nova carta',
             icon: createOutline,
-            onSelect: () => setCardOpen(true),
+            onSelect: () => openCreateCard(null),
           },
           {
             id: 'folder',
@@ -964,6 +1008,40 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
       );
     },
     [folderName, openCtx],
+  );
+
+  const openDeckContextMenu = useCallback(
+    (e: MouseEvent, deck: Deck) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openCtx(
+        e,
+        [
+          {
+            id: 'card-in-deck',
+            label: 'Nova carta neste deck',
+            icon: createOutline,
+            onSelect: () => openCreateCard(deck.id),
+          },
+          {
+            id: 'edit-deck',
+            label: 'Editar deck',
+            icon: pencilOutline,
+            onSelect: () => openEditDeck(deck),
+          },
+          {
+            id: 'delete-deck',
+            label: 'Excluir deck',
+            icon: trashOutline,
+            danger: true,
+            separator: true,
+            onSelect: () => void removeDeck(deck.id),
+          },
+        ],
+        deck.name,
+      );
+    },
+    [openCtx],
   );
 
   const confirmDeleteFolder = async () => {
@@ -1037,7 +1115,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
             view={view}
             onView={setView}
             onNewFolder={openCreateFolder}
-            onNewCard={() => setCardOpen(true)}
+            onNewCard={() => openCreateCard(null)}
             extra={
               <motion.button
                 type="button"
@@ -1110,7 +1188,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
               <motion.button
                 type="button"
                 className="sc-face-card sc-face-add is-simple"
-                onClick={() => setCardOpen(true)}
+                onClick={() => openCreateCard(null)}
                 aria-label="Criar card"
                 initial={reduce ? false : { opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -1215,7 +1293,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
           <div className="sc-section-label">Pastas</div>
           {view === 'grid' ? (
             <MotionStagger className="sc-grid" key={`folders-${filteredFolders.length}`}>
-              {filteredFolders.map((node) => (
+              {orderedFolders.map((node) => (
                 <DropZone key={node.id} target={{ kind: 'folder', id: node.id }}>
                   <DragItem
                     payload={{
@@ -1250,7 +1328,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
               className="sc-list-view"
               key={`folders-list-${filteredFolders.length}`}
             >
-              {filteredFolders.map((node, i) => (
+              {orderedFolders.map((node, i) => (
                 <DropZone key={node.id} target={{ kind: 'folder', id: node.id }}>
                   <div
                     className="sc-list-row-wrap"
@@ -1328,6 +1406,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                       label: deck.name,
                     }}
                     className="sc-deck-drag"
+                    onContextMenu={(e) => openDeckContextMenu(e, deck)}
                   >
                     <div className="sc-deck-head">
                       <span
@@ -1601,6 +1680,11 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
 
       <FaceCardComposer
         open={cardOpen}
+        title={
+          createDeckId
+            ? `Nova carta · ${decks.find((d) => d.id === createDeckId)?.name ?? 'Deck'}`
+            : undefined
+        }
         front={front}
         back={back}
         docJson={docJson}
@@ -1618,7 +1702,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         onLevelId={setLevelId}
         onIcon={setIcon}
         onColor={setColor}
-        onClose={() => setCardOpen(false)}
+        onClose={closeCardComposer}
         onSubmit={() => void createCard()}
       />
 

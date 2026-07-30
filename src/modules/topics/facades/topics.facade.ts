@@ -22,6 +22,13 @@ export class TopicsFacade {
     });
   }
 
+  move(
+    id: string,
+    input: { beforeTopicId?: string | null; position?: number },
+  ): Promise<Topic> {
+    return topicsApi.move(id, input);
+  }
+
   update(id: string, input: UpdateTopicInput): Promise<Topic> {
     return topicsApi.update(id, {
       ...input,

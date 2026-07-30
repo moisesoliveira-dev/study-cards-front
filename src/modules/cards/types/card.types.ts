@@ -23,6 +23,7 @@ export type Card = {
 export type CreateCardInput = {
   subjectId?: string;
   topicId?: string | null;
+  deckId?: string | null;
   front: string;
   back: string;
   document?: string | null;

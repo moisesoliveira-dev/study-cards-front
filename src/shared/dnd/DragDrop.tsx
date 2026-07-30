@@ -166,7 +166,7 @@ type DropZoneProps = {
 
 export function DropZone({ target, className, style, children }: DropZoneProps) {
   const [active, setActive] = useState(false);
-  const [edge, setEdge] = useState<'before' | 'after' | null>(null);
+  const [edge, setEdge] = useState<'before' | 'after' | 'into' | null>(null);
 
   useEffect(
     () =>
@@ -206,8 +206,23 @@ export function DropZone({ target, className, style, children }: DropZoneProps) 
           setEdge(null);
           return;
         }
-        setActive(s.over.kind === target.kind && s.over.id === target.id);
-        setEdge(null);
+        if (target.kind === 'folder') {
+          if (s.payload.kind === 'folder') {
+            const hit =
+              s.over.kind === 'folder' &&
+              s.over.id === target.id &&
+              s.payload.id !== target.id;
+            setActive(hit);
+            setEdge(
+              hit && s.over.kind === 'folder'
+                ? (s.over.edge ?? 'into')
+                : null,
+            );
+            return;
+          }
+          setActive(s.over.kind === 'folder' && s.over.id === target.id);
+          setEdge(null);
+        }
       }),
     [target],
   );
@@ -217,7 +232,9 @@ export function DropZone({ target, className, style, children }: DropZoneProps) 
       ? ' is-insert-before'
       : edge === 'after'
         ? ' is-insert-after'
-        : '';
+        : edge === 'into'
+          ? ' is-insert-into'
+          : '';
 
   return (
     <div

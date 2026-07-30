@@ -37,7 +37,7 @@ export type DropZoneTarget =
 
 /** Alvo ativo durante o drag. */
 export type DropTarget =
-  | { kind: 'folder'; id: string }
+  | { kind: 'folder'; id: string; edge?: 'before' | 'after' | 'into' }
   | { kind: 'card'; id: string; edge: 'before' | 'after' }
   | { kind: 'deck'; id: string; edge?: 'before' | 'after' }
   | { kind: 'hall' }
@@ -74,6 +74,10 @@ function ghostHint(over: DropTarget | null, payload: DragPayload): string {
   if (payload.kind === 'deck' && over.kind === 'deck') {
     return over.edge === 'after' ? ' · inserir depois' : ' · inserir antes';
   }
+  if (payload.kind === 'folder' && over.kind === 'folder') {
+    if (over.edge === 'into') return ' · mover para dentro';
+    return over.edge === 'after' ? ' · inserir depois' : ' · inserir antes';
+  }
   if (over.kind === 'card') {
     return over.edge === 'before' ? ' · inserir antes' : ' · inserir depois';
   }
@@ -95,7 +99,9 @@ function updateGhost() {
       ? state.over.edge
       : state.over?.kind === 'deck' && state.over.edge
         ? state.over.edge
-        : '';
+        : state.over?.kind === 'folder' && state.over.edge
+          ? state.over.edge
+          : '';
 }
 
 export function subscribeDrag(listener: Listener) {
@@ -207,18 +213,47 @@ function deckInsertEdge(
   return insertEdgeWithHysteresis(ratio, sticky, id);
 }
 
+/** Pastas: bordas = reordenar; centro = mover para dentro. */
+function folderDropEdge(
+  node: Element,
+  point: { x: number; y: number },
+  sticky?: { id: string; edge: 'before' | 'after' | 'into' } | null,
+): 'before' | 'after' | 'into' {
+  const rect = node.getBoundingClientRect();
+  const id = node.getAttribute('data-drop-id');
+  const inGrid = Boolean(node.closest('.sc-grid'));
+  const span = inGrid ? rect.width : rect.height;
+  const offset = inGrid ? point.x - rect.left : point.y - rect.top;
+  const ratio = offset / Math.max(span, 1);
+
+  if (sticky && sticky.id === id) {
+    if (sticky.edge === 'before') {
+      return ratio < 0.38 ? 'before' : ratio > 0.72 ? 'after' : 'into';
+    }
+    if (sticky.edge === 'after') {
+      return ratio > 0.62 ? 'after' : ratio < 0.28 ? 'before' : 'into';
+    }
+    return ratio < 0.22 ? 'before' : ratio > 0.78 ? 'after' : 'into';
+  }
+
+  if (ratio < 0.25) return 'before';
+  if (ratio > 0.75) return 'after';
+  return 'into';
+}
+
 export function readDropTarget(
   el: Element | null,
   point?: { x: number; y: number },
 ): DropTarget | null {
   const draggingDeck = state?.payload.kind === 'deck';
+  const draggingFolder = state?.payload.kind === 'folder';
   let node: Element | null = el;
   while (node) {
     const kind = node.getAttribute('data-drop-kind');
     const id = node.getAttribute('data-drop-id');
 
     if (kind === 'card' && id) {
-      if (draggingDeck) {
+      if (draggingDeck || draggingFolder) {
         node = node.parentElement;
         continue;
       }
@@ -234,7 +269,7 @@ export function readDropTarget(
 
     if (kind === 'root') return { kind: 'root' };
     if (kind === 'hall') {
-      if (draggingDeck) {
+      if (draggingDeck || draggingFolder) {
         node = node.parentElement;
         continue;
       }
@@ -242,6 +277,10 @@ export function readDropTarget(
     }
 
     if (kind === 'deck' && id) {
+      if (draggingFolder) {
+        node = node.parentElement;
+        continue;
+      }
       if (draggingDeck && point) {
         const sticky =
           state?.over?.kind === 'deck' && state.over.edge
@@ -260,6 +299,17 @@ export function readDropTarget(
       if (draggingDeck) {
         node = node.parentElement;
         continue;
+      }
+      if (draggingFolder && point) {
+        const sticky =
+          state?.over?.kind === 'folder' && state.over.edge
+            ? { id: state.over.id, edge: state.over.edge }
+            : null;
+        return {
+          kind: 'folder',
+          id,
+          edge: folderDropEdge(node, point, sticky),
+        };
       }
       return { kind: 'folder', id };
     }

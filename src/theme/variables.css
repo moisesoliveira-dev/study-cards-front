@@ -285,24 +285,6 @@ ion-modal::part(content),
   );
 }
 
-.sc-deck.is-insert-before::before,
-.sc-deck.is-insert-after::after {
-  left: 10px;
-  right: 10px;
-  width: auto;
-  height: 4px;
-  top: auto;
-  bottom: auto;
-}
-
-.sc-deck.is-insert-before::before {
-  top: -6px;
-}
-
-.sc-deck.is-insert-after::after {
-  bottom: -6px;
-}
-
 .sc-deck-drag {
   display: block;
   cursor: grab;
@@ -393,9 +375,70 @@ ion-modal::part(content),
   min-height: 48px;
 }
 
+.sc-deck-hand > .sc-hand-slot,
+.sc-deck-hand > .sc-drop-zone.sc-hand-slot {
+  width: 112px;
+  height: 156px;
+  margin-left: 0;
+  margin-right: 0;
+  z-index: 1;
+  transition:
+    transform 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+    z-index 0s;
+}
+
+.sc-deck-hand > .sc-hand-slot:hover,
+.sc-deck-hand > .sc-drop-zone.sc-hand-slot:hover,
+.sc-deck-hand > .sc-hand-slot:focus-within,
+.sc-deck-hand > .sc-drop-zone.sc-hand-slot:focus-within,
+.sc-deck-hand > .sc-hand-slot.is-raised,
+.sc-deck-hand > .sc-drop-zone.sc-hand-slot.is-raised {
+  z-index: 8;
+  transform: translateY(-12px);
+  margin-right: 0;
+}
+
+.sc-deck-hand > .sc-hand-slot:hover + .sc-hand-slot,
+.sc-deck-hand > .sc-drop-zone.sc-hand-slot:hover + .sc-drop-zone.sc-hand-slot,
+.sc-deck-hand > .sc-hand-slot.is-raised + .sc-hand-slot,
+.sc-deck-hand
+  > .sc-drop-zone.sc-hand-slot.is-raised
+  + .sc-drop-zone.sc-hand-slot {
+  margin-left: 0;
+}
+
 .sc-hand-slot.is-deck .sc-face-card {
   width: 112px;
   height: 156px;
+  transition:
+    box-shadow 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sc-deck-hand > .sc-hand-slot:hover .sc-face-card,
+.sc-deck-hand > .sc-drop-zone.sc-hand-slot:hover .sc-face-card,
+.sc-deck-hand > .sc-hand-slot.is-raised .sc-face-card,
+.sc-deck-hand > .sc-drop-zone.sc-hand-slot.is-raised .sc-face-card {
+  border-color: var(--border-accent);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.85) inset,
+    0 14px 28px rgba(26, 25, 23, 0.18);
+}
+
+@media (hover: none) {
+  .sc-deck-hand > .sc-hand-slot:hover,
+  .sc-deck-hand > .sc-drop-zone.sc-hand-slot:hover,
+  .sc-deck-hand > .sc-hand-slot:focus-within,
+  .sc-deck-hand > .sc-drop-zone.sc-hand-slot:focus-within {
+    transform: none;
+    z-index: 1;
+  }
+
+  .sc-deck-hand > .sc-hand-slot.is-raised,
+  .sc-deck-hand > .sc-drop-zone.sc-hand-slot.is-raised {
+    z-index: 8;
+    transform: translateY(-12px);
+  }
 }
 
 .sc-deck-empty {
@@ -748,8 +791,8 @@ ion-modal::part(content),
   margin-left: -36px;
   z-index: 1;
   transition:
-    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-    margin 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+    margin 0.34s cubic-bezier(0.22, 1, 0.36, 1),
     z-index 0s;
 }
 
@@ -801,10 +844,9 @@ ion-modal::part(content),
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.7) inset,
     0 6px 16px rgba(26, 25, 23, 0.1);
-  /* Sem transition em transform — layout do Framer Motion anima a posição */
   transition:
-    box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-    border-color 0.2s;
+    box-shadow 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.28s cubic-bezier(0.22, 1, 0.36, 1);
   -webkit-font-smoothing: antialiased;
   text-rendering: geometricPrecision;
 }
@@ -5214,7 +5256,13 @@ body.sc-dragging * {
   background: color-mix(in srgb, #BA7517 12%, transparent);
 }
 
-/* Linha / vão de inserção entre cartas */
+.sc-drop-zone.is-insert-into {
+  outline: 1.5px solid color-mix(in srgb, #ba7517 55%, transparent);
+  outline-offset: 2px;
+  background: color-mix(in srgb, #ba7517 10%, transparent);
+}
+
+/* Linha de inserção — clean e suave */
 .sc-drop-zone.is-insert-before,
 .sc-drop-zone.is-insert-after {
   position: relative;
@@ -5228,28 +5276,28 @@ body.sc-dragging * {
   z-index: 60;
   pointer-events: none;
   border-radius: 999px;
-  background: #7f77dd;
-  box-shadow:
-    0 0 0 3px color-mix(in srgb, #7f77dd 28%, transparent),
-    0 4px 14px color-mix(in srgb, #7f77dd 40%, transparent);
+  background: color-mix(in srgb, var(--text-accent, #7f77dd) 72%, white);
+  opacity: 0.92;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-accent, #7f77dd) 18%, transparent);
+  transition: opacity 0.18s ease, transform 0.18s ease;
 }
 
 .sc-hand-slot.is-insert-before::before,
 .sc-hand > .sc-drop-zone.sc-hand-slot.is-insert-before::before,
 .sc-hand-slot.is-deck.is-insert-before::before {
-  top: 6%;
-  bottom: 6%;
-  left: -5px;
-  width: 4px;
+  top: 12%;
+  bottom: 12%;
+  left: -3px;
+  width: 2px;
 }
 
 .sc-hand-slot.is-insert-after::after,
 .sc-hand > .sc-drop-zone.sc-hand-slot.is-insert-after::after,
 .sc-hand-slot.is-deck.is-insert-after::after {
-  top: 6%;
-  bottom: 6%;
-  right: -5px;
-  width: 4px;
+  top: 12%;
+  bottom: 12%;
+  right: -3px;
+  width: 2px;
 }
 
 body.sc-dragging .sc-hand-slot.is-insert-before .sc-face-card,
@@ -5262,32 +5310,54 @@ body.sc-dragging
   .sc-hand
   > .sc-drop-zone.sc-hand-slot.is-insert-after
   .sc-face-card {
-  border-color: color-mix(in srgb, #7f77dd 55%, var(--border-strong));
+  border-color: color-mix(in srgb, var(--text-accent, #7f77dd) 35%, var(--border-strong));
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.85) inset,
-    0 10px 24px color-mix(in srgb, #7f77dd 22%, transparent);
+    0 8px 18px color-mix(in srgb, var(--text-accent, #7f77dd) 12%, transparent);
 }
 
 /* Lista vertical: linha horizontal */
-.sc-list-view > .sc-drop-zone.is-insert-before::before {
-  left: 8px;
-  right: 8px;
-  top: -3px;
-  height: 4px;
+.sc-list-view > .sc-drop-zone.is-insert-before::before,
+.sc-grid > .sc-drop-zone.is-insert-before::before {
+  left: 10%;
+  right: 10%;
+  top: -2px;
+  height: 2px;
   width: auto;
 }
 
-.sc-list-view > .sc-drop-zone.is-insert-after::after {
-  left: 8px;
-  right: 8px;
-  bottom: -3px;
-  height: 4px;
+.sc-list-view > .sc-drop-zone.is-insert-after::after,
+.sc-grid > .sc-drop-zone.is-insert-after::after {
+  left: 10%;
+  right: 10%;
+  bottom: -2px;
+  height: 2px;
   width: auto;
+}
+
+.sc-deck.is-insert-before::before,
+.sc-deck.is-insert-after::after {
+  left: 12px;
+  right: 12px;
+  width: auto;
+  height: 2px;
+  top: auto;
+  bottom: auto;
+  background: color-mix(in srgb, var(--deck-accent, #7f77dd) 70%, white);
+  box-shadow: none;
+}
+
+.sc-deck.is-insert-before::before {
+  top: -5px;
+}
+
+.sc-deck.is-insert-after::after {
+  bottom: -5px;
 }
 
 .sc-drag-ghost[data-edge='before'],
 .sc-drag-ghost[data-edge='after'] {
-  border-color: #7f77dd;
+  border-color: color-mix(in srgb, var(--text-accent, #7f77dd) 55%, var(--border-strong));
 }
 
 .sc-drop-root {
