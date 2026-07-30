@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
 import {
   endDriveDrag,
   moveDriveDrag,
@@ -160,10 +160,11 @@ export function DragItem({
 type DropZoneProps = {
   target: DropZoneTarget;
   className?: string;
+  style?: CSSProperties;
   children: ReactNode;
 };
 
-export function DropZone({ target, className, children }: DropZoneProps) {
+export function DropZone({ target, className, style, children }: DropZoneProps) {
   const [active, setActive] = useState(false);
   const [edge, setEdge] = useState<'before' | 'after' | null>(null);
 
@@ -189,6 +190,22 @@ export function DropZone({ target, className, children }: DropZoneProps) {
           setEdge(hit && s.over.kind === 'card' ? s.over.edge : null);
           return;
         }
+        if (target.kind === 'deck') {
+          if (s.payload.kind === 'deck') {
+            const hit =
+              s.over.kind === 'deck' &&
+              s.over.id === target.id &&
+              s.payload.id !== target.id;
+            setActive(hit);
+            setEdge(
+              hit && s.over.kind === 'deck' ? (s.over.edge ?? 'before') : null,
+            );
+            return;
+          }
+          setActive(s.over.kind === 'deck' && s.over.id === target.id);
+          setEdge(null);
+          return;
+        }
         setActive(s.over.kind === target.kind && s.over.id === target.id);
         setEdge(null);
       }),
@@ -196,15 +213,16 @@ export function DropZone({ target, className, children }: DropZoneProps) {
   );
 
   const insertClass =
-    target.kind === 'card' && edge
-      ? edge === 'before'
-        ? ' is-insert-before'
-        : ' is-insert-after'
-      : '';
+    edge === 'before'
+      ? ' is-insert-before'
+      : edge === 'after'
+        ? ' is-insert-after'
+        : '';
 
   return (
     <div
       className={`sc-drop-zone${active ? ' is-over' : ''}${insertClass}${className ? ` ${className}` : ''}`}
+      style={style}
       data-drop-kind={target.kind}
       data-drop-id={
         target.kind === 'root' || target.kind === 'hall'

@@ -135,6 +135,29 @@ function applyMovedCard(
   return next;
 }
 
+function applyMovedDeck(
+  list: Deck[],
+  moved: Deck,
+  beforeDeckId?: string | null,
+): Deck[] {
+  const had = list.some((d) => d.id === moved.id);
+  let next = had
+    ? list.map((d) => (d.id === moved.id ? moved : d))
+    : [...list, moved];
+
+  if (beforeDeckId) {
+    next = next.map((d) => {
+      if (d.id === moved.id) return d;
+      if (d.position >= moved.position) {
+        return { ...d, position: d.position + 1 };
+      }
+      return d;
+    });
+  }
+
+  return next.sort((a, b) => a.position - b.position);
+}
+
 type Props = {
   subjectId: string;
   /** Se omitido, estamos na raiz do grupo (assunto). */
@@ -152,7 +175,9 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   const [decks, setDecks] = useState<Deck[]>([]);
   const [cards, setCards] = useState<Card[]>([]);
   const [deckModalOpen, setDeckModalOpen] = useState(false);
+  const [editingDeck, setEditingDeck] = useState<Deck | null>(null);
   const [deckName, setDeckNameInput] = useState('');
+  const [deckColor, setDeckColor] = useState(FOLDER_COLORS[3]);
   const [folderName, setFolderName] = useState('Grupo');
   const [parentId, setParentId] = useState<string | null>(null);
   const [path, setPath] = useState<TopicTreeNode[]>([]);
@@ -313,6 +338,11 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         (n.description ?? '').toLowerCase().includes(q),
     );
   }, [folders, query]);
+
+  const orderedDecks = useMemo(
+    () => [...decks].sort((a, b) => a.position - b.position),
+    [decks],
+  );
 
   const filteredCards = hallCards;
 
@@ -497,12 +527,39 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
           });
           toast.success('Pasta movida');
           await load({ silent: true });
+          return;
+        }
+
+        if (payload.kind === 'deck' && over.kind === 'deck' && over.id) {
+          if (payload.id === over.id) return;
+          const target = decks.find((d) => d.id === over.id);
+          if (!target) return;
+
+          const siblings = decks
+            .filter((d) => d.id !== payload.id)
+            .sort((a, b) => a.position - b.position);
+          const targetIdx = siblings.findIndex((d) => d.id === target.id);
+          if (targetIdx < 0) return;
+
+          const edge = over.edge ?? 'before';
+          const beforeDeck =
+            edge === 'before'
+              ? target
+              : (siblings[targetIdx + 1] ?? null);
+
+          const moved = await decksFacade.move(payload.id, {
+            ...(beforeDeck ? { beforeDeckId: beforeDeck.id } : {}),
+          });
+          toast.success('Deck reordenado');
+          setDecks((prev) =>
+            applyMovedDeck(prev, moved, beforeDeck?.id ?? null),
+          );
         }
       } catch (error) {
         toast.error(error);
       }
     },
-    [cards, commitMovedCard, isRoot, load, parentId, toast, topicId],
+    [cards, commitMovedCard, decks, isRoot, load, parentId, toast, topicId],
   );
 
   useDriveDrop(handleDrop);
@@ -621,19 +678,51 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     }
   };
 
-  const createDeck = async () => {
+  const openCreateDeck = () => {
+    setEditingDeck(null);
+    setDeckNameInput('');
+    setDeckColor(FOLDER_COLORS[3]);
+    setDeckModalOpen(true);
+  };
+
+  const openEditDeck = (deck: Deck) => {
+    setEditingDeck(deck);
+    setDeckNameInput(deck.name);
+    setDeckColor(deck.color || FOLDER_COLORS[3]);
+    setDeckModalOpen(true);
+  };
+
+  const closeDeckModal = () => {
+    setDeckModalOpen(false);
+    setEditingDeck(null);
+    setDeckNameInput('');
+    setDeckColor(FOLDER_COLORS[3]);
+  };
+
+  const saveDeck = async () => {
     if (!deckName.trim()) return;
     setSaving(true);
     try {
-      const deck = await decksFacade.create({
-        subjectId,
-        topicId: topicId ?? null,
-        name: deckName,
-      });
-      setDeckModalOpen(false);
-      setDeckNameInput('');
-      toast.success('Deck criado');
-      setDecks((prev) => [...prev, deck]);
+      if (editingDeck) {
+        const updated = await decksFacade.update(editingDeck.id, {
+          name: deckName,
+          color: deckColor,
+        });
+        setDecks((prev) =>
+          prev.map((d) => (d.id === updated.id ? updated : d)),
+        );
+        toast.success('Deck atualizado');
+      } else {
+        const deck = await decksFacade.create({
+          subjectId,
+          topicId: topicId ?? null,
+          name: deckName,
+          color: deckColor,
+        });
+        setDecks((prev) => [...prev, deck]);
+        toast.success('Deck criado');
+      }
+      closeDeckModal();
     } catch (error) {
       toast.error(error);
     } finally {
@@ -963,8 +1052,8 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
 
           <p className="sc-dnd-hint">
             {touchUi
-              ? 'Toque para abrir · toque duplo / Shift para síntese · arraste para mover (Hall ↔ decks ↔ pastas)'
-              : 'Clique para abrir · Shift+clique para síntese · arraste para mover e posicionar'}
+              ? 'Toque para abrir · toque duplo / Shift para síntese · arraste cartas e decks para ordenar'
+              : 'Clique para abrir · Shift+clique para síntese · arraste cartas e decks para ordenar'}
           </p>
 
           {!isRoot ? (
@@ -1216,35 +1305,69 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
 
           <div className="sc-section-label">Cards</div>
           <div className="sc-decks">
-            {decks.map((deck) => {
+            {orderedDecks.map((deck) => {
               const deckCards = cardsByDeck.get(deck.id) ?? [];
               return (
                 <DropZone
                   key={deck.id}
                   target={{ kind: 'deck', id: deck.id }}
                   className="sc-deck"
+                  style={
+                    {
+                      borderColor: deck.color,
+                      ['--deck-accent' as string]: deck.color,
+                    } as CSSProperties
+                  }
                 >
-                  <div className="sc-deck-head">
-                    <span
-                      className="sc-deck-dot"
-                      style={{ background: deck.color }}
-                      aria-hidden
-                    />
-                    <strong>{deck.name}</strong>
-                    <span className="sc-deck-count">
-                      {deckCards.length} carta
-                      {deckCards.length === 1 ? '' : 's'}
-                    </span>
-                    <button
-                      type="button"
-                      className="sc-deck-x"
-                      aria-label={`Excluir deck ${deck.name}`}
-                      title="Excluir deck"
-                      onClick={() => void removeDeck(deck.id)}
-                    >
-                      ×
-                    </button>
-                  </div>
+                  <DragItem
+                    payload={{
+                      kind: 'deck',
+                      id: deck.id,
+                      subjectId: deck.subjectId,
+                      topicId: deck.topicId,
+                      label: deck.name,
+                    }}
+                    className="sc-deck-drag"
+                  >
+                    <div className="sc-deck-head">
+                      <span
+                        className="sc-deck-dot"
+                        style={{ background: deck.color }}
+                        aria-hidden
+                      />
+                      <strong>{deck.name}</strong>
+                      <span className="sc-deck-count">
+                        {deckCards.length} carta
+                        {deckCards.length === 1 ? '' : 's'}
+                      </span>
+                      <button
+                        type="button"
+                        className="sc-deck-edit"
+                        aria-label={`Editar deck ${deck.name}`}
+                        title="Editar"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEditDeck(deck);
+                        }}
+                      >
+                        ✎
+                      </button>
+                      <button
+                        type="button"
+                        className="sc-deck-x"
+                        aria-label={`Excluir deck ${deck.name}`}
+                        title="Excluir deck"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void removeDeck(deck.id);
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </DragItem>
                   <div className="sc-deck-hand" role="list">
                     {deckCards.map((card, index) => {
                       const picked = mergePickIds.includes(card.id);
@@ -1296,10 +1419,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
             <button
               type="button"
               className="sc-deck is-new"
-              onClick={() => {
-                setDeckNameInput('');
-                setDeckModalOpen(true);
-              }}
+              onClick={openCreateDeck}
             >
               + Novo deck
             </button>
@@ -1330,17 +1450,17 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
 
       <IonModal
         isOpen={deckModalOpen}
-        onDidDismiss={() => setDeckModalOpen(false)}
+        onDidDismiss={closeDeckModal}
       >
         <IonHeader>
           <IonToolbar>
-            <IonTitle>Novo deck</IonTitle>
+            <IonTitle>{editingDeck ? 'Editar deck' : 'Novo deck'}</IonTitle>
             <IonButtons slot="end">
               <button
                 type="button"
                 className="sc-modal-x"
                 aria-label="Fechar"
-                onClick={() => setDeckModalOpen(false)}
+                onClick={closeDeckModal}
               >
                 ×
               </button>
@@ -1356,14 +1476,55 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
               autoFocus
             />
           </div>
+          <p
+            style={{
+              margin: '12px 0 6px',
+              fontSize: 13,
+              color: 'var(--text-muted)',
+            }}
+          >
+            Cor da borda
+          </p>
+          <div
+            style={{
+              display: 'flex',
+              gap: 8,
+              padding: '4px 0 16px',
+              flexWrap: 'wrap',
+            }}
+          >
+            {FOLDER_COLORS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                aria-label={c}
+                onClick={() => setDeckColor(c)}
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: '50%',
+                  border:
+                    deckColor === c
+                      ? '2px solid #1a1917'
+                      : '2px solid transparent',
+                  background: c,
+                  cursor: 'pointer',
+                }}
+              />
+            ))}
+          </div>
           <button
             type="button"
             className="sc-btn primary"
-            style={{ marginTop: 16 }}
+            style={{ marginTop: 4 }}
             disabled={saving || !deckName.trim()}
-            onClick={() => void createDeck()}
+            onClick={() => void saveDeck()}
           >
-            {saving ? 'Criando…' : 'Criar deck'}
+            {saving
+              ? 'Salvando…'
+              : editingDeck
+                ? 'Salvar'
+                : 'Criar deck'}
           </button>
         </IonContent>
       </IonModal>

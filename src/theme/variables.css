@@ -269,16 +269,62 @@ ion-modal::part(content),
 }
 
 .sc-deck {
-  border: 0.5px solid var(--border);
+  border: 1.5px solid var(--border);
   border-radius: 14px;
   background: var(--surface-1);
   padding: 12px;
   min-height: 120px;
 }
 
-.sc-deck.is-over {
-  border-color: color-mix(in srgb, #7F77DD 55%, var(--border));
-  background: color-mix(in srgb, #7F77DD 8%, var(--surface-1));
+.sc-deck.is-over:not(.is-insert-before):not(.is-insert-after) {
+  border-color: var(--deck-accent, color-mix(in srgb, #7F77DD 55%, var(--border)));
+  background: color-mix(
+    in srgb,
+    var(--deck-accent, #7f77dd) 10%,
+    var(--surface-1)
+  );
+}
+
+.sc-deck.is-insert-before::before,
+.sc-deck.is-insert-after::after {
+  left: 10px;
+  right: 10px;
+  width: auto;
+  height: 4px;
+  top: auto;
+  bottom: auto;
+}
+
+.sc-deck.is-insert-before::before {
+  top: -6px;
+}
+
+.sc-deck.is-insert-after::after {
+  bottom: -6px;
+}
+
+.sc-deck-drag {
+  display: block;
+  cursor: grab;
+}
+
+.sc-deck-drag.is-dragging {
+  opacity: 0.45;
+}
+
+.sc-deck-edit {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.sc-deck-edit:hover {
+  color: var(--text-primary);
 }
 
 .sc-deck.is-new {
@@ -321,7 +367,6 @@ ion-modal::part(content),
 }
 
 .sc-deck-count {
-  margin-left: auto;
   font-size: 11px;
   color: var(--text-muted);
 }

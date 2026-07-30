@@ -18,6 +18,13 @@ export class DecksFacade {
     });
   }
 
+  move(
+    id: string,
+    input: { beforeDeckId?: string | null; position?: number },
+  ): Promise<Deck> {
+    return decksApi.move(id, input);
+  }
+
   update(id: string, input: UpdateDeckInput): Promise<Deck> {
     return decksApi.update(id, {
       ...input,
