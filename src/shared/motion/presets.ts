@@ -12,9 +12,9 @@ export const springSoft: Transition = {
 /** Layout de cartas (reorder / Hall ↔ deck) — mais rápido. */
 export const springLayout: Transition = {
   type: 'spring',
-  stiffness: 680,
-  damping: 38,
-  mass: 0.55,
+  stiffness: 900,
+  damping: 42,
+  mass: 0.4,
 };
 
 export const springSnappy: Transition = {
