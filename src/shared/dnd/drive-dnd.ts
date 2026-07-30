@@ -19,6 +19,8 @@ export type DragPayload = DragCardPayload | DragFolderPayload;
 export type DropTarget =
   | { kind: 'folder'; id: string }
   | { kind: 'card'; id: string }
+  | { kind: 'deck'; id: string }
+  | { kind: 'hall' }
   | { kind: 'root' };
 
 type DragState = {
@@ -126,7 +128,8 @@ export function readDropTarget(el: Element | null): DropTarget | null {
     const kind = node.getAttribute('data-drop-kind');
     const id = node.getAttribute('data-drop-id');
     if (kind === 'root') return { kind: 'root' };
-    if ((kind === 'folder' || kind === 'card') && id) {
+    if (kind === 'hall') return { kind: 'hall' };
+    if ((kind === 'folder' || kind === 'card' || kind === 'deck') && id) {
       return { kind, id };
     }
     node = node.parentElement;

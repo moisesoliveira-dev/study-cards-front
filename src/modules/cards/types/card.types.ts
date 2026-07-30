@@ -4,6 +4,7 @@ export type Card = {
   id: string;
   subjectId: string;
   topicId: string | null;
+  deckId: string | null;
   front: string;
   back: string;
   document: string | null;

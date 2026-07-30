@@ -33,8 +33,15 @@ export const cardsApi = {
     httpClient.get<Card[]>(
       `/cards?ids=${ids.map(encodeURIComponent).join(',')}`,
     ),
-  move: (id: string, topicId: string | null) =>
-    httpClient.post<Card>(`/cards/${id}/move`, { topicId }),
+  move: (
+    id: string,
+    input: {
+      topicId?: string | null;
+      deckId?: string | null;
+      beforeCardId?: string | null;
+      position?: number;
+    },
+  ) => httpClient.post<Card>(`/cards/${id}/move`, input),
   update: (id: string, input: UpdateCardInput) =>
     httpClient.patch<Card>(`/cards/${id}`, input),
   remove: (id: string) => httpClient.delete<{ ok: boolean }>(`/cards/${id}`),

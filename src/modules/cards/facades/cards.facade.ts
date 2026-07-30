@@ -63,8 +63,22 @@ export class CardsFacade {
     return cardsApi.getByIds(unique);
   }
 
-  move(id: string, topicId: string | null) {
-    return cardsApi.move(id, topicId);
+  move(
+    id: string,
+    input:
+      | string
+      | null
+      | {
+          topicId?: string | null;
+          deckId?: string | null;
+          beforeCardId?: string | null;
+          position?: number;
+        },
+  ) {
+    if (input === null || typeof input === 'string') {
+      return cardsApi.move(id, { topicId: input });
+    }
+    return cardsApi.move(id, input);
   }
 
   update(id: string, input: UpdateCardInput) {

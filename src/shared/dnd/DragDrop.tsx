@@ -170,8 +170,8 @@ export function DropZone({ target, className, children }: DropZoneProps) {
           setActive(false);
           return;
         }
-        if (target.kind === 'root') {
-          setActive(s.over.kind === 'root');
+        if (target.kind === 'root' || target.kind === 'hall') {
+          setActive(s.over.kind === target.kind);
           return;
         }
         setActive(s.over.kind === target.kind && s.over.id === target.id);
@@ -183,7 +183,11 @@ export function DropZone({ target, className, children }: DropZoneProps) {
     <div
       className={`sc-drop-zone${active ? ' is-over' : ''}${className ? ` ${className}` : ''}`}
       data-drop-kind={target.kind}
-      data-drop-id={target.kind === 'root' ? undefined : target.id}
+      data-drop-id={
+        target.kind === 'root' || target.kind === 'hall'
+          ? undefined
+          : target.id
+      }
     >
       {children}
     </div>

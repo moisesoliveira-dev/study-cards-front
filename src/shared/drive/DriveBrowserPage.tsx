@@ -14,11 +14,13 @@ import {
 import { useHistory } from 'react-router-dom';
 import { subjectsFacade } from '../../modules/subjects/facades/subjects.facade';
 import { topicsFacade } from '../../modules/topics/facades/topics.facade';
+import { decksFacade } from '../../modules/decks/facades/decks.facade';
 import { cardsFacade } from '../../modules/cards/facades/cards.facade';
 import { cardLevelsFacade } from '../../modules/cards/facades/card-levels.facade';
 import type { CardLevel } from '../../modules/cards/types/card-level.types';
 import type { Subject } from '../../modules/subjects/types/subject.types';
 import type { TopicTreeNode } from '../../modules/topics/types/topic.types';
+import type { Deck } from '../../modules/decks/types/deck.types';
 import type { Card } from '../../modules/cards/types/card.types';
 import { CARD_ACCENT_COLORS } from '../../modules/cards/types/card.types';
 import { DriveTopBar } from '../components/DriveTopBar';
@@ -116,7 +118,10 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
 
   const [subject, setSubject] = useState<Subject | null>(null);
   const [folders, setFolders] = useState<TopicTreeNode[]>([]);
+  const [decks, setDecks] = useState<Deck[]>([]);
   const [cards, setCards] = useState<Card[]>([]);
+  const [deckModalOpen, setDeckModalOpen] = useState(false);
+  const [deckName, setDeckNameInput] = useState('');
   const [folderName, setFolderName] = useState('Grupo');
   const [parentId, setParentId] = useState<string | null>(null);
   const [path, setPath] = useState<TopicTreeNode[]>([]);
@@ -168,7 +173,12 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         setFolderName(s.name);
         setParentId(null);
         setPath([]);
-        setCards(await cardsFacade.listRootBySubject(subjectId));
+        const [rootCards, rootDecks] = await Promise.all([
+          cardsFacade.listRootBySubject(subjectId),
+          decksFacade.list(subjectId, null),
+        ]);
+        setCards(rootCards);
+        setDecks(rootDecks);
       } else {
         const node = findNode(t, topicId);
         const trail = buildPath(t, topicId) ?? [];
@@ -176,7 +186,12 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         setFolderName(node?.name ?? 'Pasta');
         setParentId(node?.parentId ?? null);
         setPath(trail);
-        setCards(await cardsFacade.listByTopic(topicId));
+        const [topicCards, topicDecks] = await Promise.all([
+          cardsFacade.listByTopic(topicId),
+          decksFacade.list(subjectId, topicId),
+        ]);
+        setCards(topicCards);
+        setDecks(topicDecks);
       }
     } catch (error) {
       toast.error(error);
@@ -214,6 +229,50 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     };
   }, []);
 
+  const hallCards = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return cards
+      .filter((c) => !c.deckId)
+      .filter((c) => {
+        if (!q) return true;
+        return (
+          c.front.toLowerCase().includes(q) ||
+          c.back.toLowerCase().includes(q) ||
+          c.tag.toLowerCase().includes(q)
+        );
+      })
+      .sort((a, b) => a.position - b.position);
+  }, [cards, query]);
+
+  const cardsByDeck = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const map = new Map<string, Card[]>();
+    for (const deck of decks) map.set(deck.id, []);
+    for (const c of cards) {
+      if (!c.deckId) continue;
+      if (
+        q &&
+        !(
+          c.front.toLowerCase().includes(q) ||
+          c.back.toLowerCase().includes(q) ||
+          c.tag.toLowerCase().includes(q)
+        )
+      ) {
+        continue;
+      }
+      const list = map.get(c.deckId) ?? [];
+      list.push(c);
+      map.set(c.deckId, list);
+    }
+    for (const [id, list] of map) {
+      map.set(
+        id,
+        [...list].sort((a, b) => a.position - b.position),
+      );
+    }
+    return map;
+  }, [cards, decks, query]);
+
   const filteredFolders = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return folders;
@@ -224,16 +283,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     );
   }, [folders, query]);
 
-  const filteredCards = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return cards;
-    return cards.filter(
-      (c) =>
-        c.front.toLowerCase().includes(q) ||
-        c.back.toLowerCase().includes(q) ||
-        c.tag.toLowerCase().includes(q),
-    );
-  }, [cards, query]);
+  const filteredCards = hallCards;
 
   const backHref = isRoot
     ? '/home'
@@ -316,30 +366,55 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
 
       try {
         if (payload.kind === 'card' && over.kind === 'folder' && over.id) {
-          await cardsFacade.move(payload.id, over.id);
+          await cardsFacade.move(payload.id, {
+            topicId: over.id,
+            deckId: null,
+          });
           toast.success('Card movido para a pasta');
+          await load();
+          return;
+        }
+
+        if (payload.kind === 'card' && over.kind === 'deck' && over.id) {
+          await cardsFacade.move(payload.id, {
+            topicId: topicId ?? null,
+            deckId: over.id,
+          });
+          toast.success('Card movido para o deck');
+          await load();
+          return;
+        }
+
+        if (payload.kind === 'card' && over.kind === 'hall') {
+          await cardsFacade.move(payload.id, {
+            topicId: topicId ?? null,
+            deckId: null,
+          });
+          toast.success('Card no Hall');
           await load();
           return;
         }
 
         if (payload.kind === 'card' && over.kind === 'card' && over.id) {
           if (payload.id === over.id) return;
-          const a = cards.find((c) => c.id === payload.id);
-          const b = cards.find((c) => c.id === over.id);
-          if (!a || !b) return;
-
-          // Une seleção atual + as duas do arraste (permite 3+ e outros grupos)
-          const picked = resolveMergeSources(mergePickIds);
-          const byId = new Map<string, Card>();
-          for (const c of [...picked, a, b]) byId.set(c.id, c);
-          const sources = [...byId.values()];
-          openMergeComposer(sources);
+          const target = cards.find((c) => c.id === over.id);
+          if (!target) return;
+          await cardsFacade.move(payload.id, {
+            topicId: topicId ?? null,
+            deckId: target.deckId,
+            beforeCardId: target.id,
+          });
+          toast.success('Posição atualizada');
+          await load();
           return;
         }
 
         if (payload.kind === 'card' && over.kind === 'root') {
           const targetTopicId = isRoot ? null : parentId;
-          await cardsFacade.move(payload.id, targetTopicId);
+          await cardsFacade.move(payload.id, {
+            topicId: targetTopicId,
+            deckId: null,
+          });
           toast.success(
             isRoot || !parentId
               ? 'Card na raiz do grupo'
@@ -368,16 +443,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         toast.error(error);
       }
     },
-    [
-      cards,
-      isRoot,
-      load,
-      mergePickIds,
-      openMergeComposer,
-      parentId,
-      resolveMergeSources,
-      toast,
-    ],
+    [cards, isRoot, load, parentId, toast, topicId],
   );
 
   useDriveDrop(handleDrop);
@@ -386,7 +452,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     (card: Card, mode: 'face' | 'list' = 'face', e?: PointerEvent) => {
       const now = Date.now();
       const last = lastTapRef.current;
-      const multiSelect = Boolean(e && (e.ctrlKey || e.metaKey || e.shiftKey));
+      const multiSelect = Boolean(e && e.shiftKey);
 
       // Desktop: Ctrl/Cmd/Shift+clique marca para síntese (2+)
       if (!touchUi && multiSelect) {
@@ -434,7 +500,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         new Error(
           touchUi
             ? 'Selecione pelo menos 2 cards (toque duplo ou de outros grupos).'
-            : 'Selecione pelo menos 2 cards (Ctrl+clique, menu ou outros grupos).',
+            : 'Selecione pelo menos 2 cards (Shift+clique, menu ou outros grupos).',
         ),
       );
       return;
@@ -493,6 +559,36 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
       toast.error(error);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const createDeck = async () => {
+    if (!deckName.trim()) return;
+    setSaving(true);
+    try {
+      await decksFacade.create({
+        subjectId,
+        topicId: topicId ?? null,
+        name: deckName,
+      });
+      setDeckModalOpen(false);
+      setDeckNameInput('');
+      toast.success('Deck criado');
+      await load();
+    } catch (error) {
+      toast.error(error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removeDeck = async (id: string) => {
+    try {
+      await decksFacade.remove(id);
+      toast.success('Deck excluído');
+      await load();
+    } catch (error) {
+      toast.error(error);
     }
   };
 
@@ -805,8 +901,8 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
 
           <p className="sc-dnd-hint">
             {touchUi
-              ? 'Toque para abrir · toque duplo para marcar · “Outros grupos” para unir entre grupos'
-              : 'Clique para abrir · Ctrl+clique para marcar · “Outros grupos” para unir entre grupos'}
+              ? 'Toque para abrir · toque duplo / Shift para síntese · arraste para mover (Hall ↔ decks ↔ pastas)'
+              : 'Clique para abrir · Shift+clique para síntese · arraste para mover e posicionar'}
           </p>
 
           {!isRoot ? (
@@ -818,13 +914,14 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
             </DropZone>
           ) : null}
 
-          <div className="sc-section-label">Cards</div>
+          <div className="sc-section-label">Hall</div>
           {loading ? (
             <div className="sc-empty">
               <IonSpinner name="crescent" />
             </div>
           ) : view === 'grid' ? (
-            <div className="sc-hand" role="list" aria-label="Cards">
+            <DropZone target={{ kind: 'hall' }} className="sc-hall-drop">
+            <div className="sc-hand" role="list" aria-label="Hall">
               {filteredCards.map((card, index) => {
                 const raised = raisedId === card.id;
                 const picked = mergePickIds.includes(card.id);
@@ -877,11 +974,13 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
               </motion.button>
               {!filteredCards.length ? (
                 <div className="sc-empty" style={{ width: '100%', flexBasis: '100%' }}>
-                  Nenhum card aqui. Use <strong>+ Card</strong> ou o slot pontilhado.
+                  Nenhuma carta no Hall. Crie com <strong>+ Card</strong> ou solte um deck aqui.
                 </div>
               ) : null}
             </div>
+            </DropZone>
           ) : (
+            <DropZone target={{ kind: 'hall' }} className="sc-hall-drop">
             <div className="sc-list-view">
               {filteredCards.map((card) => {
                 const picked = mergePickIds.includes(card.id);
@@ -912,10 +1011,11 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
               })}
               {!filteredCards.length ? (
                 <div className="sc-empty">
-                  Nenhum card aqui. Use <strong>+ Card</strong>.
+                  Nenhuma carta no Hall. Use <strong>+ Card</strong>.
                 </div>
               ) : null}
             </div>
+            </DropZone>
           )}
 
           {mergePickIds.length > 0 ? (
@@ -929,7 +1029,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                   {mergePickIds.length < 2
                     ? touchUi
                       ? 'Toque duplo em outro card — ou busque outros grupos'
-                      : 'Ctrl+clique em outro card — ou busque outros grupos'
+                      : 'Shift+clique em outro card — ou busque outros grupos'
                     : `Pronto para criar a síntese com ${mergePickIds.length} cards`}
                 </span>
               </div>
@@ -1051,9 +1151,109 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
             </MotionStagger>
           )}
 
+            </MotionStagger>
+          )}
+
+          <div className="sc-section-label">Cards</div>
+          <div className="sc-decks">
+            {decks.map((deck) => {
+              const deckCards = cardsByDeck.get(deck.id) ?? [];
+              return (
+                <DropZone
+                  key={deck.id}
+                  target={{ kind: 'deck', id: deck.id }}
+                  className="sc-deck"
+                >
+                  <div className="sc-deck-head">
+                    <span
+                      className="sc-deck-dot"
+                      style={{ background: deck.color }}
+                      aria-hidden
+                    />
+                    <strong>{deck.name}</strong>
+                    <span className="sc-deck-count">
+                      {deckCards.length} carta
+                      {deckCards.length === 1 ? '' : 's'}
+                    </span>
+                    <button
+                      type="button"
+                      className="sc-deck-x"
+                      aria-label={`Excluir deck ${deck.name}`}
+                      title="Excluir deck"
+                      onClick={() => void removeDeck(deck.id)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <div className="sc-deck-hand" role="list">
+                    {deckCards.map((card, index) => {
+                      const picked = mergePickIds.includes(card.id);
+                      return (
+                        <DropZone
+                          key={card.id}
+                          target={{ kind: 'card', id: card.id }}
+                          className={`sc-hand-slot is-deck${picked ? ' is-picked' : ''}`}
+                        >
+                          <DragItem
+                            payload={{
+                              kind: 'card',
+                              id: card.id,
+                              subjectId: card.subjectId,
+                              topicId: card.topicId,
+                              label: card.front,
+                            }}
+                            onClick={(e) => handleCardTap(card, 'face', e)}
+                            onLongPress={
+                              touchUi ? () => setDetail(card) : undefined
+                            }
+                            onContextMenu={(e) =>
+                              openCardContextMenu(e, card)
+                            }
+                          >
+                            <FaceCard
+                              card={card}
+                              selected={picked}
+                              index={index}
+                              style={
+                                {
+                                  ['--card-i' as string]: index,
+                                } as CSSProperties
+                              }
+                            />
+                          </DragItem>
+                        </DropZone>
+                      );
+                    })}
+                    {!deckCards.length ? (
+                      <div className="sc-deck-empty">
+                        Arraste cartas do Hall para este deck
+                      </div>
+                    ) : null}
+                  </div>
+                </DropZone>
+              );
+            })}
+            <button
+              type="button"
+              className="sc-deck is-new"
+              onClick={() => {
+                setDeckNameInput('');
+                setDeckModalOpen(true);
+              }}
+            >
+              + Novo deck
+            </button>
+            {!decks.length ? (
+              <div className="sc-empty" style={{ flexBasis: '100%' }}>
+                Organize cartas em decks. Arraste do Hall para um deck.
+              </div>
+            ) : null}
+          </div>
+
           <div className="sc-bottom">
             <span>
-              {cards.length} cards · {folders.length} pastas
+              {hallCards.length} no Hall · {decks.length} decks ·{' '}
+              {folders.length} pastas
             </span>
             <motion.button
               type="button"
@@ -1066,6 +1266,46 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
           </div>
         </MotionShell>
       </IonContent>
+
+      <IonModal
+        isOpen={deckModalOpen}
+        onDidDismiss={() => setDeckModalOpen(false)}
+      >
+        <IonHeader>
+          <IonToolbar>
+            <IonTitle>Novo deck</IonTitle>
+            <IonButtons slot="end">
+              <button
+                type="button"
+                className="sc-modal-x"
+                aria-label="Fechar"
+                onClick={() => setDeckModalOpen(false)}
+              >
+                ×
+              </button>
+            </IonButtons>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent className="ion-padding sc-form">
+          <div className="sc-auth-fields">
+            <Field
+              label="Nome"
+              value={deckName}
+              onChange={setDeckNameInput}
+              autoFocus
+            />
+          </div>
+          <button
+            type="button"
+            className="sc-btn primary"
+            style={{ marginTop: 16 }}
+            disabled={saving || !deckName.trim()}
+            onClick={() => void createDeck()}
+          >
+            {saving ? 'Criando…' : 'Criar deck'}
+          </button>
+        </IonContent>
+      </IonModal>
 
       <IonModal isOpen={folderOpen} onDidDismiss={closeFolderModal}>
         <IonHeader>
