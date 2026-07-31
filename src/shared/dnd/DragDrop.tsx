@@ -11,6 +11,7 @@ import {
   useSensors,
   type CollisionDetection,
   type DragEndEvent,
+  type DragOverEvent,
   type DragStartEvent,
   type UniqueIdentifier,
 } from '@dnd-kit/core';
@@ -48,9 +49,20 @@ export type DriveDropEvent = {
   moved: boolean;
 };
 
+export type DriveReorderPreview = {
+  kind: 'card' | 'deck' | 'folder';
+  activeId: string;
+  overId: string;
+  deckId?: string | null;
+};
+
 type DriveDndProviderProps = {
   children: ReactNode;
   onDrop: (event: DriveDropEvent) => void | Promise<void>;
+  /** Snapshot da ordem no início do drag. */
+  onDragTrackStart?: (payload: DragPayload) => void;
+  /** Reordena a lista local durante o drag (evita snap no drop). */
+  onReorderPreview?: (event: DriveReorderPreview) => void;
 };
 
 function insertEdge(
@@ -163,7 +175,12 @@ const driveCollision: CollisionDetection = (args) => {
   return closestCenter(args);
 };
 
-export function DriveDndProvider({ children, onDrop }: DriveDndProviderProps) {
+export function DriveDndProvider({
+  children,
+  onDrop,
+  onDragTrackStart,
+  onReorderPreview,
+}: DriveDndProviderProps) {
   const [activePayload, setActivePayload] = useState<DragPayload | null>(null);
 
   const sensors = useSensors(
@@ -175,11 +192,57 @@ export function DriveDndProvider({ children, onDrop }: DriveDndProviderProps) {
     }),
   );
 
-  const onDragStart = useCallback((event: DragStartEvent) => {
-    const data = event.active.data.current as DriveDragData | undefined;
-    setActivePayload(data?.payload ?? null);
-    document.body.classList.add('sc-dragging');
-  }, []);
+  const onDragStart = useCallback(
+    (event: DragStartEvent) => {
+      const data = event.active.data.current as DriveDragData | undefined;
+      setActivePayload(data?.payload ?? null);
+      document.body.classList.add('sc-dragging');
+      if (data?.payload) onDragTrackStart?.(data.payload);
+    },
+    [onDragTrackStart],
+  );
+
+  const onDragOver = useCallback(
+    (event: DragOverEvent) => {
+      if (!onReorderPreview) return;
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+
+      const a = parseDndId(active.id);
+      const o = parseDndId(over.id);
+      if (!a?.id || !o?.id || a.type !== o.type) return;
+
+      if (a.type === 'card') {
+        const activePayload = (active.data.current as DriveDragData | undefined)
+          ?.payload;
+        const overPayload = (over.data.current as DriveDragData | undefined)
+          ?.payload;
+        if (
+          activePayload?.kind !== 'card' ||
+          overPayload?.kind !== 'card' ||
+          activePayload.deckId !== overPayload.deckId
+        ) {
+          return;
+        }
+        onReorderPreview({
+          kind: 'card',
+          activeId: a.id,
+          overId: o.id,
+          deckId: activePayload.deckId,
+        });
+        return;
+      }
+
+      if (a.type === 'deck' || a.type === 'folder') {
+        onReorderPreview({
+          kind: a.type,
+          activeId: a.id,
+          overId: o.id,
+        });
+      }
+    },
+    [onReorderPreview],
+  );
 
   const onDragEnd = useCallback(
     (event: DragEndEvent) => {
@@ -204,6 +267,7 @@ export function DriveDndProvider({ children, onDrop }: DriveDndProviderProps) {
       sensors={sensors}
       collisionDetection={driveCollision}
       onDragStart={onDragStart}
+      onDragOver={onDragOver}
       onDragEnd={onDragEnd}
       onDragCancel={onDragCancel}
     >
@@ -356,12 +420,13 @@ export function SortableCard({
   } = useSortable({
     id,
     data: { type: 'card', payload } satisfies DriveDragData,
+    animateLayoutChanges: () => false,
   });
 
   const mergedStyle: CSSProperties = {
     ...style,
     transform: CSS.Transform.toString(transform),
-    transition,
+    transition: isDragging ? transition : undefined,
     opacity: isDragging ? 0.35 : undefined,
     zIndex: isDragging ? 50 : style?.zIndex,
   };
@@ -422,12 +487,13 @@ export function SortableDeck({
   } = useSortable({
     id,
     data: { type: 'deck', payload } satisfies DriveDragData,
+    animateLayoutChanges: () => false,
   });
 
   const mergedStyle: CSSProperties = {
     ...style,
     transform: CSS.Transform.toString(transform),
-    transition,
+    transition: isDragging ? transition : undefined,
     opacity: isDragging ? 0.4 : undefined,
   };
 
@@ -479,12 +545,13 @@ export function SortableFolder({
   } = useSortable({
     id,
     data: { type: 'folder', payload } satisfies DriveDragData,
+    animateLayoutChanges: () => false,
   });
 
   const mergedStyle: CSSProperties = {
     ...style,
     transform: CSS.Transform.toString(transform),
-    transition,
+    transition: isDragging ? transition : undefined,
     opacity: isDragging ? 0.4 : undefined,
   };
 

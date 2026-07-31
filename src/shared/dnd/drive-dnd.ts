@@ -5,6 +5,7 @@ export type DragCardPayload = {
   id: string;
   subjectId: string;
   topicId: string | null;
+  deckId: string | null;
   label: string;
 };
 

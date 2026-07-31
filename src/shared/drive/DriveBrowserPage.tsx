@@ -42,7 +42,9 @@ import {
   SortableDeck,
   SortableFolder,
   type DriveDropEvent,
+  type DriveReorderPreview,
 } from '../dnd/DragDrop';
+import type { DragPayload } from '../dnd/drive-dnd';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { MergeSourcePicker } from '../components/MergeSourcePicker';
 import {
@@ -164,61 +166,65 @@ function applyMovedDeck(
 }
 
 /** Reordena um grupo na hora (antes da API) para não “voltar” no drop do dnd-kit. */
-function optimisticReorderByBeforeId<T extends { id: string; position: number }>(
-  list: T[],
-  activeId: string,
-  beforeId: string | null,
-  inGroup: (item: T) => boolean,
-): T[] {
-  const group = list
-    .filter(inGroup)
-    .sort((a, b) => a.position - b.position);
-  const active = group.find((item) => item.id === activeId);
-  if (!active) return list;
-
-  const without = group.filter((item) => item.id !== activeId);
-  let insertAt = beforeId
-    ? without.findIndex((item) => item.id === beforeId)
-    : without.length;
-  if (beforeId && insertAt < 0) insertAt = without.length;
-
-  const reordered = [
-    ...without.slice(0, insertAt),
-    active,
-    ...without.slice(insertAt),
-  ].map((item, index) => ({ ...item, position: index }));
-
-  const reorderedIds = new Set(reordered.map((item) => item.id));
-  return [
-    ...list.filter((item) => !reorderedIds.has(item.id)),
-    ...reordered,
-  ];
+function arrayMoveIds(ids: string[], from: number, to: number): string[] {
+  const next = [...ids];
+  const [item] = next.splice(from, 1);
+  if (item === undefined) return ids;
+  next.splice(to, 0, item);
+  return next;
 }
 
-/**
- * beforeId no sentido da API (inserir antes de X), alinhado ao arrayMove do dnd-kit.
- * null = ir para o final. undefined = não houve mudança de índice.
- */
-function beforeIdForReorder(
+function applyOrderByIds<T extends { id: string; position: number }>(
+  list: T[],
+  orderedIds: string[],
+  inGroup: (item: T) => boolean,
+): T[] {
+  const byId = new Map(
+    list.filter(inGroup).map((item) => [item.id, item] as const),
+  );
+  const reordered: T[] = [];
+  orderedIds.forEach((id, index) => {
+    const item = byId.get(id);
+    if (item) reordered.push({ ...item, position: index });
+  });
+  const orderedSet = new Set(orderedIds);
+  return [...list.filter((item) => !orderedSet.has(item.id)), ...reordered];
+}
+
+/** Move active para o índice do over (arrayMove). Retorna nova ordem + beforeId da API. */
+function planReorder(
   orderedIds: string[],
   activeId: string,
   overId: string,
-): string | null | undefined {
+): { nextIds: string[]; beforeId: string | null } | null {
   const oldIndex = orderedIds.indexOf(activeId);
   const newIndex = orderedIds.indexOf(overId);
-  if (newIndex < 0) return undefined;
+  if (oldIndex < 0 || newIndex < 0 || oldIndex === newIndex) return null;
 
-  // Veio de outro container → ocupa o lugar do over
-  if (oldIndex < 0) return overId;
+  const nextIds = arrayMoveIds(orderedIds, oldIndex, newIndex);
+  const at = nextIds.indexOf(activeId);
+  const beforeId = at >= 0 ? (nextIds[at + 1] ?? null) : null;
+  return { nextIds, beforeId };
+}
 
-  if (oldIndex === newIndex) return undefined;
-
-  // Para frente: fica no lugar do over → inserir antes do próximo
-  if (oldIndex < newIndex) {
-    return orderedIds[newIndex + 1] ?? null;
-  }
-  // Para trás: fica no lugar do over → inserir antes do over
-  return overId;
+/** Insere active (possivelmente de outro grupo) no lugar do over. */
+function planInsertAt(
+  targetOrderedIds: string[],
+  activeId: string,
+  overId: string,
+): { nextIds: string[]; beforeId: string | null } | null {
+  const overIndex = targetOrderedIds.indexOf(overId);
+  if (overIndex < 0) return null;
+  const without = targetOrderedIds.filter((id) => id !== activeId);
+  const insertAt = without.indexOf(overId);
+  if (insertAt < 0) return null;
+  const nextIds = [
+    ...without.slice(0, insertAt),
+    activeId,
+    ...without.slice(insertAt),
+  ];
+  const at = nextIds.indexOf(activeId);
+  return { nextIds, beforeId: nextIds[at + 1] ?? null };
 }
 
 type Props = {
@@ -236,11 +242,22 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   const fallbackColor =
     catalogColors[0]?.hex ?? CARD_ACCENT_COLORS[0];
   const lastTapRef = useRef<{ id: string; at: number } | null>(null);
+  const dragOriginRef = useRef<{
+    kind: 'card' | 'deck' | 'folder';
+    key: string;
+    ids: string[];
+  } | null>(null);
 
   const [subject, setSubject] = useState<Subject | null>(null);
   const [folders, setFolders] = useState<TopicTreeNode[]>([]);
   const [decks, setDecks] = useState<Deck[]>([]);
   const [cards, setCards] = useState<Card[]>([]);
+  const cardsRef = useRef(cards);
+  const decksRef = useRef(decks);
+  const foldersRef = useRef(folders);
+  cardsRef.current = cards;
+  decksRef.current = decks;
+  foldersRef.current = folders;
   const [deckModalOpen, setDeckModalOpen] = useState(false);
   const [editingDeck, setEditingDeck] = useState<Deck | null>(null);
   const [deckName, setDeckNameInput] = useState('');
@@ -513,6 +530,91 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     [topicId],
   );
 
+  const handleDragTrackStart = useCallback(
+    (payload: DragPayload) => {
+      if (payload.kind === 'card') {
+        dragOriginRef.current = {
+          kind: 'card',
+          key: String(payload.deckId),
+          ids: cards
+            .filter((c) => c.deckId === payload.deckId)
+            .sort((a, b) => a.position - b.position)
+            .map((c) => c.id),
+        };
+        return;
+      }
+      if (payload.kind === 'deck') {
+        dragOriginRef.current = {
+          kind: 'deck',
+          key: 'decks',
+          ids: [...decks]
+            .sort((a, b) => a.position - b.position)
+            .map((d) => d.id),
+        };
+        return;
+      }
+      if (payload.kind === 'folder') {
+        dragOriginRef.current = {
+          kind: 'folder',
+          key: 'folders',
+          ids: [...folders]
+            .sort((a, b) => a.position - b.position)
+            .map((f) => f.id),
+        };
+      }
+    },
+    [cards, decks, folders],
+  );
+
+  const handleReorderPreview = useCallback((event: DriveReorderPreview) => {
+    if (event.kind === 'card') {
+      setCards((prev) => {
+        const orderedIds = prev
+          .filter((c) => c.deckId === event.deckId)
+          .sort((a, b) => a.position - b.position)
+          .map((c) => c.id);
+        const plan = planReorder(orderedIds, event.activeId, event.overId);
+        if (!plan) return prev;
+        if (orderedIds.every((id, i) => id === plan.nextIds[i])) return prev;
+        const next = applyOrderByIds(
+          prev,
+          plan.nextIds,
+          (c) => c.deckId === event.deckId,
+        );
+        cardsRef.current = next;
+        return next;
+      });
+      return;
+    }
+    if (event.kind === 'deck') {
+      setDecks((prev) => {
+        const orderedIds = [...prev]
+          .sort((a, b) => a.position - b.position)
+          .map((d) => d.id);
+        const plan = planReorder(orderedIds, event.activeId, event.overId);
+        if (!plan) return prev;
+        if (orderedIds.every((id, i) => id === plan.nextIds[i])) return prev;
+        const next = applyOrderByIds(prev, plan.nextIds, () => true);
+        decksRef.current = next;
+        return next;
+      });
+      return;
+    }
+    if (event.kind === 'folder') {
+      setFolders((prev) => {
+        const orderedIds = [...prev]
+          .sort((a, b) => a.position - b.position)
+          .map((f) => f.id);
+        const plan = planReorder(orderedIds, event.activeId, event.overId);
+        if (!plan) return prev;
+        if (orderedIds.every((id, i) => id === plan.nextIds[i])) return prev;
+        const next = applyOrderByIds(prev, plan.nextIds, () => true);
+        foldersRef.current = next;
+        return next;
+      });
+    }
+  }, []);
+
   const handleDrop = useCallback(
     async (event: DriveDropEvent) => {
       if (!event.moved || !event.over) return;
@@ -543,34 +645,34 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         }
 
         if (payload.kind === 'card' && over.kind === 'deck' && over.id) {
+          const targetDeckId = over.id;
           flushSync(() => {
             setCards((prev) => {
               const card = prev.find((c) => c.id === payload.id);
               if (!card) return prev;
-              const targetDeckId = over.id;
               const withDeck = {
                 ...card,
                 topicId: currentTopicId,
                 deckId: targetDeckId,
               };
               const others = prev.filter((c) => c.id !== payload.id);
-              return optimisticReorderByBeforeId(
+              const orderedIds = others
+                .filter((c) => c.deckId === targetDeckId)
+                .sort((a, b) => a.position - b.position)
+                .map((c) => c.id);
+              return applyOrderByIds(
                 [...others, withDeck],
-                payload.id,
-                null,
+                [...orderedIds, payload.id],
                 (c) => c.deckId === targetDeckId,
               );
             });
           });
           try {
-            const moved = await cardsFacade.move(payload.id, {
+            await cardsFacade.move(payload.id, {
               topicId: currentTopicId,
               deckId: over.id,
             });
             toast.success('Card movido para o deck');
-            setCards((prev) =>
-              prev.map((c) => (c.id === moved.id ? { ...c, ...moved } : c)),
-            );
           } catch (error) {
             await rollback();
             throw error;
@@ -586,26 +688,26 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
               const withHall = {
                 ...card,
                 topicId: currentTopicId,
-                deckId: null,
+                deckId: null as string | null,
               };
               const others = prev.filter((c) => c.id !== payload.id);
-              return optimisticReorderByBeforeId(
+              const orderedIds = others
+                .filter((c) => c.deckId == null)
+                .sort((a, b) => a.position - b.position)
+                .map((c) => c.id);
+              return applyOrderByIds(
                 [...others, withHall],
-                payload.id,
-                null,
+                [...orderedIds, payload.id],
                 (c) => c.deckId == null,
               );
             });
           });
           try {
-            const moved = await cardsFacade.move(payload.id, {
+            await cardsFacade.move(payload.id, {
               topicId: currentTopicId,
               deckId: null,
             });
             toast.success('Card no Hall');
-            setCards((prev) =>
-              prev.map((c) => (c.id === moved.id ? { ...c, ...moved } : c)),
-            );
           } catch (error) {
             await rollback();
             throw error;
@@ -620,51 +722,71 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
 
           const source = cards.find((c) => c.id === payload.id);
           const targetDeckId = target.deckId;
-          const orderedIds = cards
+          const sameContainer = source?.deckId === targetDeckId;
+
+          if (sameContainer) {
+            const currentIds = cardsRef.current
+              .filter((c) => c.deckId === targetDeckId)
+              .sort((a, b) => a.position - b.position)
+              .map((c) => c.id);
+            const origin = dragOriginRef.current;
+            if (
+              origin?.kind === 'card' &&
+              origin.key === String(targetDeckId) &&
+              origin.ids.join() === currentIds.join()
+            ) {
+              return;
+            }
+            const at = currentIds.indexOf(payload.id);
+            const beforeCardId = at >= 0 ? (currentIds[at + 1] ?? null) : null;
+            try {
+              await cardsFacade.move(payload.id, {
+                topicId: currentTopicId,
+                deckId: targetDeckId,
+                ...(beforeCardId ? { beforeCardId } : {}),
+              });
+              toast.success('Posição atualizada');
+            } catch (error) {
+              await rollback();
+              throw error;
+            }
+            return;
+          }
+
+          const targetOrderedIds = cards
             .filter((c) => c.deckId === targetDeckId)
             .sort((a, b) => a.position - b.position)
             .map((c) => c.id);
 
-          const beforeCardId = beforeIdForReorder(
-            orderedIds,
-            payload.id,
-            over.id,
-          );
-          if (beforeCardId === undefined) return;
+          const plan = planInsertAt(targetOrderedIds, payload.id, over.id);
+          if (!plan) return;
 
           flushSync(() => {
             setCards((prev) => {
-              let next = prev;
-              if (source && source.deckId !== targetDeckId) {
-                next = prev.map((c) =>
-                  c.id === payload.id
-                    ? {
-                        ...c,
-                        topicId: currentTopicId,
-                        deckId: targetDeckId,
-                      }
-                    : c,
-                );
-              }
-              return optimisticReorderByBeforeId(
+              const next = prev.map((c) =>
+                c.id === payload.id
+                  ? {
+                      ...c,
+                      topicId: currentTopicId,
+                      deckId: targetDeckId,
+                    }
+                  : c,
+              );
+              return applyOrderByIds(
                 next,
-                payload.id,
-                beforeCardId,
+                plan.nextIds,
                 (c) => c.deckId === targetDeckId,
               );
             });
           });
 
           try {
-            const moved = await cardsFacade.move(payload.id, {
+            await cardsFacade.move(payload.id, {
               topicId: currentTopicId,
               deckId: targetDeckId,
-              ...(beforeCardId ? { beforeCardId } : {}),
+              ...(plan.beforeId ? { beforeCardId: plan.beforeId } : {}),
             });
             toast.success('Posição atualizada');
-            setCards((prev) =>
-              prev.map((c) => (c.id === moved.id ? { ...c, ...moved } : c)),
-            );
           } catch (error) {
             await rollback();
             throw error;
@@ -714,27 +836,20 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
             return;
           }
 
-          const orderedIds = [...folders]
+          const orderedIds = [...foldersRef.current]
             .sort((a, b) => a.position - b.position)
             .map((f) => f.id);
 
-          const beforeTopicId = beforeIdForReorder(
-            orderedIds,
-            payload.id,
-            over.id,
-          );
-          if (beforeTopicId === undefined) return;
+          const origin = dragOriginRef.current;
+          if (
+            origin?.kind === 'folder' &&
+            origin.ids.join() === orderedIds.join()
+          ) {
+            return;
+          }
 
-          flushSync(() => {
-            setFolders((prev) =>
-              optimisticReorderByBeforeId(
-                prev,
-                payload.id,
-                beforeTopicId,
-                () => true,
-              ),
-            );
-          });
+          const at = orderedIds.indexOf(payload.id);
+          const beforeTopicId = at >= 0 ? (orderedIds[at + 1] ?? null) : null;
 
           try {
             await topicsFacade.move(payload.id, {
@@ -768,36 +883,26 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         if (payload.kind === 'deck' && over.kind === 'deck' && over.id) {
           if (payload.id === over.id) return;
 
-          const orderedIds = [...decks]
+          const orderedIds = [...decksRef.current]
             .sort((a, b) => a.position - b.position)
             .map((d) => d.id);
 
-          const beforeDeckId = beforeIdForReorder(
-            orderedIds,
-            payload.id,
-            over.id,
-          );
-          if (beforeDeckId === undefined) return;
+          const origin = dragOriginRef.current;
+          if (
+            origin?.kind === 'deck' &&
+            origin.ids.join() === orderedIds.join()
+          ) {
+            return;
+          }
 
-          flushSync(() => {
-            setDecks((prev) =>
-              optimisticReorderByBeforeId(
-                prev,
-                payload.id,
-                beforeDeckId,
-                () => true,
-              ),
-            );
-          });
+          const at = orderedIds.indexOf(payload.id);
+          const beforeDeckId = at >= 0 ? (orderedIds[at + 1] ?? null) : null;
 
           try {
-            const moved = await decksFacade.move(payload.id, {
+            await decksFacade.move(payload.id, {
               ...(beforeDeckId ? { beforeDeckId } : {}),
             });
             toast.success('Deck reordenado');
-            setDecks((prev) =>
-              prev.map((d) => (d.id === moved.id ? { ...d, ...moved } : d)),
-            );
           } catch (error) {
             await rollback();
             throw error;
@@ -1314,7 +1419,11 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         </IonToolbar>
       </IonHeader>
       <IonContent>
-        <DriveDndProvider onDrop={handleDrop}>
+        <DriveDndProvider
+          onDrop={handleDrop}
+          onDragTrackStart={handleDragTrackStart}
+          onReorderPreview={handleReorderPreview}
+        >
         <MotionShell className="sc-shell" onContextMenu={openBlankContextMenu}>
           <div className="sc-crumb">
             <button type="button" onClick={() => history.push('/home')}>
@@ -1394,6 +1503,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                           id: card.id,
                           subjectId: card.subjectId,
                           topicId: card.topicId,
+                          deckId: card.deckId,
                           label: card.front,
                         }}
                         className={`sc-hand-slot${raised ? ' is-raised' : ''}${picked ? ' is-picked' : ''}`}
@@ -1462,6 +1572,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                           id: card.id,
                           subjectId: card.subjectId,
                           topicId: card.topicId,
+                          deckId: card.deckId,
                           label: card.front,
                         }}
                         onClick={(e) => handleCardTap(card, 'list', e)}
@@ -1702,6 +1813,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                                 id: card.id,
                                 subjectId: card.subjectId,
                                 topicId: card.topicId,
+                                deckId: card.deckId,
                                 label: card.front,
                               }}
                               className={`sc-hand-slot is-deck${picked ? ' is-picked' : ''}`}
