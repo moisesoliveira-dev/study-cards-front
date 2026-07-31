@@ -816,7 +816,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
             });
             try {
               await topicsFacade.update(payload.id, { parentId: over.id });
-              toast.success('Pasta movida');
+              toast.success('Pasta movida para dentro');
               await load({ silent: true });
             } catch (error) {
               await rollback();
@@ -825,24 +825,25 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
             return;
           }
 
+          // Reordenar irmãs (sem preview ao vivo — aplica no drop)
           const orderedIds = [...foldersRef.current]
             .sort((a, b) => a.position - b.position)
             .map((f) => f.id);
+          const plan = planReorder(orderedIds, payload.id, over.id);
+          if (!plan) return;
+          if (orderedIds.every((id, i) => id === plan.nextIds[i])) return;
 
-          const origin = dragOriginRef.current;
-          if (
-            origin?.kind === 'folder' &&
-            origin.ids.join() === orderedIds.join()
-          ) {
-            return;
-          }
-
-          const at = orderedIds.indexOf(payload.id);
-          const beforeTopicId = at >= 0 ? (orderedIds[at + 1] ?? null) : null;
+          flushSync(() => {
+            setFolders((prev) => {
+              const next = applyOrderByIds(prev, plan.nextIds, () => true);
+              foldersRef.current = next;
+              return next;
+            });
+          });
 
           try {
             await topicsFacade.move(payload.id, {
-              ...(beforeTopicId ? { beforeTopicId } : {}),
+              ...(plan.beforeId ? { beforeTopicId: plan.beforeId } : {}),
             });
             toast.success('Pasta reordenada');
           } catch (error) {

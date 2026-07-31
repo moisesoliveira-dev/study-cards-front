@@ -23,15 +23,19 @@ import {
   useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
+import { snapCenterToCursor } from '@dnd-kit/modifiers';
 import { CSS } from '@dnd-kit/utilities';
 import {
   useCallback,
+  useEffect,
   useMemo,
+  useRef,
   useState,
   type CSSProperties,
   type MouseEvent,
   type ReactNode,
 } from 'react';
+import { createPortal } from 'react-dom';
 import {
   HALL_DND_ID,
   ROOT_DND_ID,
@@ -66,6 +70,8 @@ type DriveDndProviderProps = {
   onReorderPreview?: (event: DriveReorderPreview) => void;
 };
 
+type Point = { x: number; y: number };
+
 function insertEdge(
   activeTop: number,
   activeLeft: number,
@@ -80,36 +86,23 @@ function insertEdge(
   return activeTop + 8 < mid ? 'before' : 'after';
 }
 
-/** Centro do item arrastado — a borda esquerda falhava e quase nunca dava "into". */
-function rectCenter(
-  rect: { top: number; left: number; width: number; height: number },
-) {
-  return {
-    x: rect.left + rect.width / 2,
-    y: rect.top + rect.height / 2,
-  };
-}
-
 /**
- * Centro sobre a pasta = aninhar; só as bordas estreitas reordenam.
- * Grade: eixo X · Lista: eixo Y.
+ * Bordas de ~12px = reordenar; o restante (maioria) = aninhar.
+ * Usa a posição do ponteiro — mais estável que o rect do item arrastado.
  */
-function folderEdge(
-  centerX: number,
-  centerY: number,
+function folderEdgeFromPointer(
+  point: Point,
   overRect: { top: number; left: number; width: number; height: number },
   grid: boolean,
 ): 'before' | 'after' | 'into' {
-  const band = 0.16;
+  const band = 12;
   if (grid) {
-    const ratio = (centerX - overRect.left) / Math.max(overRect.width, 1);
-    if (ratio < band) return 'before';
-    if (ratio > 1 - band) return 'after';
+    if (point.x < overRect.left + band) return 'before';
+    if (point.x > overRect.left + overRect.width - band) return 'after';
     return 'into';
   }
-  const ratio = (centerY - overRect.top) / Math.max(overRect.height, 1);
-  if (ratio < band) return 'before';
-  if (ratio > 1 - band) return 'after';
+  if (point.y < overRect.top + band) return 'before';
+  if (point.y > overRect.top + overRect.height - band) return 'after';
   return 'into';
 }
 
@@ -122,24 +115,10 @@ function isFolderDropInGrid(overId: UniqueIdentifier): boolean {
   );
 }
 
-function resolveFolderEdge(
-  activeRect:
-    | { top: number; left: number; width: number; height: number }
-    | null
-    | undefined,
-  overRect: { top: number; left: number; width: number; height: number },
-  overId: UniqueIdentifier,
-): 'before' | 'after' | 'into' {
-  const center = rectCenter(activeRect ?? overRect);
-  return folderEdge(
-    center.x,
-    center.y,
-    overRect,
-    isFolderDropInGrid(overId),
-  );
-}
-
-function resolveDropTarget(event: DragEndEvent): DropTarget | null {
+function resolveDropTarget(
+  event: DragEndEvent,
+  pointer: Point,
+): DropTarget | null {
   const { active, over } = event;
   if (!over) return null;
 
@@ -192,7 +171,11 @@ function resolveDropTarget(event: DragEndEvent): DropTarget | null {
       return {
         kind: 'folder',
         id: overParsed.id,
-        edge: resolveFolderEdge(translated, over.rect, over.id),
+        edge: folderEdgeFromPointer(
+          pointer,
+          over.rect,
+          isFolderDropInGrid(over.id),
+        ),
       };
     }
     if (overParsed.type === 'root') return { kind: 'root' };
@@ -218,6 +201,7 @@ export function DriveDndProvider({
   onReorderPreview,
 }: DriveDndProviderProps) {
   const [activePayload, setActivePayload] = useState<DragPayload | null>(null);
+  const pointerRef = useRef<Point>({ x: 0, y: 0 });
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -228,9 +212,25 @@ export function DriveDndProvider({
     }),
   );
 
+  useEffect(() => {
+    if (!activePayload) return;
+    const onMove = (e: PointerEvent) => {
+      pointerRef.current = { x: e.clientX, y: e.clientY };
+    };
+    window.addEventListener('pointermove', onMove, { passive: true });
+    return () => window.removeEventListener('pointermove', onMove);
+  }, [activePayload]);
+
   const onDragStart = useCallback(
     (event: DragStartEvent) => {
       const data = event.active.data.current as DriveDragData | undefined;
+      const ae = event.activatorEvent;
+      if (ae && 'clientX' in ae) {
+        pointerRef.current = {
+          x: (ae as PointerEvent).clientX,
+          y: (ae as PointerEvent).clientY,
+        };
+      }
       setActivePayload(data?.payload ?? null);
       document.body.classList.add('sc-dragging');
       if (data?.payload) onDragTrackStart?.(data.payload);
@@ -269,19 +269,17 @@ export function DriveDndProvider({
         return;
       }
 
-      if (a.type === 'deck' || a.type === 'folder') {
-        if (a.type === 'folder') {
-          const translated = active.rect.current.translated;
-          const edge = resolveFolderEdge(translated, over.rect, over.id);
-          // Centro = aninhar: não reordenar a lista local durante o hover
-          if (edge === 'into') return;
-        }
+      if (a.type === 'deck') {
         onReorderPreview({
-          kind: a.type,
+          kind: 'deck',
           activeId: a.id,
           overId: o.id,
         });
+        return;
       }
+
+      // Pastas: NÃO reordenar ao vivo — isso teleporta o item no DOM e o
+      // ghost/overlay fica longe do cursor. Nest/reorder só no drop.
     },
     [onReorderPreview],
   );
@@ -292,7 +290,7 @@ export function DriveDndProvider({
       setActivePayload(null);
       const data = event.active.data.current as DriveDragData | undefined;
       if (!data?.payload) return;
-      const over = resolveDropTarget(event);
+      const over = resolveDropTarget(event, pointerRef.current);
       if (!over) return;
       void onDrop({ payload: data.payload, over, moved: true });
     },
@@ -314,16 +312,22 @@ export function DriveDndProvider({
       onDragCancel={onDragCancel}
     >
       {children}
-      <DragOverlay dropAnimation={null}>
-        {activePayload ? (
-          <div
-            className="sc-drag-ghost is-overlay"
-            data-kind={activePayload.kind}
-          >
-            {activePayload.label}
-          </div>
-        ) : null}
-      </DragOverlay>
+      {createPortal(
+        <DragOverlay
+          dropAnimation={null}
+          modifiers={[snapCenterToCursor]}
+        >
+          {activePayload ? (
+            <div
+              className="sc-drag-ghost is-overlay"
+              data-kind={activePayload.kind}
+            >
+              {activePayload.label}
+            </div>
+          ) : null}
+        </DragOverlay>,
+        document.body,
+      )}
     </DndContext>
   );
 }
@@ -469,7 +473,7 @@ export function SortableCard({
     ...style,
     transform: CSS.Transform.toString(transform),
     transition: isDragging ? transition : undefined,
-    opacity: isDragging ? 0.35 : undefined,
+    opacity: isDragging ? 0 : undefined,
     zIndex: isDragging ? 50 : style?.zIndex,
   };
 
@@ -536,7 +540,7 @@ export function SortableDeck({
     ...style,
     transform: CSS.Transform.toString(transform),
     transition: isDragging ? transition : undefined,
-    opacity: isDragging ? 0.4 : undefined,
+    opacity: isDragging ? 0 : undefined,
   };
 
   return (
@@ -591,25 +595,21 @@ export function SortableFolder({
     animateLayoutChanges: () => false,
   });
 
+  const activeKind = (active?.data.current as DriveDragData | undefined)
+    ?.payload?.kind;
   const nestIntent =
     isOver &&
-    active &&
-    over?.id === id &&
-    (active.data.current as DriveDragData | undefined)?.payload?.kind ===
-      'folder' &&
-    (active.data.current as DriveDragData | undefined)?.payload?.id !==
+    activeKind === 'folder' &&
+    (active?.data.current as DriveDragData | undefined)?.payload?.id !==
       payload.id &&
-    resolveFolderEdge(
-      active.rect.current.translated,
-      over.rect,
-      over.id,
-    ) === 'into';
+    over?.id === id;
 
   const mergedStyle: CSSProperties = {
     ...style,
-    transform: CSS.Transform.toString(transform),
-    transition: isDragging ? transition : undefined,
-    opacity: isDragging ? 0.4 : undefined,
+    // Sem teleporte visual: o DragOverlay segue o cursor; o item fica no lugar.
+    transform: isDragging ? undefined : CSS.Transform.toString(transform),
+    transition: isDragging ? undefined : transition,
+    opacity: isDragging ? 0 : undefined,
   };
 
   return (
