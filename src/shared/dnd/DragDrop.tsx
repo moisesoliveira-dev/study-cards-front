@@ -6,6 +6,7 @@ import {
   closestCenter,
   pointerWithin,
   rectIntersection,
+  useDndContext,
   useDroppable,
   useSensor,
   useSensors,
@@ -79,22 +80,63 @@ function insertEdge(
   return activeTop + 8 < mid ? 'before' : 'after';
 }
 
+/** Centro do item arrastado — a borda esquerda falhava e quase nunca dava "into". */
+function rectCenter(
+  rect: { top: number; left: number; width: number; height: number },
+) {
+  return {
+    x: rect.left + rect.width / 2,
+    y: rect.top + rect.height / 2,
+  };
+}
+
+/**
+ * Centro sobre a pasta = aninhar; só as bordas estreitas reordenam.
+ * Grade: eixo X · Lista: eixo Y.
+ */
 function folderEdge(
-  activeTop: number,
-  activeLeft: number,
+  centerX: number,
+  centerY: number,
   overRect: { top: number; left: number; width: number; height: number },
   grid: boolean,
 ): 'before' | 'after' | 'into' {
+  const band = 0.16;
   if (grid) {
-    const ratio = (activeLeft + 16 - overRect.left) / Math.max(overRect.width, 1);
-    if (ratio < 0.25) return 'before';
-    if (ratio > 0.75) return 'after';
+    const ratio = (centerX - overRect.left) / Math.max(overRect.width, 1);
+    if (ratio < band) return 'before';
+    if (ratio > 1 - band) return 'after';
     return 'into';
   }
-  const ratio = (activeTop + 16 - overRect.top) / Math.max(overRect.height, 1);
-  if (ratio < 0.25) return 'before';
-  if (ratio > 0.75) return 'after';
+  const ratio = (centerY - overRect.top) / Math.max(overRect.height, 1);
+  if (ratio < band) return 'before';
+  if (ratio > 1 - band) return 'after';
   return 'into';
+}
+
+function isFolderDropInGrid(overId: UniqueIdentifier): boolean {
+  if (typeof document === 'undefined') return true;
+  return Boolean(
+    document
+      .querySelector(`[data-dnd-id="${String(overId)}"]`)
+      ?.closest('.sc-grid'),
+  );
+}
+
+function resolveFolderEdge(
+  activeRect:
+    | { top: number; left: number; width: number; height: number }
+    | null
+    | undefined,
+  overRect: { top: number; left: number; width: number; height: number },
+  overId: UniqueIdentifier,
+): 'before' | 'after' | 'into' {
+  const center = rectCenter(activeRect ?? overRect);
+  return folderEdge(
+    center.x,
+    center.y,
+    overRect,
+    isFolderDropInGrid(overId),
+  );
 }
 
 function resolveDropTarget(event: DragEndEvent): DropTarget | null {
@@ -147,16 +189,10 @@ function resolveDropTarget(event: DragEndEvent): DropTarget | null {
   if (payload.kind === 'folder') {
     if (overParsed.type === 'folder' && overParsed.id) {
       if (overParsed.id === payload.id) return null;
-      const grid = Boolean(
-        typeof document !== 'undefined' &&
-          document
-            .querySelector(`[data-dnd-id="${String(over.id)}"]`)
-            ?.closest('.sc-grid'),
-      );
       return {
         kind: 'folder',
         id: overParsed.id,
-        edge: folderEdge(activeTop, activeLeft, over.rect, grid),
+        edge: resolveFolderEdge(translated, over.rect, over.id),
       };
     }
     if (overParsed.type === 'root') return { kind: 'root' };
@@ -234,6 +270,12 @@ export function DriveDndProvider({
       }
 
       if (a.type === 'deck' || a.type === 'folder') {
+        if (a.type === 'folder') {
+          const translated = active.rect.current.translated;
+          const edge = resolveFolderEdge(translated, over.rect, over.id);
+          // Centro = aninhar: não reordenar a lista local durante o hover
+          if (edge === 'into') return;
+        }
         onReorderPreview({
           kind: a.type,
           activeId: a.id,
@@ -534,6 +576,7 @@ export function SortableFolder({
   onContextMenu,
 }: SortableFolderProps) {
   const id = folderDndId(payload.id);
+  const { active, over } = useDndContext();
   const {
     attributes,
     listeners,
@@ -548,6 +591,20 @@ export function SortableFolder({
     animateLayoutChanges: () => false,
   });
 
+  const nestIntent =
+    isOver &&
+    active &&
+    over?.id === id &&
+    (active.data.current as DriveDragData | undefined)?.payload?.kind ===
+      'folder' &&
+    (active.data.current as DriveDragData | undefined)?.payload?.id !==
+      payload.id &&
+    resolveFolderEdge(
+      active.rect.current.translated,
+      over.rect,
+      over.id,
+    ) === 'into';
+
   const mergedStyle: CSSProperties = {
     ...style,
     transform: CSS.Transform.toString(transform),
@@ -559,7 +616,7 @@ export function SortableFolder({
     <div
       ref={setNodeRef}
       style={mergedStyle}
-      className={`sc-drop-zone${isOver ? ' is-over' : ''}${isDragging ? ' is-dragging-item' : ''}${className ? ` ${className}` : ''}`}
+      className={`sc-drop-zone${isOver ? ' is-over' : ''}${nestIntent ? ' is-insert-into' : ''}${isDragging ? ' is-dragging-item' : ''}${className ? ` ${className}` : ''}`}
       data-dnd-id={id}
       data-drop-kind="folder"
       data-drop-id={payload.id}
