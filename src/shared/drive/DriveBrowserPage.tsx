@@ -1381,6 +1381,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
 
           <div className="sc-section-label">Cards</div>
           <div className="sc-decks">
+            <LayoutGroup id="drive-decks">
             {orderedDecks.map((deck) => {
               const deckCards = cardsByDeck.get(deck.id) ?? [];
               return (
@@ -1388,6 +1389,8 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                   key={deck.id}
                   target={{ kind: 'deck', id: deck.id }}
                   className="sc-deck"
+                  layout={!reduce}
+                  layoutId={reduce ? undefined : `deck-tray-${deck.id}`}
                   style={
                     {
                       borderColor: deck.color,
@@ -1407,11 +1410,13 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                     onContextMenu={(e) => openDeckContextMenu(e, deck)}
                   >
                     <div className="sc-deck-head">
-                      <span
-                        className="sc-deck-dot"
-                        style={{ background: deck.color }}
-                        aria-hidden
-                      />
+                      <span className="sc-deck-badge" aria-hidden>
+                        <span
+                          className="sc-deck-dot"
+                          style={{ background: deck.color }}
+                        />
+                        <span className="sc-deck-stack" aria-hidden />
+                      </span>
                       <strong>{deck.name}</strong>
                       <span className="sc-deck-count">
                         {deckCards.length} carta
@@ -1445,6 +1450,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                       </button>
                     </div>
                   </DragItem>
+                  <div className="sc-deck-felt" aria-hidden />
                   <div className="sc-deck-hand" role="list">
                     {deckCards.map((card, index) => {
                       const picked = mergePickIds.includes(card.id);
@@ -1453,6 +1459,11 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                           key={card.id}
                           target={{ kind: 'card', id: card.id }}
                           className={`sc-hand-slot is-deck${picked ? ' is-picked' : ''}`}
+                          style={
+                            {
+                              ['--slot-i' as string]: index,
+                            } as CSSProperties
+                          }
                         >
                           <DragItem
                             payload={{
@@ -1474,6 +1485,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                               card={card}
                               selected={picked}
                               index={index}
+                              inDeck
                               style={
                                 {
                                   ['--card-i' as string]: index,
@@ -1493,6 +1505,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                 </DropZone>
               );
             })}
+            </LayoutGroup>
             <button
               type="button"
               className="sc-deck is-new"

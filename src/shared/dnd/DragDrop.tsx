@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
+import { motion, type Transition } from 'framer-motion';
 import {
   endDriveDrag,
   moveDriveDrag,
@@ -9,6 +10,7 @@ import {
   type DropTarget,
   type DropZoneTarget,
 } from './drive-dnd';
+import { springLayout } from '../motion';
 
 const MOVE_THRESHOLD = 10;
 const LONG_PRESS_MS = 480;
@@ -162,9 +164,21 @@ type DropZoneProps = {
   className?: string;
   style?: CSSProperties;
   children: ReactNode;
+  /** Anima o bloco inteiro no reorder (ex.: decks). */
+  layout?: boolean;
+  layoutId?: string;
+  layoutTransition?: Transition;
 };
 
-export function DropZone({ target, className, style, children }: DropZoneProps) {
+export function DropZone({
+  target,
+  className,
+  style,
+  children,
+  layout,
+  layoutId,
+  layoutTransition,
+}: DropZoneProps) {
   const [active, setActive] = useState(false);
   const [edge, setEdge] = useState<'before' | 'after' | 'into' | null>(null);
 
@@ -236,18 +250,31 @@ export function DropZone({ target, className, style, children }: DropZoneProps) 
           ? ' is-insert-into'
           : '';
 
+  const zoneClass = `sc-drop-zone${active ? ' is-over' : ''}${insertClass}${className ? ` ${className}` : ''}`;
+  const zoneData = {
+    'data-drop-kind': target.kind,
+    'data-drop-id':
+      target.kind === 'root' || target.kind === 'hall' ? undefined : target.id,
+    'data-insert-edge': edge ?? undefined,
+  } as const;
+
+  if (layout || layoutId) {
+    return (
+      <motion.div
+        className={zoneClass}
+        style={style}
+        layout={layout}
+        layoutId={layoutId}
+        transition={{ layout: layoutTransition ?? springLayout }}
+        {...zoneData}
+      >
+        {children}
+      </motion.div>
+    );
+  }
+
   return (
-    <div
-      className={`sc-drop-zone${active ? ' is-over' : ''}${insertClass}${className ? ` ${className}` : ''}`}
-      style={style}
-      data-drop-kind={target.kind}
-      data-drop-id={
-        target.kind === 'root' || target.kind === 'hall'
-          ? undefined
-          : target.id
-      }
-      data-insert-edge={edge ?? undefined}
-    >
+    <div className={zoneClass} style={style} {...zoneData}>
       {children}
     </div>
   );

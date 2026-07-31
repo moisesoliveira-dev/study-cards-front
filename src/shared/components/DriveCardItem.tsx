@@ -76,6 +76,8 @@ type FaceProps = {
   onClick?: () => void;
   style?: CSSProperties;
   index?: number;
+  /** No deck, o tray anima o bloco; a carta não faz FLIP sozinha. */
+  inDeck?: boolean;
 };
 
 /** Carta compacta na mão — o giro acontece no CardFocusStage (centro da tela). */
@@ -85,6 +87,7 @@ export function FaceCard({
   onClick,
   style,
   index = 0,
+  inDeck = false,
 }: FaceProps) {
   const reduce = useReducedMotion();
   const accent = cardAccent(card.color, card.tag);
@@ -98,7 +101,8 @@ export function FaceCard({
     [],
   );
 
-  const layoutOn = !reduce && !dragBusy;
+  // No deck o tray anima o bloco; layoutId ainda faz morph Hall↔deck.
+  const layoutOn = !reduce && !dragBusy && !inDeck;
 
   return (
     <motion.div
