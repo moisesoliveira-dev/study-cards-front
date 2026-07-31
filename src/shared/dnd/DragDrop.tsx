@@ -31,6 +31,8 @@ import {
   useMemo,
   useRef,
   useState,
+  createContext,
+  useContext,
   type CSSProperties,
   type MouseEvent,
   type ReactNode,
@@ -72,6 +74,11 @@ type DriveDndProviderProps = {
 
 type Point = { x: number; y: number };
 
+/** true = soltar pasta = aninhar; false = reordenar irmãs */
+const FolderNestIntentCtx = createContext(false);
+
+const FOLDER_NEST_DWELL_MS = 480;
+
 function insertEdge(
   activeTop: number,
   activeLeft: number,
@@ -86,39 +93,9 @@ function insertEdge(
   return activeTop + 8 < mid ? 'before' : 'after';
 }
 
-/**
- * Bordas de ~12px = reordenar; o restante (maioria) = aninhar.
- * Usa a posição do ponteiro — mais estável que o rect do item arrastado.
- */
-function folderEdgeFromPointer(
-  point: Point,
-  overRect: { top: number; left: number; width: number; height: number },
-  grid: boolean,
-): 'before' | 'after' | 'into' {
-  const band = 12;
-  if (grid) {
-    if (point.x < overRect.left + band) return 'before';
-    if (point.x > overRect.left + overRect.width - band) return 'after';
-    return 'into';
-  }
-  if (point.y < overRect.top + band) return 'before';
-  if (point.y > overRect.top + overRect.height - band) return 'after';
-  return 'into';
-}
-
-function isFolderDropInGrid(overId: UniqueIdentifier): boolean {
-  if (typeof document === 'undefined') return true;
-  return Boolean(
-    document
-      .querySelector(`[data-dnd-id="${String(overId)}"]`)
-      ?.closest('.sc-grid'),
-  );
-}
-
 function resolveDropTarget(
   event: DragEndEvent,
-  pointer: Point,
-  shiftKey: boolean,
+  nestFolder: boolean,
 ): DropTarget | null {
   const { active, over } = event;
   if (!over) return null;
@@ -169,19 +146,11 @@ function resolveDropTarget(
   if (payload.kind === 'folder') {
     if (overParsed.type === 'folder' && overParsed.id) {
       if (overParsed.id === payload.id) return null;
-      // Soltar em cima de outra pasta = aninhar (confiável).
-      // Segure Shift para reordenar pelas bordas.
-      const edge = shiftKey
-        ? folderEdgeFromPointer(
-            pointer,
-            over.rect,
-            isFolderDropInGrid(over.id),
-          )
-        : 'into';
+      // Padrão = reordenar. Aninhar só com Alt (desktop) ou dwell (touch).
       return {
         kind: 'folder',
         id: overParsed.id,
-        edge,
+        edge: nestFolder ? 'into' : 'before',
       };
     }
     if (overParsed.type === 'root') return { kind: 'root' };
@@ -207,8 +176,11 @@ export function DriveDndProvider({
   onReorderPreview,
 }: DriveDndProviderProps) {
   const [activePayload, setActivePayload] = useState<DragPayload | null>(null);
-  const pointerRef = useRef<Point>({ x: 0, y: 0 });
-  const shiftRef = useRef(false);
+  const [nestFolder, setNestFolder] = useState(false);
+  const nestFolderRef = useRef(false);
+  const altRef = useRef(false);
+  const dwellTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dwellOverId = useRef<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -219,52 +191,100 @@ export function DriveDndProvider({
     }),
   );
 
+  const setNest = useCallback((value: boolean) => {
+    nestFolderRef.current = value;
+    setNestFolder(value);
+    document.body.classList.toggle('sc-folder-nest', value);
+  }, []);
+
+  const clearDwell = useCallback(() => {
+    if (dwellTimer.current) {
+      clearTimeout(dwellTimer.current);
+      dwellTimer.current = null;
+    }
+    dwellOverId.current = null;
+  }, []);
+
   useEffect(() => {
     if (!activePayload) return;
-    const onMove = (e: PointerEvent) => {
-      pointerRef.current = { x: e.clientX, y: e.clientY };
-      shiftRef.current = e.shiftKey;
-    };
+    const syncNest = () => setNest(altRef.current);
     const onKey = (e: KeyboardEvent) => {
-      shiftRef.current = e.shiftKey;
+      altRef.current = e.altKey;
+      // Alt = aninhar; sem Alt volta ao dwell/false
+      if (e.altKey) {
+        clearDwell();
+        setNest(true);
+      } else if (activePayload.kind === 'folder') {
+        setNest(false);
+      }
     };
-    window.addEventListener('pointermove', onMove, { passive: true });
     window.addEventListener('keydown', onKey);
     window.addEventListener('keyup', onKey);
+    syncNest();
     return () => {
-      window.removeEventListener('pointermove', onMove);
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('keyup', onKey);
     };
-  }, [activePayload]);
+  }, [activePayload, clearDwell, setNest]);
 
   const onDragStart = useCallback(
     (event: DragStartEvent) => {
       const data = event.active.data.current as DriveDragData | undefined;
       const ae = event.activatorEvent;
-      if (ae && 'clientX' in ae) {
-        pointerRef.current = {
-          x: (ae as PointerEvent).clientX,
-          y: (ae as PointerEvent).clientY,
-        };
-        shiftRef.current = Boolean((ae as PointerEvent).shiftKey);
-      }
+      altRef.current = Boolean(
+        ae && 'altKey' in ae && (ae as PointerEvent).altKey,
+      );
+      clearDwell();
+      setNest(altRef.current);
       setActivePayload(data?.payload ?? null);
       document.body.classList.add('sc-dragging');
       if (data?.payload) onDragTrackStart?.(data.payload);
     },
-    [onDragTrackStart],
+    [clearDwell, onDragTrackStart, setNest],
   );
 
   const onDragOver = useCallback(
     (event: DragOverEvent) => {
-      if (!onReorderPreview) return;
       const { active, over } = event;
-      if (!over || active.id === over.id) return;
+      if (!over || active.id === over.id) {
+        clearDwell();
+        if (!altRef.current) setNest(false);
+        return;
+      }
 
       const a = parseDndId(active.id);
       const o = parseDndId(over.id);
-      if (!a?.id || !o?.id || a.type !== o.type) return;
+      if (!a?.id || !o?.id) return;
+
+      // Pasta sobre pasta: dwell → modo aninhar (touch/desktop sem Alt)
+      if (a.type === 'folder' && o.type === 'folder') {
+        if (altRef.current) {
+          clearDwell();
+          setNest(true);
+        } else if (dwellOverId.current !== o.id) {
+          clearDwell();
+          setNest(false);
+          dwellOverId.current = o.id;
+          dwellTimer.current = setTimeout(() => {
+            setNest(true);
+          }, FOLDER_NEST_DWELL_MS);
+        }
+        // Sem nest: permite preview de reordenação
+        if (!nestFolderRef.current && onReorderPreview) {
+          onReorderPreview({
+            kind: 'folder',
+            activeId: a.id,
+            overId: o.id,
+          });
+        }
+        return;
+      }
+
+      clearDwell();
+      if (!altRef.current) setNest(false);
+
+      if (!onReorderPreview) return;
+      if (a.type !== o.type) return;
 
       if (a.type === 'card') {
         const activePayload = (active.data.current as DriveDragData | undefined)
@@ -293,64 +313,79 @@ export function DriveDndProvider({
           activeId: a.id,
           overId: o.id,
         });
-        return;
       }
-
-      // Pastas: NÃO reordenar ao vivo — isso teleporta o item no DOM e o
-      // ghost/overlay fica longe do cursor. Nest/reorder só no drop.
     },
-    [onReorderPreview],
+    [clearDwell, onReorderPreview, setNest],
   );
 
   const onDragEnd = useCallback(
     (event: DragEndEvent) => {
+      const nest = nestFolderRef.current;
       document.body.classList.remove('sc-dragging');
+      document.body.classList.remove('sc-folder-nest');
+      clearDwell();
+      setNest(false);
       setActivePayload(null);
       const data = event.active.data.current as DriveDragData | undefined;
       if (!data?.payload) return;
-      const over = resolveDropTarget(
-        event,
-        pointerRef.current,
-        shiftRef.current,
-      );
+      const over = resolveDropTarget(event, nest);
       if (!over) return;
       void onDrop({ payload: data.payload, over, moved: true });
     },
-    [onDrop],
+    [clearDwell, onDrop, setNest],
   );
 
   const onDragCancel = useCallback(() => {
     document.body.classList.remove('sc-dragging');
+    document.body.classList.remove('sc-folder-nest');
+    clearDwell();
+    setNest(false);
     setActivePayload(null);
-  }, []);
+  }, [clearDwell, setNest]);
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={driveCollision}
-      onDragStart={onDragStart}
-      onDragOver={onDragOver}
-      onDragEnd={onDragEnd}
-      onDragCancel={onDragCancel}
-    >
-      {children}
-      {createPortal(
-        <DragOverlay
-          dropAnimation={null}
-          modifiers={[snapCenterToCursor]}
-        >
-          {activePayload ? (
-            <div
-              className="sc-drag-ghost is-overlay"
-              data-kind={activePayload.kind}
-            >
-              {activePayload.label}
-            </div>
-          ) : null}
-        </DragOverlay>,
-        document.body,
-      )}
-    </DndContext>
+    <FolderNestIntentCtx.Provider value={nestFolder}>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={driveCollision}
+        onDragStart={onDragStart}
+        onDragOver={onDragOver}
+        onDragEnd={onDragEnd}
+        onDragCancel={onDragCancel}
+      >
+        {children}
+        {createPortal(
+          <DragOverlay
+            dropAnimation={null}
+            modifiers={[snapCenterToCursor]}
+          >
+            {activePayload ? (
+              <div
+                className="sc-drag-ghost is-overlay"
+                data-kind={activePayload.kind}
+                data-nest={
+                  activePayload.kind === 'folder' && nestFolder
+                    ? 'into'
+                    : undefined
+                }
+              >
+                {activePayload.kind === 'folder' && nestFolder
+                  ? `📁 ${activePayload.label}`
+                  : activePayload.label}
+                {activePayload.kind === 'folder' ? (
+                  <span className="sc-drag-ghost-hint">
+                    {nestFolder
+                      ? 'Soltar → dentro'
+                      : 'Soltar → reordenar · Alt ou segurar → dentro'}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+          </DragOverlay>,
+          document.body,
+        )}
+      </DndContext>
+    </FolderNestIntentCtx.Provider>
   );
 }
 
@@ -602,6 +637,7 @@ export function SortableFolder({
   onContextMenu,
 }: SortableFolderProps) {
   const id = folderDndId(payload.id);
+  const nestMode = useContext(FolderNestIntentCtx);
   const { active, over } = useDndContext();
   const {
     attributes,
@@ -619,16 +655,16 @@ export function SortableFolder({
 
   const activeKind = (active?.data.current as DriveDragData | undefined)
     ?.payload?.kind;
-  const nestIntent =
+  const isFolderTarget =
     isOver &&
     activeKind === 'folder' &&
     (active?.data.current as DriveDragData | undefined)?.payload?.id !==
       payload.id &&
     over?.id === id;
+  const nestIntent = isFolderTarget && nestMode;
 
   const mergedStyle: CSSProperties = {
     ...style,
-    // Sem teleporte visual: o DragOverlay segue o cursor; o item fica no lugar.
     transform: isDragging ? undefined : CSS.Transform.toString(transform),
     transition: isDragging ? undefined : transition,
     opacity: isDragging ? 0 : undefined,

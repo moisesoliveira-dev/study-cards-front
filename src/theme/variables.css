@@ -5388,6 +5388,45 @@ body.sc-dragging * {
   top: auto;
   left: auto;
   cursor: grabbing;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 240px;
+}
+
+.sc-drag-ghost-hint {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  white-space: normal;
+  line-height: 1.25;
+}
+
+.sc-drag-ghost[data-nest='into'] {
+  border-color: #ba7517;
+  background: color-mix(in srgb, #ba7517 14%, var(--surface-1));
+}
+
+.sc-drag-ghost[data-nest='into'] .sc-drag-ghost-hint {
+  color: #ba7517;
+  font-weight: 650;
+}
+
+body.sc-folder-nest .sc-drop-zone.is-insert-into::after {
+  content: 'Mover para dentro';
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  z-index: 5;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #ba7517;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  pointer-events: none;
+  white-space: nowrap;
 }
 
 .sc-drag-ghost[data-kind='folder'] {

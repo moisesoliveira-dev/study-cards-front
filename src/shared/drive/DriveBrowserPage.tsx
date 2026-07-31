@@ -808,7 +808,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
 
         if (payload.kind === 'folder' && over.kind === 'folder' && over.id) {
           if (payload.id === over.id) return;
-          const edge = over.edge ?? 'into';
+          const edge = over.edge ?? 'before';
 
           if (edge === 'into') {
             flushSync(() => {
@@ -1486,8 +1486,8 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
 
           <p className="sc-dnd-hint">
             {touchUi
-              ? 'Toque para abrir · solte uma pasta em cima de outra para aninhar (conteúdo vai junto)'
-              : 'Solte uma pasta em cima de outra para aninhar · Shift+solte nas bordas para reordenar'}
+              ? 'Arraste pastas para reordenar · segure ~0,5s em cima de outra para mover para dentro'
+              : 'Arraste pastas para reordenar · Alt (ou segure ~0,5s em cima) para mover para dentro'}
           </p>
 
           {!isRoot ? (
