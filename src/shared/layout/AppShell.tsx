@@ -7,6 +7,7 @@ import {
   chevronDownOutline,
   closeOutline,
   colorPaletteOutline,
+  ellipsisHorizontalOutline,
   fileTrayFullOutline,
   gitNetworkOutline,
   layersOutline,
@@ -95,6 +96,10 @@ const NAV: NavItem[] = [
   },
 ];
 
+const TAB_ITEMS = NAV.filter((item) =>
+  ['/home', '/flows', '/library', '/chat'].includes(item.to),
+);
+
 export function AppShell({ children }: Props) {
   const { user, logout } = useAuth();
   const history = useHistory();
@@ -104,6 +109,11 @@ export function AppShell({ children }: Props) {
   const [cadastrosOpen, setCadastrosOpen] = useState(() =>
     location.pathname.startsWith('/cadastros'),
   );
+
+  const moreActive =
+    location.pathname.startsWith('/cadastros') ||
+    location.pathname.startsWith('/settings') ||
+    location.pathname.startsWith('/profile');
 
   useEffect(() => {
     setMenuOpen(false);
@@ -134,9 +144,12 @@ export function AppShell({ children }: Props) {
   }, [menuOpen]);
 
   const closeMenu = () => setMenuOpen(false);
+  const openMore = () => setMenuOpen(true);
 
   return (
-    <div className={`sc-app-layout${menuOpen ? ' is-menu-open' : ''}`}>
+    <div
+      className={`sc-app-layout${menuOpen ? ' is-menu-open' : ''}${moreActive ? ' is-more-active' : ''}`}
+    >
       <header className="sc-app-mobile-bar">
         <button
           type="button"
@@ -253,6 +266,9 @@ export function AppShell({ children }: Props) {
           })}
         </nav>
         <div className="sc-sidebar-foot">
+          <div className="sc-sidebar-theme">
+            <ThemeToggle />
+          </div>
           <NavLink
             to="/profile"
             className="sc-sidebar-user-link"
@@ -306,6 +322,31 @@ export function AppShell({ children }: Props) {
         </div>
         {children}
       </div>
+
+      <nav className="sc-app-tabbar" aria-label="Navegação principal">
+        {TAB_ITEMS.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            className="sc-app-tab"
+            isActive={(_, loc) => item.match(loc.pathname)}
+            activeClassName="is-active"
+          >
+            <IonIcon icon={item.icon} />
+            <span>{item.label}</span>
+          </NavLink>
+        ))}
+        <button
+          type="button"
+          className={`sc-app-tab${moreActive || menuOpen ? ' is-active' : ''}`}
+          onClick={openMore}
+          aria-label="Mais opções"
+          aria-expanded={menuOpen}
+        >
+          <IonIcon icon={ellipsisHorizontalOutline} />
+          <span>Mais</span>
+        </button>
+      </nav>
     </div>
   );
 }

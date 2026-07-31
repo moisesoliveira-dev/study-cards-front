@@ -27,7 +27,8 @@ import { useCatalogColors } from '../../../shared/hooks/useCatalogColors';
 import { CatalogColorPicker } from '../../../shared/components/CatalogColorPicker';
 import { MotionShell, MotionStagger, tapScale } from '../../../shared/motion';
 import { createOutline, openOutline, pencilOutline, trashOutline } from 'ionicons/icons';
-import type { MouseEvent } from 'react';
+import { useMenuPress } from '../../../shared/hooks/useMenuPress';
+import type { MenuOpenEvent } from '../../../shared/hooks/useMenuPress';
 
 export default function SubjectsPage() {
   const history = useHistory();
@@ -50,7 +51,48 @@ export default function SubjectsPage() {
   const [deleting, setDeleting] = useState(false);
   const { menu: ctxMenu, open: openCtx, close: closeCtx } = useContextMenu();
 
-  const openSubjectMenu = (e: MouseEvent, s: Subject) => {
+  const openCreate = () => {
+    setEditing(null);
+    setName('');
+    setDescription('');
+    setColor(fallbackColor);
+    setOpen(true);
+  };
+
+  const openEdit = (s: Subject) => {
+    setEditing(s);
+    setName(s.name);
+    setDescription(s.description ?? '');
+    setColor(s.color || fallbackColor);
+    setOpen(true);
+  };
+
+  const openBlankMenu = useCallback(
+    (e: {
+      clientX: number;
+      clientY: number;
+      preventDefault: () => void;
+      stopPropagation?: () => void;
+    }) => {
+      openCtx(
+        e,
+        [
+          {
+            id: 'new',
+            label: 'Novo grupo',
+            icon: createOutline,
+            onSelect: openCreate,
+          },
+        ],
+        'Grupos',
+      );
+    },
+    [openCtx],
+  );
+
+  const blankMenu = useMenuPress(openBlankMenu);
+
+  const openSubjectMenu = (e: MenuOpenEvent, s: Subject) => {
     const items: ContextMenuItem[] = [
       {
         id: 'open',
@@ -74,22 +116,6 @@ export default function SubjectsPage() {
       },
     ];
     openCtx(e, items, s.name);
-  };
-
-  const openCreate = () => {
-    setEditing(null);
-    setName('');
-    setDescription('');
-    setColor(fallbackColor);
-    setOpen(true);
-  };
-
-  const openEdit = (s: Subject) => {
-    setEditing(s);
-    setName(s.name);
-    setDescription(s.description ?? '');
-    setColor(s.color || fallbackColor);
-    setOpen(true);
   };
 
   const load = useCallback(async () => {
@@ -161,29 +187,30 @@ export default function SubjectsPage() {
   };
 
   return (
-    <IonPage>
+    <IonPage className="sc-page-home">
       <IonHeader>
         <IonToolbar>
-          <IonTitle>Study Cards</IonTitle>
+          <IonTitle>Grupos</IonTitle>
         </IonToolbar>
       </IonHeader>
       <IonContent>
         <MotionShell
           className="sc-shell"
-          onContextMenu={(e) =>
-            openCtx(
-              e,
-              [
-                {
-                  id: 'new',
-                  label: 'Novo grupo',
-                  icon: createOutline,
-                  onSelect: openCreate,
-                },
-              ],
-              'Grupos',
-            )
-          }
+          onContextMenu={blankMenu.onContextMenu}
+          onPointerDown={(e) => {
+            const t = e.target as HTMLElement;
+            if (
+              t.closest(
+                '.sc-item, .sc-list-row-wrap, .sc-topbar, button, a, input, textarea',
+              )
+            ) {
+              return;
+            }
+            blankMenu.longPress?.onPointerDown(e);
+          }}
+          onPointerMove={blankMenu.longPress?.onPointerMove}
+          onPointerUp={blankMenu.longPress?.onPointerUp}
+          onPointerCancel={blankMenu.longPress?.onPointerCancel}
         >
           <DriveTopBar
             query={query}

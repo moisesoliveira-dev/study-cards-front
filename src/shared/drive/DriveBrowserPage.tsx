@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { flushSync } from 'react-dom';
 import {
   IonBackButton,
@@ -6,6 +6,7 @@ import {
   IonButtons,
   IonContent,
   IonHeader,
+  IonIcon,
   IonModal,
   IonPage,
   IonSpinner,
@@ -26,6 +27,7 @@ import type { Card } from '../../modules/cards/types/card.types';
 import { CARD_ACCENT_COLORS } from '../../modules/cards/types/card.types';
 import { DriveTopBar } from '../components/DriveTopBar';
 import { DriveFolderItem } from '../components/DriveFolderItem';
+import { ItemMoreButton } from '../components/ItemMoreButton';
 import { Field, TextArea } from '../components/Field';
 import { DriveCardItem, FaceCard } from '../components/DriveCardItem';
 import { FaceCardComposer } from '../components/FaceCardComposer';
@@ -61,30 +63,17 @@ import {
   createOutline,
   documentTextOutline,
   folderOutline,
+  gitMergeOutline,
   openOutline,
   pencilOutline,
   trashOutline,
 } from 'ionicons/icons';
 
+import { useTouchUi } from '../hooks/useTouchUi';
+import { useMenuPress } from '../hooks/useMenuPress';
+import type { MenuOpenEvent } from '../hooks/useMenuPress';
+
 const DOUBLE_TAP_MS = 340;
-
-function useTouchUi() {
-  const [touchUi, setTouchUi] = useState(
-    () =>
-      typeof window !== 'undefined' &&
-      window.matchMedia('(hover: none), (max-width: 820px)').matches,
-  );
-
-  useEffect(() => {
-    const mq = window.matchMedia('(hover: none), (max-width: 820px)');
-    const sync = () => setTouchUi(mq.matches);
-    sync();
-    mq.addEventListener('change', sync);
-    return () => mq.removeEventListener('change', sync);
-  }, []);
-
-  return touchUi;
-}
 
 function findNode(
   nodes: TopicTreeNode[],
@@ -1220,7 +1209,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   };
 
   const openCardContextMenu = useCallback(
-    (e: MouseEvent, card: Card) => {
+    (e: MenuOpenEvent, card: Card) => {
       const picked = mergePickIds.includes(card.id);
       const selectionCount = picked
         ? mergePickIds.length
@@ -1285,7 +1274,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   );
 
   const openFolderContextMenu = useCallback(
-    (e: MouseEvent, node: TopicTreeNode) => {
+    (e: MenuOpenEvent, node: TopicTreeNode) => {
       openCtx(
         e,
         [
@@ -1317,7 +1306,12 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   );
 
   const openBlankContextMenu = useCallback(
-    (e: MouseEvent) => {
+    (e: {
+      clientX: number;
+      clientY: number;
+      preventDefault: () => void;
+      stopPropagation?: () => void;
+    }) => {
       openCtx(
         e,
         [
@@ -1345,10 +1339,12 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     [folderName, openCtx],
   );
 
+  const blankMenu = useMenuPress(openBlankContextMenu);
+
   const openDeckContextMenu = useCallback(
-    (e: MouseEvent, deck: Deck) => {
+    (e: MenuOpenEvent, deck: Deck) => {
       e.preventDefault();
-      e.stopPropagation();
+      e.stopPropagation?.();
       openCtx(
         e,
         [
@@ -1424,7 +1420,24 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
           onDragTrackStart={handleDragTrackStart}
           onReorderPreview={handleReorderPreview}
         >
-        <MotionShell className="sc-shell" onContextMenu={openBlankContextMenu}>
+        <MotionShell
+          className="sc-shell"
+          onContextMenu={blankMenu.onContextMenu}
+          onPointerDown={(e) => {
+            const t = e.target as HTMLElement;
+            if (
+              t.closest(
+                '.sc-item, .sc-hand-slot, .sc-deck-block, .sc-list-row, .sc-list-row-wrap, .sc-topbar, button, a, input, textarea, .sc-item-more',
+              )
+            ) {
+              return;
+            }
+            blankMenu.longPress?.onPointerDown(e);
+          }}
+          onPointerMove={blankMenu.longPress?.onPointerMove}
+          onPointerUp={blankMenu.longPress?.onPointerUp}
+          onPointerCancel={blankMenu.longPress?.onPointerCancel}
+        >
           <div className="sc-crumb">
             <button type="button" onClick={() => history.push('/home')}>
               Study Cards
@@ -1459,11 +1472,13 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
             extra={
               <motion.button
                 type="button"
-                className="sc-btn"
+                className={`sc-btn${touchUi ? ' is-icon' : ''}`}
                 onClick={() => setMergePickerOpen(true)}
+                aria-label="Unir grupos"
+                title="Unir grupos"
                 whileTap={reduce ? undefined : tapScale}
               >
-                Unir grupos
+                {touchUi ? <IonIcon icon={gitMergeOutline} /> : 'Unir grupos'}
               </motion.button>
             }
           />
@@ -1520,6 +1535,10 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                             } as CSSProperties
                           }
                         />
+                        <ItemMoreButton
+                          label={card.front}
+                          onOpen={(e) => openCardContextMenu(e, card)}
+                        />
                       </SortableCard>
                     );
                   })}
@@ -1575,6 +1594,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                           deckId: card.deckId,
                           label: card.front,
                         }}
+                        className="sc-list-row-wrap"
                         onClick={(e) => handleCardTap(card, 'list', e)}
                         onContextMenu={(e) => openCardContextMenu(e, card)}
                       >
@@ -1582,6 +1602,10 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                           card={card}
                           view="list"
                           selected={picked}
+                        />
+                        <ItemMoreButton
+                          label={card.front}
+                          onOpen={(e) => openCardContextMenu(e, card)}
                         />
                       </SortableCard>
                     );
@@ -1665,6 +1689,11 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                       onClick={() => openFolder(node.id)}
                       onDelete={() => setDeleteFolder(node)}
                       onContextMenu={(e) => openFolderContextMenu(e, node)}
+                      longPressMenu={false}
+                    />
+                    <ItemMoreButton
+                      label={node.name}
+                      onOpen={(e) => openFolderContextMenu(e, node)}
                     />
                   </SortableFolder>
                 ))}
@@ -1715,6 +1744,10 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                           {node.description || '—'}
                         </span>
                       </motion.div>
+                      <ItemMoreButton
+                        label={node.name}
+                        onOpen={(e) => openFolderContextMenu(e, node)}
+                      />
                       <button
                         type="button"
                         className="sc-list-delete"
@@ -1763,6 +1796,10 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                     }
                     onContextMenu={(e) => openDeckContextMenu(e, deck)}
                   >
+                    <ItemMoreButton
+                      label={deck.name}
+                      onOpen={(e) => openDeckContextMenu(e, deck)}
+                    />
                     <div className="sc-deck-top">
                       <span
                         className="sc-deck-dot"
@@ -1837,6 +1874,10 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                                     ['--card-i' as string]: index,
                                   } as CSSProperties
                                 }
+                              />
+                              <ItemMoreButton
+                                label={card.front}
+                                onOpen={(e) => openCardContextMenu(e, card)}
                               />
                             </SortableCard>
                           );

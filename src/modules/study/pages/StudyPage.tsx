@@ -160,11 +160,11 @@ export default function StudyPage() {
                   transition={{ type: 'spring', stiffness: 200, damping: 28 }}
                 />
               </div>
-              <div style={{ position: 'relative', minHeight: 220 }}>
+              <div className="sc-study-stage" style={{ position: 'relative' }}>
                 <AnimatePresence mode="wait" custom={dir}>
                   <motion.div
                     key={current.id}
-                    className="sc-detail"
+                    className="sc-detail sc-study-card"
                     custom={dir}
                     variants={reduce ? undefined : studySlide}
                     initial={reduce ? false : 'enter'}
@@ -190,16 +190,7 @@ export default function StudyPage() {
                   </motion.div>
                 </AnimatePresence>
               </div>
-              <div
-                className="sc-study-actions"
-                style={{
-                  display: 'flex',
-                  gap: 8,
-                  justifyContent: 'center',
-                  marginTop: 20,
-                  flexWrap: 'wrap',
-                }}
-              >
+              <div className="sc-study-actions">
                 <motion.button
                   type="button"
                   className="sc-btn primary"

@@ -1,7 +1,14 @@
 import { IonIcon } from '@ionic/react';
-import { gridOutline, listOutline, searchOutline } from 'ionicons/icons';
+import {
+  addOutline,
+  folderOutline,
+  gridOutline,
+  listOutline,
+  searchOutline,
+} from 'ionicons/icons';
 import { motion, useReducedMotion } from 'framer-motion';
 import { tapScale } from '../motion';
+import { useTouchUi } from '../hooks/useTouchUi';
 
 type Props = {
   query: string;
@@ -27,10 +34,11 @@ export function DriveTopBar({
   extra,
 }: Props) {
   const reduce = useReducedMotion();
+  const touchUi = useTouchUi();
 
   return (
     <motion.div
-      className="sc-topbar"
+      className={`sc-topbar${touchUi ? ' is-touch' : ''}`}
       initial={reduce ? false : { opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
@@ -45,57 +53,64 @@ export function DriveTopBar({
           aria-label="Buscar"
         />
       </div>
-      <div className="sc-view-btns" role="group" aria-label="Visualização">
-        <motion.button
-          type="button"
-          className={view === 'grid' ? 'active' : ''}
-          onClick={() => onView('grid')}
-          aria-label="Grade"
-          whileTap={reduce ? undefined : tapScale}
-        >
-          <IonIcon icon={gridOutline} />
-        </motion.button>
-        <motion.button
-          type="button"
-          className={view === 'list' ? 'active' : ''}
-          onClick={() => onView('list')}
-          aria-label="Lista"
-          whileTap={reduce ? undefined : tapScale}
-        >
-          <IonIcon icon={listOutline} />
-        </motion.button>
+      <div className="sc-topbar-actions">
+        <div className="sc-view-btns" role="group" aria-label="Visualização">
+          <motion.button
+            type="button"
+            className={view === 'grid' ? 'active' : ''}
+            onClick={() => onView('grid')}
+            aria-label="Grade"
+            whileTap={reduce ? undefined : tapScale}
+          >
+            <IonIcon icon={gridOutline} />
+          </motion.button>
+          <motion.button
+            type="button"
+            className={view === 'list' ? 'active' : ''}
+            onClick={() => onView('list')}
+            aria-label="Lista"
+            whileTap={reduce ? undefined : tapScale}
+          >
+            <IonIcon icon={listOutline} />
+          </motion.button>
+        </div>
+        {extra}
+        {onNewFolder ? (
+          <motion.button
+            type="button"
+            className={`sc-btn${touchUi ? ' is-icon' : ''}`}
+            onClick={onNewFolder}
+            aria-label="Nova pasta"
+            title="Nova pasta"
+            whileTap={reduce ? undefined : tapScale}
+          >
+            {touchUi ? <IonIcon icon={folderOutline} /> : '+ Pasta'}
+          </motion.button>
+        ) : null}
+        {onNewCard ? (
+          <motion.button
+            type="button"
+            className={`sc-btn primary${touchUi ? ' is-icon' : ''}`}
+            onClick={onNewCard}
+            aria-label="Novo card"
+            title="Novo card"
+            whileTap={reduce ? undefined : tapScale}
+          >
+            {touchUi ? <IonIcon icon={addOutline} /> : '+ Card'}
+          </motion.button>
+        ) : null}
+        {!onNewFolder && !onNewCard && onNew ? (
+          <motion.button
+            type="button"
+            className={`sc-btn primary${touchUi ? ' is-icon' : ''}`}
+            onClick={onNew}
+            aria-label={newLabel}
+            whileTap={reduce ? undefined : tapScale}
+          >
+            {touchUi ? <IonIcon icon={addOutline} /> : `+ ${newLabel}`}
+          </motion.button>
+        ) : null}
       </div>
-      {extra}
-      {onNewFolder ? (
-        <motion.button
-          type="button"
-          className="sc-btn"
-          onClick={onNewFolder}
-          whileTap={reduce ? undefined : tapScale}
-        >
-          + Pasta
-        </motion.button>
-      ) : null}
-      {onNewCard ? (
-        <motion.button
-          type="button"
-          className="sc-btn primary"
-          onClick={onNewCard}
-          whileTap={reduce ? undefined : tapScale}
-        >
-          + Card
-        </motion.button>
-      ) : null}
-      {!onNewFolder && !onNewCard && onNew ? (
-        <motion.button
-          type="button"
-          className="sc-btn"
-          onClick={onNew}
-          whileTap={reduce ? undefined : tapScale}
-        >
-          + {newLabel}
-        </motion.button>
-      ) : null}
     </motion.div>
   );
 }

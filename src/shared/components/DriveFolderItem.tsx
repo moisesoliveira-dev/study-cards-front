@@ -3,6 +3,7 @@ import { IonIcon } from '@ionic/react';
 import { folderOutline, folderOpenOutline } from 'ionicons/icons';
 import { motion, useReducedMotion } from 'framer-motion';
 import { hoverLift, staggerItem, tapScale } from '../motion';
+import { useMenuPress, type MenuOpenEvent } from '../hooks/useMenuPress';
 
 type Props = {
   name: string;
@@ -11,7 +12,9 @@ type Props = {
   dashed?: boolean;
   onClick?: () => void;
   onDelete?: () => void;
-  onContextMenu?: (e: MouseEvent) => void;
+  onContextMenu?: (e: MenuOpenEvent) => void;
+  /** Long-press abre menu (desligar quando o item já tem drag touch). */
+  longPressMenu?: boolean;
 };
 
 export function DriveFolderItem({
@@ -22,16 +25,29 @@ export function DriveFolderItem({
   onClick,
   onDelete,
   onContextMenu,
+  longPressMenu = true,
 }: Props) {
   const reduce = useReducedMotion();
+  const menu = useMenuPress(longPressMenu ? onContextMenu : undefined);
 
   return (
     <motion.div
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
       className={`sc-item folder${dashed ? ' dashed' : ''}${onDelete ? ' has-delete' : ''}`}
-      onClick={onClick}
+      onClick={(e) => {
+        if (menu.longPress?.didFire()) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        onClick?.();
+      }}
       onContextMenu={onContextMenu}
+      onPointerDown={menu.longPress?.onPointerDown}
+      onPointerMove={menu.longPress?.onPointerMove}
+      onPointerUp={menu.longPress?.onPointerUp}
+      onPointerCancel={menu.longPress?.onPointerCancel}
       onKeyDown={
         onClick
           ? (e) => {

@@ -27,12 +27,14 @@ import { subjectsFacade } from '../../subjects/facades/subjects.facade';
 import type { FlowBoard } from '../types/flow.types';
 import type { Subject } from '../../subjects/types/subject.types';
 import { Field } from '../../../shared/components/Field';
+import { ItemMoreButton } from '../../../shared/components/ItemMoreButton';
 import {
   ContextMenu,
   useContextMenu,
   type ContextMenuItem,
 } from '../../../shared/components/ContextMenu';
 import { useAppToast } from '../../../shared/hooks/useAppToast';
+import type { MenuOpenEvent } from '../../../shared/hooks/useMenuPress';
 import {
   MotionShell,
   fadeUp,
@@ -179,7 +181,7 @@ export default function FlowsListPage() {
     });
   };
 
-  const openFlowMenu = (e: MouseEvent, flow: FlowBoard) => {
+  const openFlowMenu = (e: MenuOpenEvent, flow: FlowBoard) => {
     const items: ContextMenuItem[] = [
       {
         id: 'open',
@@ -454,6 +456,10 @@ export default function FlowsListPage() {
                     >
                       <IonIcon icon={trashOutline} />
                     </button>
+                    <ItemMoreButton
+                      label={flow.name}
+                      onOpen={(e) => openFlowMenu(e, flow)}
+                    />
                   </motion.article>
                 );
               })}
