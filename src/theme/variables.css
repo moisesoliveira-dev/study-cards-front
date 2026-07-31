@@ -268,202 +268,85 @@ ion-modal::part(content),
   margin-top: 4px;
 }
 
-/* Deck = mesa estilo Solitaire: pilha arrastável + fila de cartas */
+/* Deck = bandeja de mesa; arrasta pelo bloco inteiro (@dnd-kit) */
 .sc-deck {
-  --deck-gap: 14px;
   position: relative;
-  display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-rows: auto 1fr;
-  gap: 0 var(--deck-gap);
-  align-items: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   border: 1px solid
-    color-mix(in srgb, var(--deck-accent, var(--border)) 45%, var(--border));
-  border-radius: 12px;
+    color-mix(in srgb, var(--deck-accent, var(--border)) 50%, var(--border));
+  border-radius: 14px;
   background:
     linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--deck-accent, #3d6b4f) 14%, #1e3a2f) 0,
-      color-mix(in srgb, var(--deck-accent, #3d6b4f) 14%, #1e3a2f) 76px,
-      color-mix(in srgb, #2a5a42 50%, var(--surface-2)) 76px,
-      color-mix(in srgb, #2a5a42 28%, var(--surface-1)) 100%
+      180deg,
+      color-mix(in srgb, var(--deck-accent, #3d6b4f) 14%, var(--surface-1)) 0%,
+      color-mix(in srgb, #2a5a42 22%, var(--surface-2)) 100%
     );
-  padding: 10px;
-  min-height: 176px;
+  padding: 10px 12px 12px;
+  min-height: 168px;
+  cursor: grab;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 8px 20px rgba(26, 25, 23, 0.12);
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 8px 20px rgba(26, 25, 23, 0.1);
   transition:
     margin 0.28s cubic-bezier(0.22, 1, 0.36, 1),
     box-shadow 0.2s ease,
     border-color 0.2s ease,
     opacity 0.18s ease;
+  touch-action: none;
 }
 
 [data-theme='light'] .sc-deck {
   background:
     linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--deck-accent, #2f6b4a) 22%, #d7e6dc) 0,
-      color-mix(in srgb, var(--deck-accent, #2f6b4a) 22%, #d7e6dc) 76px,
-      color-mix(in srgb, #3f7a58 18%, var(--surface-2)) 76px,
-      color-mix(in srgb, #3f7a58 10%, var(--surface-1)) 100%
+      180deg,
+      color-mix(in srgb, var(--deck-accent, #2f6b4a) 16%, #e7f0ea) 0%,
+      color-mix(in srgb, #3f7a58 12%, var(--surface-1)) 100%
     );
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
     0 8px 20px rgba(26, 25, 23, 0.08);
 }
 
 .sc-deck.is-over:not(.is-insert-before):not(.is-insert-after) {
   border-color: var(--deck-accent, #3d6b4f);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
     0 0 0 3px color-mix(in srgb, var(--deck-accent, #3d6b4f) 28%, transparent),
-    0 10px 24px rgba(26, 25, 23, 0.14);
+    0 10px 24px rgba(26, 25, 23, 0.12);
 }
 
-.sc-deck-grip {
-  grid-column: 1;
-  grid-row: 1 / -1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 64px;
-  padding: 8px 4px;
-  border-radius: 10px;
-  cursor: grab;
-  user-select: none;
-  color: #f3f0e8;
-  background: color-mix(in srgb, #0f1f18 55%, transparent);
-  border: 1px dashed color-mix(in srgb, #f3f0e8 28%, transparent);
-  transition: background 0.15s ease, border-color 0.15s ease;
-}
-
-[data-theme='light'] .sc-deck-grip {
-  color: #1a2e24;
-  background: color-mix(in srgb, #0f1f18 8%, transparent);
-  border-color: color-mix(in srgb, #1a2e24 28%, transparent);
-}
-
-.sc-deck-grip:hover {
-  background: color-mix(in srgb, #0f1f18 72%, transparent);
-  border-color: color-mix(in srgb, #f3f0e8 45%, transparent);
-}
-
-[data-theme='light'] .sc-deck-grip:hover {
-  background: color-mix(in srgb, #0f1f18 14%, transparent);
-  border-color: color-mix(in srgb, #1a2e24 42%, transparent);
-}
-
-.sc-deck-grip.is-dragging,
-.sc-deck:has(.sc-deck-grip.is-dragging) {
-  opacity: 0.35;
+.sc-deck.is-dragging-item {
   cursor: grabbing;
-}
-
-body.sc-dragging .sc-deck:has(.sc-deck-grip.is-dragging) {
-  max-height: 48px;
-  min-height: 0;
-  overflow: hidden;
-  margin-top: 0;
-  margin-bottom: 0;
-  padding-top: 6px;
-  padding-bottom: 6px;
-}
-
-.sc-deck-pile {
-  position: relative;
-  width: 42px;
-  height: 58px;
-  flex: 0 0 auto;
-}
-
-.sc-deck-pile-card {
-  position: absolute;
-  inset: 0;
-  border-radius: 6px;
-  border: 1px solid color-mix(in srgb, var(--deck-accent, #5a8f6e) 40%, #1a1917);
-  background:
-    repeating-linear-gradient(
-      45deg,
-      color-mix(in srgb, var(--deck-accent, #3d6b4f) 70%, #14241c),
-      color-mix(in srgb, var(--deck-accent, #3d6b4f) 70%, #14241c) 3px,
-      color-mix(in srgb, var(--deck-accent, #3d6b4f) 45%, #0d1813) 3px,
-      color-mix(in srgb, var(--deck-accent, #3d6b4f) 45%, #0d1813) 6px
-    );
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-}
-
-.sc-deck-pile-card:nth-child(1) {
-  transform: translate(-3px, 3px) rotate(-4deg);
-  opacity: 0.7;
-}
-
-.sc-deck-pile-card:nth-child(2) {
-  transform: translate(2px, 1px) rotate(3deg);
-  opacity: 0.85;
-}
-
-.sc-deck-pile-card.is-top {
-  transform: none;
-  opacity: 1;
-  border-color: var(--deck-accent, #5a8f6e);
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--deck-accent, #5a8f6e) 35%, transparent),
-    0 2px 6px rgba(0, 0, 0, 0.35);
-}
-
-.sc-deck-grip-hint {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  opacity: 0.75;
-  line-height: 1.1;
-  text-align: center;
-}
-
-.sc-deck-grip-dots {
-  display: grid;
-  grid-template-columns: repeat(2, 4px);
-  gap: 3px;
-  margin-bottom: 2px;
-}
-
-.sc-deck-grip-dots i {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: 0.7;
+  opacity: 0.4;
+  z-index: 20;
 }
 
 .sc-deck-top {
-  grid-column: 2;
-  grid-row: 1;
   display: flex;
   align-items: center;
   gap: 8px;
   min-height: 28px;
-  padding: 0 2px 6px;
+  padding: 2px 2px 4px;
+}
+
+.sc-deck-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--surface-1) 70%, transparent);
 }
 
 .sc-deck-top strong {
   font-size: 14px;
   font-weight: 700;
   color: color-mix(in srgb, #f4f1ea 92%, var(--deck-accent, #fff));
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
 [data-theme='light'] .sc-deck-top strong {
   color: #163226;
-  text-shadow: none;
 }
 
 .sc-deck-count {
@@ -529,7 +412,7 @@ body.sc-dragging .sc-deck:has(.sc-deck-grip.is-dragging) {
   cursor: pointer;
   background: transparent;
   box-shadow: none;
-  grid-template-columns: none;
+  touch-action: auto;
 }
 
 .sc-deck.is-new:hover {
@@ -538,8 +421,6 @@ body.sc-dragging .sc-deck:has(.sc-deck-grip.is-dragging) {
 }
 
 .sc-deck-hand {
-  grid-column: 2;
-  grid-row: 2;
   position: relative;
   z-index: 1;
   display: flex;
@@ -547,13 +428,14 @@ body.sc-dragging .sc-deck:has(.sc-deck-grip.is-dragging) {
   gap: 0;
   align-items: flex-end;
   min-height: 156px;
-  padding: 8px 4px 2px;
+  padding: 10px 6px 4px;
   overflow-x: auto;
   overflow-y: visible;
   scrollbar-width: thin;
-  border-radius: 8px;
+  border-radius: 10px;
   background: color-mix(in srgb, #0f1f18 22%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, #000 18%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #000 16%, transparent);
+  cursor: default;
 }
 
 [data-theme='light'] .sc-deck-hand {
@@ -568,6 +450,7 @@ body.sc-dragging .sc-deck:has(.sc-deck-grip.is-dragging) {
   margin-right: 0;
   flex: 0 0 auto;
   z-index: calc(1 + var(--slot-i, 0));
+  cursor: grab;
   transition:
     transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
     margin 0.28s cubic-bezier(0.22, 1, 0.36, 1),
@@ -643,6 +526,7 @@ body.sc-dragging .sc-deck:has(.sc-deck-grip.is-dragging) {
   text-align: center;
   max-width: 220px;
   line-height: 1.35;
+  pointer-events: none;
 }
 
 [data-theme='light'] .sc-deck-empty {
@@ -5417,6 +5301,13 @@ body.sc-dragging * {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.sc-drag-ghost.is-overlay {
+  position: relative;
+  top: auto;
+  left: auto;
+  cursor: grabbing;
 }
 
 .sc-drag-ghost[data-kind='folder'] {

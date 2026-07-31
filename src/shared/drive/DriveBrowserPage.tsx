@@ -30,8 +30,18 @@ import { DriveCardItem, FaceCard } from '../components/DriveCardItem';
 import { FaceCardComposer } from '../components/FaceCardComposer';
 import { CardDocumentSheet } from '../components/CardDocumentSheet';
 import { documentToPlainText } from '../components/DocumentEditor';
-import { DragItem, DropZone, useDriveDrop } from '../dnd/DragDrop';
-import type { DragPayload, DropTarget } from '../dnd/drive-dnd';
+import {
+  CardSortableContext,
+  DeckSortableContext,
+  DriveDndProvider,
+  FolderSortableContext,
+  HallDroppable,
+  RootDroppable,
+  SortableCard,
+  SortableDeck,
+  SortableFolder,
+  type DriveDropEvent,
+} from '../dnd/DragDrop';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { MergeSourcePicker } from '../components/MergeSourcePicker';
 import {
@@ -350,6 +360,19 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
 
   const filteredCards = hallCards;
 
+  const hallCardIds = useMemo(
+    () => filteredCards.map((c) => c.id),
+    [filteredCards],
+  );
+  const deckIds = useMemo(
+    () => orderedDecks.map((d) => d.id),
+    [orderedDecks],
+  );
+  const folderIds = useMemo(
+    () => orderedFolders.map((f) => f.id),
+    [orderedFolders],
+  );
+
   const backHref = isRoot
     ? '/home'
     : parentId
@@ -432,11 +455,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   );
 
   const handleDrop = useCallback(
-    async (event: {
-      payload: DragPayload;
-      over: DropTarget | null;
-      moved: boolean;
-    }) => {
+    async (event: DriveDropEvent) => {
       if (!event.moved || !event.over) return;
       const { payload, over } = event;
 
@@ -590,10 +609,12 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     [cards, commitMovedCard, decks, isRoot, load, parentId, toast, topicId],
   );
 
-  useDriveDrop(handleDrop);
-
   const handleCardTap = useCallback(
-    (card: Card, mode: 'face' | 'list' = 'face', e?: PointerEvent) => {
+    (
+      card: Card,
+      mode: 'face' | 'list' = 'face',
+      e?: { shiftKey?: boolean },
+    ) => {
       const now = Date.now();
       const last = lastTapRef.current;
       const multiSelect = Boolean(e && e.shiftKey);
@@ -1082,6 +1103,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         </IonToolbar>
       </IonHeader>
       <IonContent>
+        <DriveDndProvider onDrop={handleDrop}>
         <MotionShell className="sc-shell" onContextMenu={openBlankContextMenu}>
           <div className="sc-crumb">
             <button type="button" onClick={() => history.push('/home')}>
@@ -1133,12 +1155,12 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
           </p>
 
           {!isRoot ? (
-            <DropZone target={{ kind: 'root' }}>
+            <RootDroppable>
               <div className="sc-drop-root">
                 Soltar um nível acima
                 {parentId ? '' : ' (raiz do grupo)'}
               </div>
-            </DropZone>
+            </RootDroppable>
           ) : null}
 
           <div className="sc-section-label">Hall</div>
@@ -1147,102 +1169,109 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
               <IonSpinner name="crescent" />
             </div>
           ) : view === 'grid' ? (
-            <DropZone target={{ kind: 'hall' }} className="sc-hall-drop">
-            <div className="sc-hand" role="list" aria-label="Hall">
-              {filteredCards.map((card, index) => {
-                const raised = raisedId === card.id;
-                const picked = mergePickIds.includes(card.id);
-                return (
-                  <DropZone
-                    key={card.id}
-                    target={{ kind: 'card', id: card.id }}
-                    className={`sc-hand-slot${raised ? ' is-raised' : ''}${picked ? ' is-picked' : ''}`}
+            <HallDroppable className="sc-hall-drop">
+              <CardSortableContext ids={hallCardIds}>
+                <div className="sc-hand" role="list" aria-label="Hall">
+                  {filteredCards.map((card, index) => {
+                    const raised = raisedId === card.id;
+                    const picked = mergePickIds.includes(card.id);
+                    return (
+                      <SortableCard
+                        key={card.id}
+                        payload={{
+                          kind: 'card',
+                          id: card.id,
+                          subjectId: card.subjectId,
+                          topicId: card.topicId,
+                          label: card.front,
+                        }}
+                        className={`sc-hand-slot${raised ? ' is-raised' : ''}${picked ? ' is-picked' : ''}`}
+                        onClick={(e) => handleCardTap(card, 'face', e)}
+                        onContextMenu={(e) => openCardContextMenu(e, card)}
+                      >
+                        <FaceCard
+                          card={card}
+                          selected={picked}
+                          index={index}
+                          style={
+                            {
+                              ['--card-i' as string]: index,
+                            } as CSSProperties
+                          }
+                        />
+                      </SortableCard>
+                    );
+                  })}
+                  <motion.button
+                    type="button"
+                    className="sc-face-card sc-face-add is-simple"
+                    onClick={() => openCreateCard(null)}
+                    aria-label="Criar card"
+                    initial={reduce ? false : { opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: filteredCards.length * 0.04 }}
+                    whileTap={reduce ? undefined : tapScale}
                   >
-                    <DragItem
-                      payload={{
-                        kind: 'card',
-                        id: card.id,
-                        subjectId: card.subjectId,
-                        topicId: card.topicId,
-                        label: card.front,
-                      }}
-                      onClick={(e) => handleCardTap(card, 'face', e)}
-                      onLongPress={
-                        touchUi ? () => setDetail(card) : undefined
-                      }
-                      onContextMenu={(e) => openCardContextMenu(e, card)}
+                    <div
+                      className="card-title"
+                      style={{ color: 'var(--text-muted)' }}
                     >
-                      <FaceCard
-                        card={card}
-                        selected={picked}
-                        index={index}
-                        style={{ ['--card-i' as string]: index } as CSSProperties}
-                      />
-                    </DragItem>
-                  </DropZone>
-                );
-              })}
-              <motion.button
-                type="button"
-                className="sc-face-card sc-face-add is-simple"
-                onClick={() => openCreateCard(null)}
-                aria-label="Criar card"
-                initial={reduce ? false : { opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: filteredCards.length * 0.04 }}
-                whileTap={reduce ? undefined : tapScale}
-              >
-                <div className="card-title" style={{ color: 'var(--text-muted)' }}>
-                  Novo card
+                      Novo card
+                    </div>
+                    <div
+                      className="card-face-icon"
+                      style={{ color: 'var(--text-muted)' }}
+                    >
+                      +
+                    </div>
+                  </motion.button>
+                  {!filteredCards.length ? (
+                    <div
+                      className="sc-empty"
+                      style={{ width: '100%', flexBasis: '100%' }}
+                    >
+                      Nenhuma carta no Hall. Crie com <strong>+ Card</strong> ou
+                      solte um deck aqui.
+                    </div>
+                  ) : null}
                 </div>
-                <div className="card-face-icon" style={{ color: 'var(--text-muted)' }}>
-                  +
-                </div>
-              </motion.button>
-              {!filteredCards.length ? (
-                <div className="sc-empty" style={{ width: '100%', flexBasis: '100%' }}>
-                  Nenhuma carta no Hall. Crie com <strong>+ Card</strong> ou solte um deck aqui.
-                </div>
-              ) : null}
-            </div>
-            </DropZone>
+              </CardSortableContext>
+            </HallDroppable>
           ) : (
-            <DropZone target={{ kind: 'hall' }} className="sc-hall-drop">
-            <div className="sc-list-view">
-              {filteredCards.map((card) => {
-                const picked = mergePickIds.includes(card.id);
-                return (
-                  <DropZone key={card.id} target={{ kind: 'card', id: card.id }}>
-                    <DragItem
-                      payload={{
-                        kind: 'card',
-                        id: card.id,
-                        subjectId: card.subjectId,
-                        topicId: card.topicId,
-                        label: card.front,
-                      }}
-                      onClick={(e) => handleCardTap(card, 'list', e)}
-                      onLongPress={
-                        touchUi ? () => setDetail(card) : undefined
-                      }
-                      onContextMenu={(e) => openCardContextMenu(e, card)}
-                    >
-                      <DriveCardItem
-                        card={card}
-                        view="list"
-                        selected={picked}
-                      />
-                    </DragItem>
-                  </DropZone>
-                );
-              })}
-              {!filteredCards.length ? (
-                <div className="sc-empty">
-                  Nenhuma carta no Hall. Use <strong>+ Card</strong>.
+            <HallDroppable className="sc-hall-drop">
+              <CardSortableContext ids={hallCardIds} layout="vertical">
+                <div className="sc-list-view">
+                  {filteredCards.map((card) => {
+                    const picked = mergePickIds.includes(card.id);
+                    return (
+                      <SortableCard
+                        key={card.id}
+                        payload={{
+                          kind: 'card',
+                          id: card.id,
+                          subjectId: card.subjectId,
+                          topicId: card.topicId,
+                          label: card.front,
+                        }}
+                        onClick={(e) => handleCardTap(card, 'list', e)}
+                        onContextMenu={(e) => openCardContextMenu(e, card)}
+                      >
+                        <DriveCardItem
+                          card={card}
+                          view="list"
+                          selected={picked}
+                        />
+                      </SortableCard>
+                    );
+                  })}
+                  {!filteredCards.length ? (
+                    <div className="sc-empty">
+                      Nenhuma carta no Hall. Use <strong>+ Card</strong>.
+                    </div>
+                  ) : null}
                 </div>
-              ) : null}
-            </div>
-            </DropZone>
+              </CardSortableContext>
+            </HallDroppable>
           )}
 
           {mergePickIds.length > 0 ? (
@@ -1289,10 +1318,14 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
 
           <div className="sc-section-label">Pastas</div>
           {view === 'grid' ? (
-            <MotionStagger className="sc-grid" key={`folders-${filteredFolders.length}`}>
-              {orderedFolders.map((node) => (
-                <DropZone key={node.id} target={{ kind: 'folder', id: node.id }}>
-                  <DragItem
+            <FolderSortableContext ids={folderIds} layout="grid">
+              <MotionStagger
+                className="sc-grid"
+                key={`folders-${filteredFolders.length}`}
+              >
+                {orderedFolders.map((node) => (
+                  <SortableFolder
+                    key={node.id}
                     payload={{
                       kind: 'folder',
                       id: node.id,
@@ -1311,35 +1344,36 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                       onDelete={() => setDeleteFolder(node)}
                       onContextMenu={(e) => openFolderContextMenu(e, node)}
                     />
-                  </DragItem>
-                </DropZone>
-              ))}
-              <DriveFolderItem
-                name="Nova pasta"
-                dashed
-                onClick={openCreateFolder}
-              />
-            </MotionStagger>
+                  </SortableFolder>
+                ))}
+                <DriveFolderItem
+                  name="Nova pasta"
+                  dashed
+                  onClick={openCreateFolder}
+                />
+              </MotionStagger>
+            </FolderSortableContext>
           ) : (
-            <MotionStagger
-              className="sc-list-view"
-              key={`folders-list-${filteredFolders.length}`}
-            >
-              {orderedFolders.map((node, i) => (
-                <DropZone key={node.id} target={{ kind: 'folder', id: node.id }}>
-                  <div
-                    className="sc-list-row-wrap"
+            <FolderSortableContext ids={folderIds} layout="list">
+              <MotionStagger
+                className="sc-list-view"
+                key={`folders-list-${filteredFolders.length}`}
+              >
+                {orderedFolders.map((node, i) => (
+                  <SortableFolder
+                    key={node.id}
+                    payload={{
+                      kind: 'folder',
+                      id: node.id,
+                      subjectId,
+                      parentId: node.parentId,
+                      label: node.name,
+                    }}
+                    onClick={() => openFolder(node.id)}
                     onContextMenu={(e) => openFolderContextMenu(e, node)}
                   >
-                    <DragItem
-                      payload={{
-                        kind: 'folder',
-                        id: node.id,
-                        subjectId,
-                        parentId: node.parentId,
-                        label: node.name,
-                      }}
-                      onClick={() => openFolder(node.id)}
+                    <div
+                      className="sc-list-row-wrap"
                       onContextMenu={(e) => openFolderContextMenu(e, node)}
                     >
                       <motion.div
@@ -1359,42 +1393,39 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                           {node.description || '—'}
                         </span>
                       </motion.div>
-                    </DragItem>
-                    <button
-                      type="button"
-                      className="sc-list-delete"
-                      aria-label={`Excluir ${node.name}`}
-                      title="Excluir"
-                      onClick={() => setDeleteFolder(node)}
-                    >
-                      ×
-                    </button>
-                  </div>
-                </DropZone>
-              ))}
-              {!filteredFolders.length ? (
-                <div className="sc-empty">Nenhuma pasta aqui.</div>
-              ) : null}
-            </MotionStagger>
+                      <button
+                        type="button"
+                        className="sc-list-delete"
+                        aria-label={`Excluir ${node.name}`}
+                        title="Excluir"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteFolder(node);
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </SortableFolder>
+                ))}
+                {!filteredFolders.length ? (
+                  <div className="sc-empty">Nenhuma pasta aqui.</div>
+                ) : null}
+              </MotionStagger>
+            </FolderSortableContext>
           )}
 
           <div className="sc-section-label">Cards</div>
           <div className="sc-decks">
-            {orderedDecks.map((deck) => {
-              const deckCards = cardsByDeck.get(deck.id) ?? [];
-              return (
-                <DropZone
-                  key={deck.id}
-                  target={{ kind: 'deck', id: deck.id }}
-                  className="sc-deck"
-                  style={
-                    {
-                      borderColor: deck.color,
-                      ['--deck-accent' as string]: deck.color,
-                    } as CSSProperties
-                  }
-                >
-                  <DragItem
+            <DeckSortableContext ids={deckIds}>
+              {orderedDecks.map((deck) => {
+                const deckCards = cardsByDeck.get(deck.id) ?? [];
+                const deckCardIds = deckCards.map((c) => c.id);
+                return (
+                  <SortableDeck
+                    key={deck.id}
+                    className="sc-deck"
                     payload={{
                       kind: 'deck',
                       id: deck.id,
@@ -1402,108 +1433,102 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                       topicId: deck.topicId,
                       label: deck.name,
                     }}
-                    className="sc-deck-grip"
+                    style={
+                      {
+                        borderColor: deck.color,
+                        ['--deck-accent' as string]: deck.color,
+                      } as CSSProperties
+                    }
                     onContextMenu={(e) => openDeckContextMenu(e, deck)}
                   >
-                    <div className="sc-deck-pile" aria-hidden>
-                      <span className="sc-deck-pile-card" />
-                      <span className="sc-deck-pile-card" />
-                      <span className="sc-deck-pile-card is-top" />
-                    </div>
-                    <span className="sc-deck-grip-hint">
-                      <span className="sc-deck-grip-dots" aria-hidden>
-                        <i /><i /><i /><i /><i /><i />
+                    <div className="sc-deck-top">
+                      <span
+                        className="sc-deck-dot"
+                        style={{ background: deck.color }}
+                        aria-hidden
+                      />
+                      <strong>{deck.name}</strong>
+                      <span className="sc-deck-count">
+                        {deckCards.length} carta
+                        {deckCards.length === 1 ? '' : 's'}
                       </span>
-                      Arrastar
-                    </span>
-                  </DragItem>
-                  <div className="sc-deck-top">
-                    <strong>{deck.name}</strong>
-                    <span className="sc-deck-count">
-                      {deckCards.length} carta
-                      {deckCards.length === 1 ? '' : 's'}
-                    </span>
-                    <button
-                      type="button"
-                      className="sc-deck-edit"
-                      aria-label={`Editar deck ${deck.name}`}
-                      title="Editar"
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openEditDeck(deck);
-                      }}
-                    >
-                      ✎
-                    </button>
-                    <button
-                      type="button"
-                      className="sc-deck-x"
-                      aria-label={`Excluir deck ${deck.name}`}
-                      title="Excluir deck"
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        void removeDeck(deck.id);
-                      }}
-                    >
-                      ×
-                    </button>
-                  </div>
-                  <div className="sc-deck-hand" role="list">
-                    {deckCards.map((card, index) => {
-                      const picked = mergePickIds.includes(card.id);
-                      return (
-                        <DropZone
-                          key={card.id}
-                          target={{ kind: 'card', id: card.id }}
-                          className={`sc-hand-slot is-deck${picked ? ' is-picked' : ''}`}
-                          style={
-                            {
-                              ['--slot-i' as string]: index,
-                            } as CSSProperties
-                          }
-                        >
-                          <DragItem
-                            payload={{
-                              kind: 'card',
-                              id: card.id,
-                              subjectId: card.subjectId,
-                              topicId: card.topicId,
-                              label: card.front,
-                            }}
-                            onClick={(e) => handleCardTap(card, 'face', e)}
-                            onLongPress={
-                              touchUi ? () => setDetail(card) : undefined
-                            }
-                            onContextMenu={(e) =>
-                              openCardContextMenu(e, card)
-                            }
-                          >
-                            <FaceCard
-                              card={card}
-                              selected={picked}
-                              index={index}
-                              inDeck
+                      <button
+                        type="button"
+                        className="sc-deck-edit"
+                        aria-label={`Editar deck ${deck.name}`}
+                        title="Editar"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEditDeck(deck);
+                        }}
+                      >
+                        ✎
+                      </button>
+                      <button
+                        type="button"
+                        className="sc-deck-x"
+                        aria-label={`Excluir deck ${deck.name}`}
+                        title="Excluir deck"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void removeDeck(deck.id);
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                    <CardSortableContext ids={deckCardIds}>
+                      <div className="sc-deck-hand" role="list">
+                        {deckCards.map((card, index) => {
+                          const picked = mergePickIds.includes(card.id);
+                          return (
+                            <SortableCard
+                              key={card.id}
+                              payload={{
+                                kind: 'card',
+                                id: card.id,
+                                subjectId: card.subjectId,
+                                topicId: card.topicId,
+                                label: card.front,
+                              }}
+                              className={`sc-hand-slot is-deck${picked ? ' is-picked' : ''}`}
                               style={
                                 {
-                                  ['--card-i' as string]: index,
+                                  ['--slot-i' as string]: index,
                                 } as CSSProperties
                               }
-                            />
-                          </DragItem>
-                        </DropZone>
-                      );
-                    })}
-                    {!deckCards.length ? (
-                      <div className="sc-deck-empty">
-                        Arraste cartas do Hall para este deck
+                              onClick={(e) => handleCardTap(card, 'face', e)}
+                              onContextMenu={(e) =>
+                                openCardContextMenu(e, card)
+                              }
+                            >
+                              <FaceCard
+                                card={card}
+                                selected={picked}
+                                index={index}
+                                inDeck
+                                style={
+                                  {
+                                    ['--card-i' as string]: index,
+                                  } as CSSProperties
+                                }
+                              />
+                            </SortableCard>
+                          );
+                        })}
+                        {!deckCards.length ? (
+                          <div className="sc-deck-empty">
+                            Arraste cartas do Hall para este deck
+                          </div>
+                        ) : null}
                       </div>
-                    ) : null}
-                  </div>
-                </DropZone>
-              );
-            })}
+                    </CardSortableContext>
+                  </SortableDeck>
+                );
+              })}
+            </DeckSortableContext>
             <button
               type="button"
               className="sc-deck is-new"
@@ -1533,6 +1558,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
             </motion.button>
           </div>
         </MotionShell>
+        </DriveDndProvider>
       </IonContent>
 
       <IonModal
