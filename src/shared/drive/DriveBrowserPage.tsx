@@ -1486,8 +1486,8 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
 
           <p className="sc-dnd-hint">
             {touchUi
-              ? 'Toque para abrir · toque duplo / Shift para síntese · arraste pastas ao centro de outra para aninhar'
-              : 'Clique para abrir · Shift+clique para síntese · solte uma pasta no centro de outra para aninhar · bordas para reordenar'}
+              ? 'Toque para abrir · solte uma pasta em cima de outra para aninhar (conteúdo vai junto)'
+              : 'Solte uma pasta em cima de outra para aninhar · Shift+solte nas bordas para reordenar'}
           </p>
 
           {!isRoot ? (

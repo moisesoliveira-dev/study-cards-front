@@ -118,6 +118,7 @@ function isFolderDropInGrid(overId: UniqueIdentifier): boolean {
 function resolveDropTarget(
   event: DragEndEvent,
   pointer: Point,
+  shiftKey: boolean,
 ): DropTarget | null {
   const { active, over } = event;
   if (!over) return null;
@@ -168,14 +169,19 @@ function resolveDropTarget(
   if (payload.kind === 'folder') {
     if (overParsed.type === 'folder' && overParsed.id) {
       if (overParsed.id === payload.id) return null;
+      // Soltar em cima de outra pasta = aninhar (confiável).
+      // Segure Shift para reordenar pelas bordas.
+      const edge = shiftKey
+        ? folderEdgeFromPointer(
+            pointer,
+            over.rect,
+            isFolderDropInGrid(over.id),
+          )
+        : 'into';
       return {
         kind: 'folder',
         id: overParsed.id,
-        edge: folderEdgeFromPointer(
-          pointer,
-          over.rect,
-          isFolderDropInGrid(over.id),
-        ),
+        edge,
       };
     }
     if (overParsed.type === 'root') return { kind: 'root' };
@@ -202,6 +208,7 @@ export function DriveDndProvider({
 }: DriveDndProviderProps) {
   const [activePayload, setActivePayload] = useState<DragPayload | null>(null);
   const pointerRef = useRef<Point>({ x: 0, y: 0 });
+  const shiftRef = useRef(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -216,9 +223,19 @@ export function DriveDndProvider({
     if (!activePayload) return;
     const onMove = (e: PointerEvent) => {
       pointerRef.current = { x: e.clientX, y: e.clientY };
+      shiftRef.current = e.shiftKey;
+    };
+    const onKey = (e: KeyboardEvent) => {
+      shiftRef.current = e.shiftKey;
     };
     window.addEventListener('pointermove', onMove, { passive: true });
-    return () => window.removeEventListener('pointermove', onMove);
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('keyup', onKey);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('keyup', onKey);
+    };
   }, [activePayload]);
 
   const onDragStart = useCallback(
@@ -230,6 +247,7 @@ export function DriveDndProvider({
           x: (ae as PointerEvent).clientX,
           y: (ae as PointerEvent).clientY,
         };
+        shiftRef.current = Boolean((ae as PointerEvent).shiftKey);
       }
       setActivePayload(data?.payload ?? null);
       document.body.classList.add('sc-dragging');
@@ -290,7 +308,11 @@ export function DriveDndProvider({
       setActivePayload(null);
       const data = event.active.data.current as DriveDragData | undefined;
       if (!data?.payload) return;
-      const over = resolveDropTarget(event, pointerRef.current);
+      const over = resolveDropTarget(
+        event,
+        pointerRef.current,
+        shiftRef.current,
+      );
       if (!over) return;
       void onDrop({ payload: data.payload, over, moved: true });
     },
