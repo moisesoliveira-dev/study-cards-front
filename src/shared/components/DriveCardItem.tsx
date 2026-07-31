@@ -1,11 +1,9 @@
 import type { CSSProperties } from 'react';
-import { useEffect, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import type { Card } from '../../modules/cards/types/card.types';
 import { cardAccent } from './FaceCardComposer';
 import { CardFaceIcon } from './CardIcon';
-import { springLayout, staggerItem, tapScale } from '../motion';
-import { subscribeDrag } from '../dnd/drive-dnd';
+import { staggerItem, tapScale } from '../motion';
 
 type Props = {
   card: Card;
@@ -21,9 +19,6 @@ export function DriveCardItem({ card, selected, onClick, view = 'grid' }: Props)
   if (view === 'list') {
     return (
       <motion.div
-        layout={!reduce}
-        layoutId={reduce ? undefined : `drive-card-${card.id}`}
-        transition={{ layout: springLayout }}
         role={onClick ? 'button' : undefined}
         tabIndex={onClick ? 0 : undefined}
         className={`sc-list-row${selected ? ' selected' : ''}`}
@@ -45,9 +40,6 @@ export function DriveCardItem({ card, selected, onClick, view = 'grid' }: Props)
 
   return (
     <motion.div
-      layout={!reduce}
-      layoutId={reduce ? undefined : `drive-card-${card.id}`}
-      transition={{ layout: springLayout }}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
       className={`sc-item card-item${selected ? ' selected' : ''}`}
@@ -76,7 +68,7 @@ type FaceProps = {
   onClick?: () => void;
   style?: CSSProperties;
   index?: number;
-  /** No deck, o tray anima o bloco; a carta não faz FLIP sozinha. */
+  /** Carta renderizada dentro de um deck (estilo/mão). */
   inDeck?: boolean;
 };
 
@@ -91,26 +83,12 @@ export function FaceCard({
 }: FaceProps) {
   const reduce = useReducedMotion();
   const accent = cardAccent(card.color, card.tag);
-  const [dragBusy, setDragBusy] = useState(false);
-
-  useEffect(
-    () =>
-      subscribeDrag((s) => {
-        setDragBusy(Boolean(s?.moved));
-      }),
-    [],
-  );
-
-  // No deck o tray anima o bloco; layoutId ainda faz morph Hall↔deck.
-  const layoutOn = !reduce && !dragBusy && !inDeck;
 
   return (
     <motion.div
-      layout={layoutOn}
-      layoutId={reduce ? undefined : `face-card-${card.id}`}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
-      className={`sc-face-card is-simple${selected ? ' selected' : ''}`}
+      className={`sc-face-card is-simple${selected ? ' selected' : ''}${inDeck ? ' in-deck' : ''}`}
       onClick={onClick}
       style={
         {
@@ -136,7 +114,6 @@ export function FaceCard({
               },
             }
       }
-      transition={{ layout: springLayout }}
       whileTap={reduce ? undefined : tapScale}
     >
       <span className="card-accent-bar" aria-hidden />

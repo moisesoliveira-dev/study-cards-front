@@ -43,7 +43,7 @@ import { useAppToast } from '../hooks/useAppToast';
 import { useCatalogColors } from '../hooks/useCatalogColors';
 import { CatalogColorPicker } from '../components/CatalogColorPicker';
 import { MotionShell, MotionStagger, tapScale } from '../motion';
-import { LayoutGroup, motion, useReducedMotion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import {
   createOutline,
   documentTextOutline,
@@ -1142,7 +1142,6 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
           ) : null}
 
           <div className="sc-section-label">Hall</div>
-          <LayoutGroup id="drive-faces">
           {loading ? (
             <div className="sc-empty">
               <IonSpinner name="crescent" />
@@ -1381,7 +1380,6 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
 
           <div className="sc-section-label">Cards</div>
           <div className="sc-decks">
-            <LayoutGroup id="drive-decks">
             {orderedDecks.map((deck) => {
               const deckCards = cardsByDeck.get(deck.id) ?? [];
               return (
@@ -1389,8 +1387,6 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                   key={deck.id}
                   target={{ kind: 'deck', id: deck.id }}
                   className="sc-deck"
-                  layout={!reduce}
-                  layoutId={reduce ? undefined : `deck-tray-${deck.id}`}
                   style={
                     {
                       borderColor: deck.color,
@@ -1406,51 +1402,54 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                       topicId: deck.topicId,
                       label: deck.name,
                     }}
-                    className="sc-deck-drag"
+                    className="sc-deck-grip"
                     onContextMenu={(e) => openDeckContextMenu(e, deck)}
                   >
-                    <div className="sc-deck-head">
-                      <span className="sc-deck-badge" aria-hidden>
-                        <span
-                          className="sc-deck-dot"
-                          style={{ background: deck.color }}
-                        />
-                        <span className="sc-deck-stack" aria-hidden />
-                      </span>
-                      <strong>{deck.name}</strong>
-                      <span className="sc-deck-count">
-                        {deckCards.length} carta
-                        {deckCards.length === 1 ? '' : 's'}
-                      </span>
-                      <button
-                        type="button"
-                        className="sc-deck-edit"
-                        aria-label={`Editar deck ${deck.name}`}
-                        title="Editar"
-                        onPointerDown={(e) => e.stopPropagation()}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openEditDeck(deck);
-                        }}
-                      >
-                        ✎
-                      </button>
-                      <button
-                        type="button"
-                        className="sc-deck-x"
-                        aria-label={`Excluir deck ${deck.name}`}
-                        title="Excluir deck"
-                        onPointerDown={(e) => e.stopPropagation()}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void removeDeck(deck.id);
-                        }}
-                      >
-                        ×
-                      </button>
+                    <div className="sc-deck-pile" aria-hidden>
+                      <span className="sc-deck-pile-card" />
+                      <span className="sc-deck-pile-card" />
+                      <span className="sc-deck-pile-card is-top" />
                     </div>
+                    <span className="sc-deck-grip-hint">
+                      <span className="sc-deck-grip-dots" aria-hidden>
+                        <i /><i /><i /><i /><i /><i />
+                      </span>
+                      Arrastar
+                    </span>
                   </DragItem>
-                  <div className="sc-deck-felt" aria-hidden />
+                  <div className="sc-deck-top">
+                    <strong>{deck.name}</strong>
+                    <span className="sc-deck-count">
+                      {deckCards.length} carta
+                      {deckCards.length === 1 ? '' : 's'}
+                    </span>
+                    <button
+                      type="button"
+                      className="sc-deck-edit"
+                      aria-label={`Editar deck ${deck.name}`}
+                      title="Editar"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEditDeck(deck);
+                      }}
+                    >
+                      ✎
+                    </button>
+                    <button
+                      type="button"
+                      className="sc-deck-x"
+                      aria-label={`Excluir deck ${deck.name}`}
+                      title="Excluir deck"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void removeDeck(deck.id);
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
                   <div className="sc-deck-hand" role="list">
                     {deckCards.map((card, index) => {
                       const picked = mergePickIds.includes(card.id);
@@ -1505,7 +1504,6 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
                 </DropZone>
               );
             })}
-            </LayoutGroup>
             <button
               type="button"
               className="sc-deck is-new"
@@ -1519,7 +1517,6 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
               </div>
             ) : null}
           </div>
-          </LayoutGroup>
 
           <div className="sc-bottom">
             <span>
