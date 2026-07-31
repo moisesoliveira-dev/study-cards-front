@@ -162,6 +162,32 @@ function applyMovedDeck(
   return next.sort((a, b) => a.position - b.position);
 }
 
+/**
+ * beforeId no sentido da API (inserir antes de X), alinhado ao arrayMove do dnd-kit.
+ * null = ir para o final. undefined = não houve mudança de índice.
+ */
+function beforeIdForReorder(
+  orderedIds: string[],
+  activeId: string,
+  overId: string,
+): string | null | undefined {
+  const oldIndex = orderedIds.indexOf(activeId);
+  const newIndex = orderedIds.indexOf(overId);
+  if (newIndex < 0) return undefined;
+
+  // Veio de outro container → ocupa o lugar do over
+  if (oldIndex < 0) return overId;
+
+  if (oldIndex === newIndex) return undefined;
+
+  // Para frente: fica no lugar do over → inserir antes do próximo
+  if (oldIndex < newIndex) {
+    return orderedIds[newIndex + 1] ?? null;
+  }
+  // Para trás: fica no lugar do over → inserir antes do over
+  return overId;
+}
+
 type Props = {
   subjectId: string;
   /** Se omitido, estamos na raiz do grupo (assunto). */
@@ -495,29 +521,25 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
           const target = cards.find((c) => c.id === over.id);
           if (!target) return;
 
-          const siblings = cards
-            .filter(
-              (c) => c.deckId === target.deckId && c.id !== payload.id,
-            )
-            .sort((a, b) => a.position - b.position);
-          const targetIdx = siblings.findIndex((c) => c.id === target.id);
-          if (targetIdx < 0) return;
+          const orderedIds = cards
+            .filter((c) => c.deckId === target.deckId)
+            .sort((a, b) => a.position - b.position)
+            .map((c) => c.id);
 
-          const edge = over.edge ?? 'before';
-          const beforeCard =
-            edge === 'before'
-              ? target
-              : (siblings[targetIdx + 1] ?? null);
+          const beforeCardId = beforeIdForReorder(
+            orderedIds,
+            payload.id,
+            over.id,
+          );
+          if (beforeCardId === undefined) return;
 
           const moved = await cardsFacade.move(payload.id, {
             topicId: topicId ?? null,
             deckId: target.deckId,
-            ...(beforeCard
-              ? { beforeCardId: beforeCard.id }
-              : {}),
+            ...(beforeCardId ? { beforeCardId } : {}),
           });
           toast.success('Posição atualizada');
-          commitMovedCard(moved, beforeCard?.id ?? null);
+          commitMovedCard(moved, beforeCardId);
           return;
         }
 
@@ -547,21 +569,19 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
             return;
           }
 
-          const siblings = folders
-            .filter((f) => f.id !== payload.id)
-            .sort((a, b) => a.position - b.position);
-          const target = folders.find((f) => f.id === over.id);
-          if (!target) return;
-          const targetIdx = siblings.findIndex((f) => f.id === target.id);
-          if (targetIdx < 0) return;
+          const orderedIds = [...folders]
+            .sort((a, b) => a.position - b.position)
+            .map((f) => f.id);
 
-          const beforeTopic =
-            edge === 'before'
-              ? target
-              : (siblings[targetIdx + 1] ?? null);
+          const beforeTopicId = beforeIdForReorder(
+            orderedIds,
+            payload.id,
+            over.id,
+          );
+          if (beforeTopicId === undefined) return;
 
           await topicsFacade.move(payload.id, {
-            ...(beforeTopic ? { beforeTopicId: beforeTopic.id } : {}),
+            ...(beforeTopicId ? { beforeTopicId } : {}),
           });
           toast.success('Pasta reordenada');
           await load({ silent: true });
@@ -579,28 +599,23 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
 
         if (payload.kind === 'deck' && over.kind === 'deck' && over.id) {
           if (payload.id === over.id) return;
-          const target = decks.find((d) => d.id === over.id);
-          if (!target) return;
 
-          const siblings = decks
-            .filter((d) => d.id !== payload.id)
-            .sort((a, b) => a.position - b.position);
-          const targetIdx = siblings.findIndex((d) => d.id === target.id);
-          if (targetIdx < 0) return;
+          const orderedIds = [...decks]
+            .sort((a, b) => a.position - b.position)
+            .map((d) => d.id);
 
-          const edge = over.edge ?? 'before';
-          const beforeDeck =
-            edge === 'before'
-              ? target
-              : (siblings[targetIdx + 1] ?? null);
+          const beforeDeckId = beforeIdForReorder(
+            orderedIds,
+            payload.id,
+            over.id,
+          );
+          if (beforeDeckId === undefined) return;
 
           const moved = await decksFacade.move(payload.id, {
-            ...(beforeDeck ? { beforeDeckId: beforeDeck.id } : {}),
+            ...(beforeDeckId ? { beforeDeckId } : {}),
           });
           toast.success('Deck reordenado');
-          setDecks((prev) =>
-            applyMovedDeck(prev, moved, beforeDeck?.id ?? null),
-          );
+          setDecks((prev) => applyMovedDeck(prev, moved, beforeDeckId));
         }
       } catch (error) {
         toast.error(error);
