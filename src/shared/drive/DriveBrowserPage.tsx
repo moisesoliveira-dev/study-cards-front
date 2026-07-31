@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
+import { flushSync } from 'react-dom';
 import {
   IonBackButton,
   IonButton,
@@ -160,6 +161,38 @@ function applyMovedDeck(
   }
 
   return next.sort((a, b) => a.position - b.position);
+}
+
+/** Reordena um grupo na hora (antes da API) para não “voltar” no drop do dnd-kit. */
+function optimisticReorderByBeforeId<T extends { id: string; position: number }>(
+  list: T[],
+  activeId: string,
+  beforeId: string | null,
+  inGroup: (item: T) => boolean,
+): T[] {
+  const group = list
+    .filter(inGroup)
+    .sort((a, b) => a.position - b.position);
+  const active = group.find((item) => item.id === activeId);
+  if (!active) return list;
+
+  const without = group.filter((item) => item.id !== activeId);
+  let insertAt = beforeId
+    ? without.findIndex((item) => item.id === beforeId)
+    : without.length;
+  if (beforeId && insertAt < 0) insertAt = without.length;
+
+  const reordered = [
+    ...without.slice(0, insertAt),
+    active,
+    ...without.slice(insertAt),
+  ].map((item, index) => ({ ...item, position: index }));
+
+  const reorderedIds = new Set(reordered.map((item) => item.id));
+  return [
+    ...list.filter((item) => !reorderedIds.has(item.id)),
+    ...reordered,
+  ];
 }
 
 /**
@@ -484,35 +517,99 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     async (event: DriveDropEvent) => {
       if (!event.moved || !event.over) return;
       const { payload, over } = event;
+      const currentTopicId = topicId ?? null;
+
+      const rollback = async () => {
+        await load({ silent: true });
+      };
 
       try {
         if (payload.kind === 'card' && over.kind === 'folder' && over.id) {
-          const moved = await cardsFacade.move(payload.id, {
-            topicId: over.id,
-            deckId: null,
+          flushSync(() => {
+            setCards((prev) => prev.filter((c) => c.id !== payload.id));
           });
-          toast.success('Card movido para a pasta');
-          commitMovedCard(moved);
+          try {
+            const moved = await cardsFacade.move(payload.id, {
+              topicId: over.id,
+              deckId: null,
+            });
+            toast.success('Card movido para a pasta');
+            commitMovedCard(moved);
+          } catch (error) {
+            await rollback();
+            throw error;
+          }
           return;
         }
 
         if (payload.kind === 'card' && over.kind === 'deck' && over.id) {
-          const moved = await cardsFacade.move(payload.id, {
-            topicId: topicId ?? null,
-            deckId: over.id,
+          flushSync(() => {
+            setCards((prev) => {
+              const card = prev.find((c) => c.id === payload.id);
+              if (!card) return prev;
+              const targetDeckId = over.id;
+              const withDeck = {
+                ...card,
+                topicId: currentTopicId,
+                deckId: targetDeckId,
+              };
+              const others = prev.filter((c) => c.id !== payload.id);
+              return optimisticReorderByBeforeId(
+                [...others, withDeck],
+                payload.id,
+                null,
+                (c) => c.deckId === targetDeckId,
+              );
+            });
           });
-          toast.success('Card movido para o deck');
-          commitMovedCard(moved);
+          try {
+            const moved = await cardsFacade.move(payload.id, {
+              topicId: currentTopicId,
+              deckId: over.id,
+            });
+            toast.success('Card movido para o deck');
+            setCards((prev) =>
+              prev.map((c) => (c.id === moved.id ? { ...c, ...moved } : c)),
+            );
+          } catch (error) {
+            await rollback();
+            throw error;
+          }
           return;
         }
 
         if (payload.kind === 'card' && over.kind === 'hall') {
-          const moved = await cardsFacade.move(payload.id, {
-            topicId: topicId ?? null,
-            deckId: null,
+          flushSync(() => {
+            setCards((prev) => {
+              const card = prev.find((c) => c.id === payload.id);
+              if (!card) return prev;
+              const withHall = {
+                ...card,
+                topicId: currentTopicId,
+                deckId: null,
+              };
+              const others = prev.filter((c) => c.id !== payload.id);
+              return optimisticReorderByBeforeId(
+                [...others, withHall],
+                payload.id,
+                null,
+                (c) => c.deckId == null,
+              );
+            });
           });
-          toast.success('Card no Hall');
-          commitMovedCard(moved);
+          try {
+            const moved = await cardsFacade.move(payload.id, {
+              topicId: currentTopicId,
+              deckId: null,
+            });
+            toast.success('Card no Hall');
+            setCards((prev) =>
+              prev.map((c) => (c.id === moved.id ? { ...c, ...moved } : c)),
+            );
+          } catch (error) {
+            await rollback();
+            throw error;
+          }
           return;
         }
 
@@ -521,8 +618,10 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
           const target = cards.find((c) => c.id === over.id);
           if (!target) return;
 
+          const source = cards.find((c) => c.id === payload.id);
+          const targetDeckId = target.deckId;
           const orderedIds = cards
-            .filter((c) => c.deckId === target.deckId)
+            .filter((c) => c.deckId === targetDeckId)
             .sort((a, b) => a.position - b.position)
             .map((c) => c.id);
 
@@ -533,28 +632,66 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
           );
           if (beforeCardId === undefined) return;
 
-          const moved = await cardsFacade.move(payload.id, {
-            topicId: topicId ?? null,
-            deckId: target.deckId,
-            ...(beforeCardId ? { beforeCardId } : {}),
+          flushSync(() => {
+            setCards((prev) => {
+              let next = prev;
+              if (source && source.deckId !== targetDeckId) {
+                next = prev.map((c) =>
+                  c.id === payload.id
+                    ? {
+                        ...c,
+                        topicId: currentTopicId,
+                        deckId: targetDeckId,
+                      }
+                    : c,
+                );
+              }
+              return optimisticReorderByBeforeId(
+                next,
+                payload.id,
+                beforeCardId,
+                (c) => c.deckId === targetDeckId,
+              );
+            });
           });
-          toast.success('Posição atualizada');
-          commitMovedCard(moved, beforeCardId);
+
+          try {
+            const moved = await cardsFacade.move(payload.id, {
+              topicId: currentTopicId,
+              deckId: targetDeckId,
+              ...(beforeCardId ? { beforeCardId } : {}),
+            });
+            toast.success('Posição atualizada');
+            setCards((prev) =>
+              prev.map((c) => (c.id === moved.id ? { ...c, ...moved } : c)),
+            );
+          } catch (error) {
+            await rollback();
+            throw error;
+          }
           return;
         }
 
         if (payload.kind === 'card' && over.kind === 'root') {
           const targetTopicId = isRoot ? null : parentId;
-          const moved = await cardsFacade.move(payload.id, {
-            topicId: targetTopicId,
-            deckId: null,
+          flushSync(() => {
+            setCards((prev) => prev.filter((c) => c.id !== payload.id));
           });
-          toast.success(
-            isRoot || !parentId
-              ? 'Card na raiz do grupo'
-              : 'Card movido para a pasta anterior',
-          );
-          commitMovedCard(moved);
+          try {
+            const moved = await cardsFacade.move(payload.id, {
+              topicId: targetTopicId,
+              deckId: null,
+            });
+            toast.success(
+              isRoot || !parentId
+                ? 'Card na raiz do grupo'
+                : 'Card movido para a pasta anterior',
+            );
+            commitMovedCard(moved);
+          } catch (error) {
+            await rollback();
+            throw error;
+          }
           return;
         }
 
@@ -563,9 +700,17 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
           const edge = over.edge ?? 'into';
 
           if (edge === 'into') {
-            await topicsFacade.update(payload.id, { parentId: over.id });
-            toast.success('Pasta movida');
-            await load({ silent: true });
+            flushSync(() => {
+              setFolders((prev) => prev.filter((f) => f.id !== payload.id));
+            });
+            try {
+              await topicsFacade.update(payload.id, { parentId: over.id });
+              toast.success('Pasta movida');
+              await load({ silent: true });
+            } catch (error) {
+              await rollback();
+              throw error;
+            }
             return;
           }
 
@@ -580,20 +725,43 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
           );
           if (beforeTopicId === undefined) return;
 
-          await topicsFacade.move(payload.id, {
-            ...(beforeTopicId ? { beforeTopicId } : {}),
+          flushSync(() => {
+            setFolders((prev) =>
+              optimisticReorderByBeforeId(
+                prev,
+                payload.id,
+                beforeTopicId,
+                () => true,
+              ),
+            );
           });
-          toast.success('Pasta reordenada');
-          await load({ silent: true });
+
+          try {
+            await topicsFacade.move(payload.id, {
+              ...(beforeTopicId ? { beforeTopicId } : {}),
+            });
+            toast.success('Pasta reordenada');
+          } catch (error) {
+            await rollback();
+            throw error;
+          }
           return;
         }
 
         if (payload.kind === 'folder' && over.kind === 'root') {
-          await topicsFacade.update(payload.id, {
-            parentId: isRoot ? null : parentId,
+          flushSync(() => {
+            setFolders((prev) => prev.filter((f) => f.id !== payload.id));
           });
-          toast.success('Pasta movida');
-          await load({ silent: true });
+          try {
+            await topicsFacade.update(payload.id, {
+              parentId: isRoot ? null : parentId,
+            });
+            toast.success('Pasta movida');
+            await load({ silent: true });
+          } catch (error) {
+            await rollback();
+            throw error;
+          }
           return;
         }
 
@@ -611,17 +779,45 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
           );
           if (beforeDeckId === undefined) return;
 
-          const moved = await decksFacade.move(payload.id, {
-            ...(beforeDeckId ? { beforeDeckId } : {}),
+          flushSync(() => {
+            setDecks((prev) =>
+              optimisticReorderByBeforeId(
+                prev,
+                payload.id,
+                beforeDeckId,
+                () => true,
+              ),
+            );
           });
-          toast.success('Deck reordenado');
-          setDecks((prev) => applyMovedDeck(prev, moved, beforeDeckId));
+
+          try {
+            const moved = await decksFacade.move(payload.id, {
+              ...(beforeDeckId ? { beforeDeckId } : {}),
+            });
+            toast.success('Deck reordenado');
+            setDecks((prev) =>
+              prev.map((d) => (d.id === moved.id ? { ...d, ...moved } : d)),
+            );
+          } catch (error) {
+            await rollback();
+            throw error;
+          }
         }
       } catch (error) {
         toast.error(error);
       }
     },
-    [cards, commitMovedCard, decks, isRoot, load, parentId, toast, topicId],
+    [
+      cards,
+      commitMovedCard,
+      decks,
+      folders,
+      isRoot,
+      load,
+      parentId,
+      toast,
+      topicId,
+    ],
   );
 
   const handleCardTap = useCallback(
