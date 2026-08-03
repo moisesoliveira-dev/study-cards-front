@@ -2380,6 +2380,209 @@ select.card-suit-input option {
   color: var(--text-primary);
 }
 
+/* Tag picker (substitui select nativo na carta) */
+.sc-tag-picker {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 100%;
+}
+
+.sc-tag-picker.is-field {
+  display: flex;
+  width: 100%;
+  align-items: stretch;
+}
+
+.sc-tag-picker-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  max-width: 100%;
+  transition:
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.sc-tag-picker.is-suit .sc-tag-picker-trigger {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.sc-tag-picker.is-suit .sc-tag-picker-trigger:hover,
+.sc-tag-picker.is-suit.is-open .sc-tag-picker-trigger {
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+
+.sc-tag-picker.is-field .sc-tag-picker-trigger {
+  width: 100%;
+  justify-content: flex-start;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 0.5px solid var(--border);
+  background: var(--surface-1);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.sc-tag-picker.is-field .sc-tag-picker-trigger:hover,
+.sc-tag-picker.is-field.is-open .sc-tag-picker-trigger {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+
+.sc-tag-picker-trigger:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.sc-tag-picker-trigger ion-icon {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+  opacity: 0.55;
+  transition: transform 0.18s ease;
+}
+
+.sc-tag-picker.is-open .sc-tag-picker-trigger ion-icon {
+  transform: rotate(180deg);
+  opacity: 0.85;
+}
+
+.sc-tag-picker-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-primary) 12%, transparent);
+}
+
+.sc-tag-picker-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.sc-tag-picker-empty-hint {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.sc-tag-picker-empty-hint a {
+  color: var(--text-accent);
+  text-decoration: none;
+}
+
+.sc-tag-picker-menu {
+  position: fixed;
+  z-index: 56000;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  max-height: min(240px, 50vh);
+  overflow-x: hidden;
+  overflow-y: auto;
+  border-radius: 12px;
+  border: 0.5px solid var(--border);
+  background: var(--surface-1);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, #fff 55%, transparent) inset,
+    0 16px 40px color-mix(in srgb, var(--text-primary) 16%, transparent);
+  -webkit-overflow-scrolling: touch;
+}
+
+.sc-tag-picker-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin: 0;
+  padding: 9px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.sc-tag-picker-option:hover,
+.sc-tag-picker-option.is-focused {
+  background: var(--surface-2);
+}
+
+.sc-tag-picker-option.is-active {
+  background: color-mix(in srgb, var(--text-accent) 12%, var(--surface-2));
+}
+
+.sc-tag-picker-option .sc-tag-picker-dot {
+  width: 10px;
+  height: 10px;
+}
+
+.sc-tag-picker-option-copy {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sc-tag-picker-option-copy strong {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sc-tag-picker-option-copy em {
+  font-size: 11px;
+  font-style: normal;
+  color: var(--text-muted);
+}
+
+.sc-tag-picker-footer {
+  margin-top: 4px;
+  padding: 6px 10px 4px;
+  border-top: 0.5px solid var(--border);
+}
+
+.sc-tag-picker-footer a {
+  font-size: 12px;
+  color: var(--text-accent);
+  text-decoration: none;
+}
+
+.sc-tag-picker-footer a:hover {
+  text-decoration: underline;
+}
+
+.sc-face-compose .sc-tag-picker.is-suit {
+  align-self: center;
+}
+
+.card-compose-field.suit .sc-tag-picker {
+  width: auto;
+}
+
 .card-title-input {
   font-size: 1.15rem;
   font-weight: 600;

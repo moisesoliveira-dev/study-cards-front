@@ -349,7 +349,7 @@ export function CardDocumentSheet({
                     onChange={(e) => setFront(e.target.value)}
                   />
                   <CardTagPicker
-                    className="sc-doc-tag-input"
+                    variant="suit"
                     value={tag}
                     onChange={(name, hex) => {
                       setTag(name);

@@ -589,7 +589,7 @@ export function PdfReaderSheet({ pdf, groupName, onClose }: Props) {
                   <label className="sc-pdf-field">
                     <span>Tag</span>
                     <CardTagPicker
-                      className="sc-field-input"
+                      variant="field"
                       value={tag}
                       onChange={(name) => setTag(name)}
                     />
