@@ -6170,6 +6170,318 @@ body.sc-dragging
   gap: 4px;
   flex: 1;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sc-sidebar-tree-group {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sc-sidebar-tree-group.is-open {
+  overflow: hidden;
+}
+
+.sc-sidebar-tree-panel {
+  flex: 1 1 auto;
+  min-height: 120px;
+  max-height: min(52vh, 420px);
+  overflow: auto;
+  margin: 2px 0 6px;
+  padding: 4px 2px 6px 4px;
+  border-radius: 10px;
+  border: 0.5px solid var(--border);
+  background: var(--surface-0, var(--surface-1));
+  -webkit-overflow-scrolling: touch;
+}
+
+/* —— Ecossistema: árvore de pastas —— */
+.sc-eco-page {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 20px 20px 48px;
+}
+
+.sc-eco-page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px 20px;
+  margin-bottom: 18px;
+}
+
+.sc-eco-page-title {
+  margin: 0 0 6px;
+  font-size: 1.55rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.sc-eco-page-sub {
+  margin: 0;
+  max-width: 42rem;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.sc-eco-page-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.sc-eco-page-toggle input {
+  accent-color: var(--text-accent);
+}
+
+.sc-eco-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.sc-eco-tree.is-loading {
+  align-items: center;
+  justify-content: center;
+  padding: 28px 12px;
+}
+
+.sc-eco-tree-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.sc-eco-tree-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sc-eco-tree-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 220px;
+  min-width: 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 0.5px solid var(--border);
+  background: var(--surface-1);
+}
+
+.sc-eco-tree-search.is-compact {
+  flex: none;
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 8px;
+  margin-bottom: 4px;
+}
+
+.sc-eco-tree-search ion-icon {
+  flex-shrink: 0;
+  font-size: 16px;
+  color: var(--text-muted);
+}
+
+.sc-eco-tree-search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.sc-eco-tree-root,
+.sc-eco-tree-list,
+.sc-eco-tree-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sc-eco-tree-list,
+.sc-eco-tree-cards {
+  padding-left: 0;
+}
+
+.sc-eco-tree-list > li,
+.sc-eco-tree-cards > li {
+  margin: 0;
+}
+
+.sc-eco-tree-list > li {
+  padding-left: calc(var(--eco-depth, 1) * 12px);
+}
+
+.sc-eco-tree.is-page .sc-eco-tree-list > li {
+  padding-left: calc(var(--eco-depth, 1) * 16px);
+}
+
+.sc-eco-tree-row-wrap {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  border-radius: 8px;
+}
+
+.sc-eco-tree-row-wrap.is-active {
+  background: color-mix(in srgb, var(--text-accent) 10%, transparent);
+}
+
+.sc-eco-tree-twist {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 26px;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.sc-eco-tree-twist:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.sc-eco-tree-twist.is-spacer {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.sc-eco-tree-twist ion-icon {
+  font-size: 12px;
+  transition: transform 0.15s ease;
+}
+
+.sc-eco-tree-twist ion-icon.is-open {
+  transform: rotate(90deg);
+}
+
+.sc-eco-tree-twist:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: var(--surface-2);
+}
+
+.sc-eco-tree-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 5px 8px 5px 4px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sc-eco-tree-row:hover {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+
+.sc-eco-tree-row.is-active {
+  color: var(--text-accent);
+  font-weight: 600;
+}
+
+.sc-eco-tree-row.is-subject {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.sc-eco-tree-row.is-card {
+  font-weight: 450;
+  color: var(--text-muted);
+}
+
+.sc-eco-tree-row ion-icon {
+  flex-shrink: 0;
+  font-size: 15px;
+  opacity: 0.75;
+}
+
+.sc-eco-tree-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-primary) 10%, transparent);
+}
+
+.sc-eco-tree-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sc-eco-tree-empty {
+  margin: 0;
+  padding: 8px 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.sc-eco-tree-empty.is-pad {
+  padding-left: 28px;
+}
+
+.sc-eco-tree-nested-loading,
+.sc-eco-tree-cards.is-loading {
+  display: flex;
+  justify-content: center;
+  padding: 8px;
+}
+
+.sc-eco-tree.is-page {
+  padding: 14px;
+  border-radius: 14px;
+  border: 0.5px solid var(--border);
+  background: var(--surface-1);
+}
+
+.sc-eco-tree.is-page .sc-eco-tree-row {
+  padding: 7px 10px 7px 6px;
+  font-size: 14px;
+}
+
+.sc-eco-tree.is-sidebar .sc-eco-tree-row {
+  font-size: 12px;
+  padding: 4px 6px 4px 2px;
+}
+
+.sc-eco-tree.is-sidebar .sc-eco-tree-search input {
+  font-size: 12px;
 }
 
 .sc-sidebar-link {

@@ -16,6 +16,7 @@ import ChatPage from './modules/chat/pages/ChatPage';
 import CardLevelsCadastroPage from './modules/cadastros/pages/CardLevelsCadastroPage';
 import ColorsCadastroPage from './modules/cadastros/pages/ColorsCadastroPage';
 import CardTagsCadastroPage from './modules/cadastros/pages/CardTagsCadastroPage';
+import EcosystemTreePage from './modules/topics/pages/EcosystemTreePage';
 import { AuthProvider, useAuth } from './modules/auth/context/AuthContext';
 import { SessionExpiredAlert } from './modules/auth/components/SessionExpiredAlert';
 import { ThemeProvider } from './shared/theme/ThemeContext';
@@ -55,6 +56,7 @@ function AuthenticatedShell() {
     <AppShell>
       <IonRouterOutlet>
         <Route exact path="/home" component={SubjectsPage} />
+        <Route exact path="/arvore" component={EcosystemTreePage} />
         <Route exact path="/subjects/:subjectId" component={SubjectDetailPage} />
         <Route exact path="/topics/:topicId" component={TopicCardsPage} />
         <Route exact path="/flows" component={FlowsListPage} />
