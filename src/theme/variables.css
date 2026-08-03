@@ -2365,6 +2365,21 @@ ion-modal::part(content),
   font-weight: 600;
 }
 
+select.card-suit-input {
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: none;
+  max-width: 100%;
+  padding-right: 4px;
+}
+
+select.card-suit-input option {
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text-primary);
+}
+
 .card-title-input {
   font-size: 1.15rem;
   font-weight: 600;
@@ -2891,6 +2906,13 @@ ion-popover {
   letter-spacing: 0.05em;
   text-transform: uppercase;
   font-weight: 600;
+}
+
+select.sc-doc-tag-input {
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  max-width: 100%;
 }
 
 .sc-doc-body {

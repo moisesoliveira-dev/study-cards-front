@@ -14,6 +14,7 @@ import {
   libraryOutline,
   logOutOutline,
   menuOutline,
+  pricetagOutline,
   settingsOutline,
 } from 'ionicons/icons';
 import { useAuth } from '../../modules/auth/context/AuthContext';
@@ -85,6 +86,12 @@ const NAV: NavItem[] = [
         label: 'Cores',
         icon: colorPaletteOutline,
         match: (path: string) => path.startsWith('/cadastros/cores'),
+      },
+      {
+        to: '/cadastros/tags',
+        label: 'Tags',
+        icon: pricetagOutline,
+        match: (path: string) => path.startsWith('/cadastros/tags'),
       },
     ],
   },

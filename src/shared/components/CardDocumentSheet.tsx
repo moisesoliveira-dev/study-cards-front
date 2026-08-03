@@ -17,6 +17,7 @@ import { DocumentEditor, documentToPlainText } from './DocumentEditor';
 import { cardAccent } from './FaceCardComposer';
 import { CardLoadoutPanel } from './CardLoadoutPanel';
 import { CardFaceIcon, CardIconPicker } from './CardIcon';
+import { CardTagPicker } from './CardTagPicker';
 import { useAppToast } from '../hooks/useAppToast';
 import { docExpand, fadeIn, scaleIn } from '../motion';
 
@@ -347,10 +348,13 @@ export function CardDocumentSheet({
                     value={front}
                     onChange={(e) => setFront(e.target.value)}
                   />
-                  <input
+                  <CardTagPicker
                     className="sc-doc-tag-input"
                     value={tag}
-                    onChange={(e) => setTag(e.target.value)}
+                    onChange={(name, hex) => {
+                      setTag(name);
+                      if (hex) setColor(hex);
+                    }}
                     style={{ color: accent }}
                   />
                 </>
@@ -457,12 +461,13 @@ export function CardDocumentSheet({
             </button>
             <label className="card-compose-field suit">
               <span className="sr-only">Tag</span>
-              <input
-                className="card-suit-input"
+              <CardTagPicker
                 value={tag}
-                onChange={(e) => setTag(e.target.value)}
+                onChange={(name, hex) => {
+                  setTag(name);
+                  if (hex) setColor(hex);
+                }}
                 style={{ color: accent }}
-                autoComplete="off"
               />
             </label>
             <div className="card-compose-icon-block">

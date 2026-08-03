@@ -15,6 +15,7 @@ import PdfLibraryPage from './modules/pdf-library/pages/PdfLibraryPage';
 import ChatPage from './modules/chat/pages/ChatPage';
 import CardLevelsCadastroPage from './modules/cadastros/pages/CardLevelsCadastroPage';
 import ColorsCadastroPage from './modules/cadastros/pages/ColorsCadastroPage';
+import CardTagsCadastroPage from './modules/cadastros/pages/CardTagsCadastroPage';
 import { AuthProvider, useAuth } from './modules/auth/context/AuthContext';
 import { SessionExpiredAlert } from './modules/auth/components/SessionExpiredAlert';
 import { ThemeProvider } from './shared/theme/ThemeContext';
@@ -65,6 +66,7 @@ function AuthenticatedShell() {
         <Route exact path="/settings" component={SettingsPage} />
         <Route exact path="/cadastros/niveis" component={CardLevelsCadastroPage} />
         <Route exact path="/cadastros/cores" component={ColorsCadastroPage} />
+        <Route exact path="/cadastros/tags" component={CardTagsCadastroPage} />
         <Route exact path="/cadastros">
           <Redirect to="/cadastros/niveis" />
         </Route>

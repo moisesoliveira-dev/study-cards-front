@@ -1,5 +1,9 @@
 import { IonIcon } from '@ionic/react';
-import { colorPaletteOutline, layersOutline } from 'ionicons/icons';
+import {
+  colorPaletteOutline,
+  layersOutline,
+  pricetagOutline,
+} from 'ionicons/icons';
 import { NavLink } from 'react-router-dom';
 
 const ITEMS = [
@@ -12,6 +16,11 @@ const ITEMS = [
     to: '/cadastros/cores',
     label: 'Cores',
     icon: colorPaletteOutline,
+  },
+  {
+    to: '/cadastros/tags',
+    label: 'Tags',
+    icon: pricetagOutline,
   },
 ] as const;
 

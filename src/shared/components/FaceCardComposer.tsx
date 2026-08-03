@@ -11,6 +11,7 @@ import {
 import type { CardLevel } from '../../modules/cards/types/card-level.types';
 import { CardLoadoutPanel } from './CardLoadoutPanel';
 import { CardIconPicker } from './CardIcon';
+import { CardTagPicker } from './CardTagPicker';
 import { docExpand, fadeIn, scaleIn, tapScale } from '../motion';
 
 export function suitColor(tag: string) {
@@ -172,13 +173,13 @@ export function FaceCardComposer({
                   </button>
                   <label className="card-compose-field suit">
                     <span className="sr-only">Tag</span>
-                    <input
-                      className="card-suit-input"
+                    <CardTagPicker
                       value={tag}
-                      onChange={(e) => onTag(e.target.value)}
-                      placeholder="Tag"
+                      onChange={(name, hex) => {
+                        onTag(name);
+                        if (hex) onColor(hex);
+                      }}
                       style={{ color: accent }}
-                      autoComplete="off"
                     />
                   </label>
 

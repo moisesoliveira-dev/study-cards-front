@@ -22,6 +22,7 @@ import type { CardLevel } from '../../cards/types/card-level.types';
 import type { Subject } from '../../subjects/types/subject.types';
 import type { TopicTreeNode } from '../../topics/types/topic.types';
 import { useAppToast } from '../../../shared/hooks/useAppToast';
+import { CardTagPicker } from '../../../shared/components/CardTagPicker';
 import { docExpand, fadeIn } from '../../../shared/motion';
 import {
   PdfSelectableViewer,
@@ -587,10 +588,10 @@ export function PdfReaderSheet({ pdf, groupName, onClose }: Props) {
                 <div className="sc-pdf-field-row">
                   <label className="sc-pdf-field">
                     <span>Tag</span>
-                    <input
+                    <CardTagPicker
+                      className="sc-field-input"
                       value={tag}
-                      onChange={(e) => setTag(e.target.value)}
-                      placeholder="Conceito"
+                      onChange={(name) => setTag(name)}
                     />
                   </label>
                   <label className="sc-pdf-field">
