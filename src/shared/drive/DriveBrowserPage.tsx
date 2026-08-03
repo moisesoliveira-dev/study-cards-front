@@ -556,6 +556,62 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     [topicId],
   );
 
+  /** Persiste a ordem local do Hall/deck no backend — sem mexer no estado (já veio do preview). */
+  const persistCardOrder = useCallback(
+    async (deckId: string | null) => {
+      const ordered = cardsRef.current
+        .filter((c) => c.deckId === deckId)
+        .sort((a, b) => a.position - b.position);
+      const orderedIds = ordered.map((c) => c.id);
+      const origin = dragOriginRef.current;
+      if (
+        origin?.kind === 'card' &&
+        origin.key === String(deckId) &&
+        origin.ids.join() === orderedIds.join()
+      ) {
+        return false;
+      }
+
+      const currentTopicId = topicId ?? null;
+      const originIds =
+        origin?.kind === 'card' && origin.key === String(deckId)
+          ? origin.ids
+          : null;
+      // Só grava quem mudou de índice; UI já está correta pelo preview
+      for (let i = 0; i < orderedIds.length; i++) {
+        const id = orderedIds[i]!;
+        if (originIds?.[i] === id) continue;
+        await cardsFacade.move(id, {
+          topicId: currentTopicId,
+          deckId,
+          position: i,
+        });
+      }
+      return true;
+    },
+    [topicId],
+  );
+
+  const persistDeckOrder = useCallback(async () => {
+    const ordered = [...decksRef.current].sort(
+      (a, b) => a.position - b.position,
+    );
+    const orderedIds = ordered.map((d) => d.id);
+    const origin = dragOriginRef.current;
+    if (
+      origin?.kind === 'deck' &&
+      origin.ids.join() === orderedIds.join()
+    ) {
+      return false;
+    }
+    for (let i = 0; i < orderedIds.length; i++) {
+      const id = orderedIds[i]!;
+      if (origin?.kind === 'deck' && origin.ids[i] === id) continue;
+      await decksFacade.move(id, { position: i });
+    }
+    return true;
+  }, []);
+
   const handleDragTrackStart = useCallback(
     (payload: DragPayload) => {
       if (payload.kind === 'card') {
@@ -619,7 +675,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
 
   const handleDrop = useCallback(
     async (event: DriveDropEvent) => {
-      if (!event.moved || !event.over) return;
+      if (!event.moved) return;
       const { payload, over } = event;
       const currentTopicId = topicId ?? null;
 
@@ -628,6 +684,20 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
       };
 
       try {
+        // Soltou sem alvo novo: só persiste reordenação do preview (se houve).
+        if (!over) {
+          if (payload.kind === 'card') {
+            if (await persistCardOrder(payload.deckId)) {
+              toast.success('Posição atualizada');
+            }
+          } else if (payload.kind === 'deck') {
+            if (await persistDeckOrder()) {
+              toast.success('Deck reordenado');
+            }
+          }
+          return;
+        }
+
         if (payload.kind === 'card' && over.kind === 'folder' && over.id) {
           flushSync(() => {
             setCards((prev) => prev.filter((c) => c.id !== payload.id));
@@ -648,6 +718,13 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
 
         if (payload.kind === 'card' && over.kind === 'deck' && over.id) {
           const targetDeckId = over.id;
+          // Já estava neste deck → drop no container = só gravar ordem do preview
+          if (payload.deckId === targetDeckId) {
+            if (await persistCardOrder(targetDeckId)) {
+              toast.success('Posição atualizada');
+            }
+            return;
+          }
           flushSync(() => {
             setCards((prev) => {
               const card = prev.find((c) => c.id === payload.id);
@@ -674,6 +751,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
               topicId: currentTopicId,
               deckId: over.id,
             });
+            await persistCardOrder(targetDeckId);
             toast.success('Card movido para o deck');
           } catch (error) {
             await rollback();
@@ -683,6 +761,13 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         }
 
         if (payload.kind === 'card' && over.kind === 'hall') {
+          // Já estava no Hall → gravar ordem do preview (não “append”)
+          if (payload.deckId == null) {
+            if (await persistCardOrder(null)) {
+              toast.success('Posição atualizada');
+            }
+            return;
+          }
           flushSync(() => {
             setCards((prev) => {
               const card = prev.find((c) => c.id === payload.id);
@@ -709,6 +794,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
               topicId: currentTopicId,
               deckId: null,
             });
+            await persistCardOrder(null);
             toast.success('Card no Hall');
           } catch (error) {
             await rollback();
@@ -718,36 +804,28 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         }
 
         if (payload.kind === 'card' && over.kind === 'card' && over.id) {
-          if (payload.id === over.id) return;
-          const target = cards.find((c) => c.id === over.id);
+          if (payload.id === over.id) {
+            if (await persistCardOrder(payload.deckId)) {
+              toast.success('Posição atualizada');
+            }
+            return;
+          }
+          const target =
+            cardsRef.current.find((c) => c.id === over.id) ??
+            cards.find((c) => c.id === over.id);
           if (!target) return;
 
-          const source = cards.find((c) => c.id === payload.id);
+          const source =
+            cardsRef.current.find((c) => c.id === payload.id) ??
+            cards.find((c) => c.id === payload.id);
           const targetDeckId = target.deckId;
           const sameContainer = source?.deckId === targetDeckId;
 
           if (sameContainer) {
-            const currentIds = cardsRef.current
-              .filter((c) => c.deckId === targetDeckId)
-              .sort((a, b) => a.position - b.position)
-              .map((c) => c.id);
-            const origin = dragOriginRef.current;
-            if (
-              origin?.kind === 'card' &&
-              origin.key === String(targetDeckId) &&
-              origin.ids.join() === currentIds.join()
-            ) {
-              return;
-            }
-            const at = currentIds.indexOf(payload.id);
-            const beforeCardId = at >= 0 ? (currentIds[at + 1] ?? null) : null;
             try {
-              await cardsFacade.move(payload.id, {
-                topicId: currentTopicId,
-                deckId: targetDeckId,
-                ...(beforeCardId ? { beforeCardId } : {}),
-              });
-              toast.success('Posição atualizada');
+              if (await persistCardOrder(targetDeckId)) {
+                toast.success('Posição atualizada');
+              }
             } catch (error) {
               await rollback();
               throw error;
@@ -755,7 +833,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
             return;
           }
 
-          const targetOrderedIds = cards
+          const targetOrderedIds = cardsRef.current
             .filter((c) => c.deckId === targetDeckId)
             .sort((a, b) => a.position - b.position)
             .map((c) => c.id);
@@ -788,6 +866,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
               deckId: targetDeckId,
               ...(plan.beforeId ? { beforeCardId: plan.beforeId } : {}),
             });
+            await persistCardOrder(targetDeckId);
             toast.success('Posição atualizada');
           } catch (error) {
             await rollback();
@@ -853,28 +932,17 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         }
 
         if (payload.kind === 'deck' && over.kind === 'deck' && over.id) {
-          if (payload.id === over.id) return;
-
-          const orderedIds = [...decksRef.current]
-            .sort((a, b) => a.position - b.position)
-            .map((d) => d.id);
-
-          const origin = dragOriginRef.current;
-          if (
-            origin?.kind === 'deck' &&
-            origin.ids.join() === orderedIds.join()
-          ) {
+          if (payload.id === over.id) {
+            if (await persistDeckOrder()) {
+              toast.success('Deck reordenado');
+            }
             return;
           }
 
-          const at = orderedIds.indexOf(payload.id);
-          const beforeDeckId = at >= 0 ? (orderedIds[at + 1] ?? null) : null;
-
           try {
-            await decksFacade.move(payload.id, {
-              ...(beforeDeckId ? { beforeDeckId } : {}),
-            });
-            toast.success('Deck reordenado');
+            if (await persistDeckOrder()) {
+              toast.success('Deck reordenado');
+            }
           } catch (error) {
             await rollback();
             throw error;
@@ -892,6 +960,8 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
       isRoot,
       load,
       parentId,
+      persistCardOrder,
+      persistDeckOrder,
       toast,
       topicId,
     ],

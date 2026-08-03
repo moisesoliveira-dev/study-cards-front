@@ -234,8 +234,13 @@ export function DriveDndProvider({
       const data = event.active.data.current as DriveDragData | undefined;
       if (!data?.payload) return;
       const over = resolveDropTarget(event);
-      if (!over) return;
-      void onDrop({ payload: data.payload, over, moved: true });
+      // Mesmo sem alvo (soltou no próprio card / vazio), o pai precisa
+      // persistir reordenação já aplicada no preview.
+      void onDrop({
+        payload: data.payload,
+        over,
+        moved: Boolean(over) || data.payload.kind === 'card' || data.payload.kind === 'deck',
+      });
     },
     [onDrop],
   );
