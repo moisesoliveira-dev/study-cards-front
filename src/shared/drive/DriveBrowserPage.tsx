@@ -338,7 +338,9 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
       if (gen !== loadGenRef.current) return;
       toast.error(error);
     } finally {
-      if (gen === loadGenRef.current && !opts?.silent) {
+      // Sempre limpa o spinner no load vigente (silent ou não).
+      // Senão o useIonViewWillEnter cancela o load inicial e o loading trava.
+      if (gen === loadGenRef.current) {
         setLoading(false);
       }
     }
@@ -355,9 +357,14 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     void load();
   }, [load]);
 
-  // IonRouterOutlet mantém páginas em cache — ao voltar (breadcrumb/aba),
-  // busca de novo para refletir moves e cards criados na biblioteca.
+  // IonRouterOutlet mantém páginas em cache — ao voltar, sincroniza dados.
+  // Evita cancelar o primeiro load: só revalida depois do mount.
+  const didEnterOnce = useRef(false);
   useIonViewWillEnter(() => {
+    if (!didEnterOnce.current) {
+      didEnterOnce.current = true;
+      return;
+    }
     void load({ silent: true });
   });
 
