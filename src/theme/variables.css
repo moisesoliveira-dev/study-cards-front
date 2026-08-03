@@ -6670,10 +6670,18 @@ body.sc-dragging
   color: var(--danger);
 }
 
-.sc-app-main > ion-router-outlet {
+.sc-app-main > ion-router-outlet,
+.sc-app-main > .sc-router-root {
   position: absolute;
   inset: 0;
   contain: layout size style;
+}
+
+.sc-router-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .sc-app-main .ion-page {

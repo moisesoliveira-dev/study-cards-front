@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useMemo,
   useState,
   type CSSProperties,
@@ -101,6 +102,10 @@ export default function FlowsListPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   useIonViewWillEnter(() => {
     void load();

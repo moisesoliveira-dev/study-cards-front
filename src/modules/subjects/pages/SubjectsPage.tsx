@@ -26,6 +26,7 @@ import { useAppToast } from '../../../shared/hooks/useAppToast';
 import { useCatalogColors } from '../../../shared/hooks/useCatalogColors';
 import { CatalogColorPicker } from '../../../shared/components/CatalogColorPicker';
 import { MotionShell, MotionStagger, tapScale } from '../../../shared/motion';
+import { subjectHref } from '../../../shared/drive/drive-nav';
 import { createOutline, openOutline, pencilOutline, trashOutline } from 'ionicons/icons';
 import { useMenuPress } from '../../../shared/hooks/useMenuPress';
 import type { MenuOpenEvent } from '../../../shared/hooks/useMenuPress';
@@ -98,7 +99,7 @@ export default function SubjectsPage() {
         id: 'open',
         label: 'Abrir grupo',
         icon: openOutline,
-        onSelect: () => history.push(`/subjects/${s.id}`),
+        onSelect: () => history.push(subjectHref(s.id)),
       },
       {
         id: 'rename',
@@ -235,7 +236,7 @@ export default function SubjectsPage() {
                   name={s.name}
                   subtitle={s.description || 'Abrir grupo'}
                   color={s.color}
-                  onClick={() => history.push(`/subjects/${s.id}`)}
+                  onClick={() => history.push(subjectHref(s.id))}
                   onDelete={() => setDeleteTarget(s)}
                   onContextMenu={(e) => openSubjectMenu(e, s)}
                 />
@@ -257,7 +258,7 @@ export default function SubjectsPage() {
                   <motion.button
                     type="button"
                     className="sc-list-row"
-                    onClick={() => history.push(`/subjects/${s.id}`)}
+                    onClick={() => history.push(subjectHref(s.id))}
                     initial={reduce ? false : { opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.03 }}

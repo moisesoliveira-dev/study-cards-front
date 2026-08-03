@@ -12,7 +12,6 @@ import {
   IonSpinner,
   IonTitle,
   IonToolbar,
-  useIonViewWillEnter,
 } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
 import { subjectsFacade } from '../../modules/subjects/facades/subjects.facade';
@@ -217,6 +216,8 @@ function planInsertAt(
   return { nextIds, beforeId: nextIds[at + 1] ?? null };
 }
 
+import { subjectHref, topicHref } from './drive-nav';
+
 type Props = {
   subjectId: string;
   /** Se omitido, estamos na raiz do grupo (assunto). */
@@ -347,26 +348,23 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subjectId, topicId]);
 
-  // Navegação / troca de pasta: recarrega e limpa UI transitória
+  // Navegação / troca de pasta: limpa conteúdo antigo na hora e recarrega
   useEffect(() => {
     setQuery('');
     setRaisedId(null);
     setMergePickIds([]);
     setMergePickCards({});
     setDetail(null);
+    setSubject(null);
+    setFolders([]);
+    setDecks([]);
+    setCards([]);
+    setPath([]);
+    setFolderName('…');
+    setParentId(null);
+    setLoading(true);
     void load();
   }, [load]);
-
-  // IonRouterOutlet mantém páginas em cache — ao voltar, sincroniza dados.
-  // Evita cancelar o primeiro load: só revalida depois do mount.
-  const didEnterOnce = useRef(false);
-  useIonViewWillEnter(() => {
-    if (!didEnterOnce.current) {
-      didEnterOnce.current = true;
-      return;
-    }
-    void load({ silent: true });
-  });
 
   useEffect(() => {
     let cancelled = false;
@@ -480,11 +478,11 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   const backHref = isRoot
     ? '/home'
     : parentId
-      ? `/topics/${parentId}?subjectId=${subjectId}`
-      : `/subjects/${subjectId}`;
+      ? topicHref(subjectId, parentId)
+      : subjectHref(subjectId);
 
   const openFolder = (id: string) => {
-    history.push(`/topics/${id}?subjectId=${subjectId}`);
+    history.push(topicHref(subjectId, id));
   };
 
   const openMergeComposer = useCallback((sources: Card[]) => {
@@ -1370,8 +1368,8 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
       if (topicId === deleteFolder.id) {
         history.replace(
           deleteFolder.parentId
-            ? `/topics/${deleteFolder.parentId}?subjectId=${subjectId}`
-            : `/subjects/${subjectId}`,
+            ? topicHref(subjectId, deleteFolder.parentId)
+            : subjectHref(subjectId),
         );
         return;
       }
@@ -1430,7 +1428,7 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
             <span>/</span>
             <button
               type="button"
-              onClick={() => history.push(`/subjects/${subjectId}`)}
+              onClick={() => history.push(subjectHref(subjectId))}
             >
               {subject?.name ?? '…'}
             </button>

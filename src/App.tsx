@@ -1,5 +1,5 @@
 import { Redirect, Route, Switch } from 'react-router-dom';
-import { IonApp, IonRouterOutlet, IonSpinner, setupIonicReact } from '@ionic/react';
+import { IonApp, IonSpinner, setupIonicReact } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
 import SubjectsPage from './modules/subjects/pages/SubjectsPage';
 import SubjectDetailPage from './modules/topics/pages/SubjectDetailPage';
@@ -52,30 +52,34 @@ function AuthenticatedShell() {
     return <Redirect to="/login" />;
   }
 
+  // Switch (não IonRouterOutlet): o outlet do Ionic cacheia páginas por padrão
+  // e ao trocar /subjects/:id ou /topics/:id às vezes mostra o grupo/pasta anterior.
   return (
     <AppShell>
-      <IonRouterOutlet>
-        <Route exact path="/home" component={SubjectsPage} />
-        <Route exact path="/arvore" component={EcosystemTreePage} />
-        <Route exact path="/subjects/:subjectId" component={SubjectDetailPage} />
-        <Route exact path="/topics/:topicId" component={TopicCardsPage} />
-        <Route exact path="/flows" component={FlowsListPage} />
-        <Route path="/flows/:flowId" component={FlowEditorPage} />
-        <Route exact path="/library" component={PdfLibraryPage} />
-        <Route exact path="/chat" component={ChatPage} />
-        <Route exact path="/study/:topicId" component={StudyPage} />
-        <Route exact path="/profile" component={ProfilePage} />
-        <Route exact path="/settings" component={SettingsPage} />
-        <Route exact path="/cadastros/niveis" component={CardLevelsCadastroPage} />
-        <Route exact path="/cadastros/cores" component={ColorsCadastroPage} />
-        <Route exact path="/cadastros/tags" component={CardTagsCadastroPage} />
-        <Route exact path="/cadastros">
-          <Redirect to="/cadastros/niveis" />
-        </Route>
-        <Route exact path="/">
-          <Redirect to="/home" />
-        </Route>
-      </IonRouterOutlet>
+      <div className="sc-router-root">
+        <Switch>
+          <Route exact path="/home" component={SubjectsPage} />
+          <Route exact path="/arvore" component={EcosystemTreePage} />
+          <Route exact path="/subjects/:subjectId" component={SubjectDetailPage} />
+          <Route exact path="/topics/:topicId" component={TopicCardsPage} />
+          <Route exact path="/flows" component={FlowsListPage} />
+          <Route path="/flows/:flowId" component={FlowEditorPage} />
+          <Route exact path="/library" component={PdfLibraryPage} />
+          <Route exact path="/chat" component={ChatPage} />
+          <Route exact path="/study/:topicId" component={StudyPage} />
+          <Route exact path="/profile" component={ProfilePage} />
+          <Route exact path="/settings" component={SettingsPage} />
+          <Route exact path="/cadastros/niveis" component={CardLevelsCadastroPage} />
+          <Route exact path="/cadastros/cores" component={ColorsCadastroPage} />
+          <Route exact path="/cadastros/tags" component={CardTagsCadastroPage} />
+          <Route exact path="/cadastros">
+            <Redirect to="/cadastros/niveis" />
+          </Route>
+          <Route exact path="/">
+            <Redirect to="/home" />
+          </Route>
+        </Switch>
+      </div>
     </AppShell>
   );
 }

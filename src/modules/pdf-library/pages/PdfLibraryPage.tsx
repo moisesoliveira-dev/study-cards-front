@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -107,6 +108,10 @@ export default function PdfLibraryPage() {
       setLoading(false);
     }
   }, [toast]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   useIonViewWillEnter(() => {
     void load();

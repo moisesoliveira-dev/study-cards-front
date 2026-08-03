@@ -20,6 +20,7 @@ import { topicsFacade } from '../facades/topics.facade';
 import type { TopicTreeNode } from '../types/topic.types';
 import { cardsFacade } from '../../cards/facades/cards.facade';
 import type { Card } from '../../cards/types/card.types';
+import { subjectHref, topicHref } from '../../../shared/drive/drive-nav';
 import {
   collectTopicIds,
   filterTopicTree,
@@ -160,12 +161,12 @@ export function EcosystemTree({
 
   const goSubject = (subjectId: string) => {
     onNavigate?.();
-    history.push(`/subjects/${subjectId}`);
+    history.push(subjectHref(subjectId));
   };
 
   const goTopic = (subjectId: string, topicId: string) => {
     onNavigate?.();
-    history.push(`/topics/${topicId}?subjectId=${encodeURIComponent(subjectId)}`);
+    history.push(topicHref(subjectId, topicId));
   };
 
   const ensureCards = async (
