@@ -21,7 +21,6 @@ import {
 import { useAuth } from '../../modules/auth/context/AuthContext';
 import { UserAvatar } from '../../modules/auth/components/UserAvatar';
 import { ThemeToggle } from '../theme/ThemeToggle';
-import { EcosystemTree } from '../../modules/topics/components/EcosystemTree';
 
 type Props = {
   children: React.ReactNode;
@@ -40,8 +39,6 @@ type NavItem = {
   icon: string;
   match: (path: string) => boolean;
   children?: NavChild[];
-  /** Painel de árvore embutido no sidemenu. */
-  ecosystemTree?: boolean;
 };
 
 const NAV: NavItem[] = [
@@ -60,7 +57,6 @@ const NAV: NavItem[] = [
     label: 'Árvore',
     icon: gitBranchOutline,
     match: (path: string) => path.startsWith('/arvore'),
-    ecosystemTree: true,
   },
   {
     to: '/flows',
@@ -127,12 +123,6 @@ export function AppShell({ children }: Props) {
   const [cadastrosOpen, setCadastrosOpen] = useState(() =>
     location.pathname.startsWith('/cadastros'),
   );
-  const [arvoreOpen, setArvoreOpen] = useState(
-    () =>
-      location.pathname.startsWith('/arvore') ||
-      location.pathname.startsWith('/subjects') ||
-      location.pathname.startsWith('/topics'),
-  );
 
   const moreActive =
     location.pathname.startsWith('/cadastros') ||
@@ -147,16 +137,6 @@ export function AppShell({ children }: Props) {
   useEffect(() => {
     if (location.pathname.startsWith('/cadastros')) {
       setCadastrosOpen(true);
-    }
-  }, [location.pathname]);
-
-  useEffect(() => {
-    if (
-      location.pathname.startsWith('/arvore') ||
-      location.pathname.startsWith('/subjects') ||
-      location.pathname.startsWith('/topics')
-    ) {
-      setArvoreOpen(true);
     }
   }, [location.pathname]);
 
@@ -229,52 +209,6 @@ export function AppShell({ children }: Props) {
         </div>
         <nav className="sc-sidebar-nav">
           {NAV.map((item) => {
-            if (item.ecosystemTree) {
-              const groupOpen = arvoreOpen;
-              return (
-                <div
-                  key={item.label}
-                  className={`sc-sidebar-group sc-sidebar-tree-group${groupOpen ? ' is-open' : ''}`}
-                >
-                  <div className="sc-sidebar-group-row">
-                    <NavLink
-                      to={item.to}
-                      className="sc-sidebar-link sc-sidebar-group-link"
-                      isActive={(_, loc) => item.match(loc.pathname)}
-                      activeClassName="is-active"
-                      onClick={() => {
-                        setArvoreOpen(true);
-                        closeMenu();
-                      }}
-                    >
-                      <IonIcon icon={item.icon} />
-                      <span>{item.label}</span>
-                    </NavLink>
-                    <button
-                      type="button"
-                      className="sc-sidebar-group-chevron"
-                      aria-label={
-                        groupOpen ? 'Recolher Árvore' : 'Expandir Árvore'
-                      }
-                      aria-expanded={groupOpen}
-                      onClick={() => setArvoreOpen((v) => !v)}
-                    >
-                      <IonIcon icon={chevronDownOutline} aria-hidden />
-                    </button>
-                  </div>
-                  {groupOpen ? (
-                    <div className="sc-sidebar-tree-panel">
-                      <EcosystemTree
-                        variant="sidebar"
-                        showCards={false}
-                        onNavigate={closeMenu}
-                      />
-                    </div>
-                  ) : null}
-                </div>
-              );
-            }
-
             if (item.children?.length) {
               const groupOpen = cadastrosOpen;
               return (
