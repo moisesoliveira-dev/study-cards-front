@@ -3,5 +3,7 @@ import DriveBrowserPage from '../../../shared/drive/DriveBrowserPage';
 
 export default function SubjectDetailPage() {
   const { subjectId } = useParams<{ subjectId: string }>();
-  return <DriveBrowserPage subjectId={subjectId} />;
+  return (
+    <DriveBrowserPage key={`subject:${subjectId}`} subjectId={subjectId} />
+  );
 }

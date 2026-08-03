@@ -10,9 +10,16 @@ export default function TopicCardsPage() {
   const query = useQuery();
   const subjectId = query.get('subjectId');
 
-  if (!subjectId) {
+  if (!subjectId || !topicId) {
     return null;
   }
 
-  return <DriveBrowserPage subjectId={subjectId} topicId={topicId} />;
+  // key força remount ao trocar de pasta (IonRouterOutlet reutiliza a rota)
+  return (
+    <DriveBrowserPage
+      key={`${subjectId}:${topicId}`}
+      subjectId={subjectId}
+      topicId={topicId}
+    />
+  );
 }

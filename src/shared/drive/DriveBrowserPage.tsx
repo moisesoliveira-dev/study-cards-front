@@ -12,6 +12,7 @@ import {
   IonSpinner,
   IonTitle,
   IonToolbar,
+  useIonViewWillEnter,
 } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
 import { subjectsFacade } from '../../modules/subjects/facades/subjects.facade';
@@ -288,52 +289,77 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   const { menu: ctxMenu, open: openCtx, close: closeCtx } = useContextMenu();
 
   const isRoot = !topicId;
+  const loadGenRef = useRef(0);
 
   const load = useCallback(async (opts?: { silent?: boolean }) => {
+    const gen = ++loadGenRef.current;
+    const scopeSubjectId = subjectId;
+    const scopeTopicId = topicId;
+    const scopeIsRoot = !scopeTopicId;
+
     if (!opts?.silent) setLoading(true);
     try {
       const [s, t] = await Promise.all([
-        subjectsFacade.get(subjectId),
-        topicsFacade.tree(subjectId),
+        subjectsFacade.get(scopeSubjectId),
+        topicsFacade.tree(scopeSubjectId),
       ]);
+      if (gen !== loadGenRef.current) return;
+
       setSubject(s);
 
-      if (isRoot) {
+      if (scopeIsRoot) {
         setFolders(t);
         setFolderName(s.name);
         setParentId(null);
         setPath([]);
         const [rootCards, rootDecks] = await Promise.all([
-          cardsFacade.listRootBySubject(subjectId),
-          decksFacade.list(subjectId, null),
+          cardsFacade.listRootBySubject(scopeSubjectId),
+          decksFacade.list(scopeSubjectId, null),
         ]);
+        if (gen !== loadGenRef.current) return;
         setCards(rootCards);
         setDecks(rootDecks);
       } else {
-        const node = findNode(t, topicId);
-        const trail = buildPath(t, topicId) ?? [];
+        const node = findNode(t, scopeTopicId!);
+        const trail = buildPath(t, scopeTopicId!) ?? [];
         setFolders(node?.children ?? []);
         setFolderName(node?.name ?? 'Pasta');
         setParentId(node?.parentId ?? null);
         setPath(trail);
         const [topicCards, topicDecks] = await Promise.all([
-          cardsFacade.listByTopic(topicId),
-          decksFacade.list(subjectId, topicId),
+          cardsFacade.listByTopic(scopeTopicId!),
+          decksFacade.list(scopeSubjectId, scopeTopicId!),
         ]);
+        if (gen !== loadGenRef.current) return;
         setCards(topicCards);
         setDecks(topicDecks);
       }
     } catch (error) {
+      if (gen !== loadGenRef.current) return;
       toast.error(error);
     } finally {
-      if (!opts?.silent) setLoading(false);
+      if (gen === loadGenRef.current && !opts?.silent) {
+        setLoading(false);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subjectId, topicId, isRoot]);
+  }, [subjectId, topicId]);
 
+  // Navegação / troca de pasta: recarrega e limpa UI transitória
   useEffect(() => {
+    setQuery('');
+    setRaisedId(null);
+    setMergePickIds([]);
+    setMergePickCards({});
+    setDetail(null);
     void load();
   }, [load]);
+
+  // IonRouterOutlet mantém páginas em cache — ao voltar (breadcrumb/aba),
+  // busca de novo para refletir moves e cards criados na biblioteca.
+  useIonViewWillEnter(() => {
+    void load({ silent: true });
+  });
 
   useEffect(() => {
     let cancelled = false;
