@@ -419,7 +419,13 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
   );
 
   const orderedFolders = useMemo(
-    () => [...filteredFolders].sort((a, b) => a.position - b.position),
+    () =>
+      [...filteredFolders].sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, {
+          numeric: true,
+          sensitivity: 'base',
+        }),
+      ),
     [filteredFolders],
   );
 
@@ -540,19 +546,9 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
             .sort((a, b) => a.position - b.position)
             .map((d) => d.id),
         };
-        return;
-      }
-      if (payload.kind === 'folder') {
-        dragOriginRef.current = {
-          kind: 'folder',
-          key: 'folders',
-          ids: [...folders]
-            .sort((a, b) => a.position - b.position)
-            .map((f) => f.id),
-        };
       }
     },
-    [cards, decks, folders],
+    [cards, decks],
   );
 
   const handleReorderPreview = useCallback((event: DriveReorderPreview) => {
@@ -585,20 +581,6 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
         if (orderedIds.every((id, i) => id === plan.nextIds[i])) return prev;
         const next = applyOrderByIds(prev, plan.nextIds, () => true);
         decksRef.current = next;
-        return next;
-      });
-      return;
-    }
-    if (event.kind === 'folder') {
-      setFolders((prev) => {
-        const orderedIds = [...prev]
-          .sort((a, b) => a.position - b.position)
-          .map((f) => f.id);
-        const plan = planReorder(orderedIds, event.activeId, event.overId);
-        if (!plan) return prev;
-        if (orderedIds.every((id, i) => id === plan.nextIds[i])) return prev;
-        const next = applyOrderByIds(prev, plan.nextIds, () => true);
-        foldersRef.current = next;
         return next;
       });
     }
@@ -808,44 +790,13 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
 
         if (payload.kind === 'folder' && over.kind === 'folder' && over.id) {
           if (payload.id === over.id) return;
-          const edge = over.edge ?? 'before';
-
-          if (edge === 'into') {
-            flushSync(() => {
-              setFolders((prev) => prev.filter((f) => f.id !== payload.id));
-            });
-            try {
-              await topicsFacade.update(payload.id, { parentId: over.id });
-              toast.success('Pasta movida para dentro');
-              await load({ silent: true });
-            } catch (error) {
-              await rollback();
-              throw error;
-            }
-            return;
-          }
-
-          // Reordenar irmãs (sem preview ao vivo — aplica no drop)
-          const orderedIds = [...foldersRef.current]
-            .sort((a, b) => a.position - b.position)
-            .map((f) => f.id);
-          const plan = planReorder(orderedIds, payload.id, over.id);
-          if (!plan) return;
-          if (orderedIds.every((id, i) => id === plan.nextIds[i])) return;
-
           flushSync(() => {
-            setFolders((prev) => {
-              const next = applyOrderByIds(prev, plan.nextIds, () => true);
-              foldersRef.current = next;
-              return next;
-            });
+            setFolders((prev) => prev.filter((f) => f.id !== payload.id));
           });
-
           try {
-            await topicsFacade.move(payload.id, {
-              ...(plan.beforeId ? { beforeTopicId: plan.beforeId } : {}),
-            });
-            toast.success('Pasta reordenada');
+            await topicsFacade.update(payload.id, { parentId: over.id });
+            toast.success('Pasta movida para dentro');
+            await load({ silent: true });
           } catch (error) {
             await rollback();
             throw error;
@@ -1486,8 +1437,8 @@ export default function DriveBrowserPage({ subjectId, topicId }: Props) {
 
           <p className="sc-dnd-hint">
             {touchUi
-              ? 'Arraste pastas para reordenar · segure ~0,5s em cima de outra para mover para dentro'
-              : 'Arraste pastas para reordenar · Alt (ou segure ~0,5s em cima) para mover para dentro'}
+              ? 'Arraste uma pasta sobre outra para mover para dentro · ordem A–Z automática'
+              : 'Arraste uma pasta sobre outra para mover para dentro · ordem A–Z automática'}
           </p>
 
           {!isRoot ? (
